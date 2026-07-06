@@ -1,0 +1,616 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "housing API",
+    "version": "0.1.0",
+    "description": "수도권(서울·경기·인천) 7~15억원대 아파트 탐색·비교 서비스 housing의 백엔드 API 명세. 인증 없는 단일 사용자 프로필 기반이며(도메인 정의서 §4.3, PRD §3), 아파트 단지(Apartment Complex)와 매물(Listing, 개별 판매 건)을 분리해 관리한다(도메인 정의서 v0.8 §1·§2). 각 엔드포인트 설명에 대응하는 도메인 정의서(1-domain-definition.md) 절 번호와 PRD(2-prd.md) 기능 번호(F1~F7)를 표기한다."
+  },
+  "servers": [
+    { "url": "http://localhost:3000", "description": "로컬 개발 서버 (4-project-principle.md 확정 스택 기준)" }
+  ],
+  "tags": [
+    { "name": "complexes", "description": "아파트 단지 조회 (도메인 §4.1, §5.5)" },
+    { "name": "listings", "description": "매물 조회 (도메인 §4.2, PRD F1)" },
+    { "name": "regulation", "description": "규제/대출 분석 (도메인 §5.1~§5.2, PRD F4)" },
+    { "name": "locality", "description": "입지 정보 (도메인 §3.5, PRD F5)" },
+    { "name": "loan-simulation", "description": "대출 시뮬레이션 (도메인 §5.3~§5.4, PRD F6)" },
+    { "name": "price-history", "description": "매매가 변동 이력 (도메인 §4.7, PRD F7)" },
+    { "name": "favorites", "description": "즐겨찾기 (도메인 §4.4, PRD F2)" },
+    { "name": "comparison-sets", "description": "비교셋 (도메인 §4.5, §5.5, PRD F3)" },
+    { "name": "user-profile", "description": "내 정보(단일 사용자 프로필) (도메인 §4.3, PRD F6)" }
+  ],
+  "paths": {
+    "/api/complexes": {
+      "get": {
+        "tags": ["complexes"],
+        "summary": "아파트 단지 목록 조회",
+        "description": "아파트 단지(도메인 §4.1) 목록을 조회한다. 지도/목록 화면(F1)에서 단지 단위 표시에 사용된다.",
+        "responses": {
+          "200": {
+            "description": "단지 목록 (0건이어도 200 + 빈 배열, 에러 아님)",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/ApartmentComplexSummary" } }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/complexes/{id}": {
+      "get": {
+        "tags": ["complexes"],
+        "summary": "아파트 단지 상세 조회",
+        "description": "단지 상세(연식/준공년도, 리모델링 이력, 재건축 추진현황, 주변 재개발 정보, 규제지역·토지거래허가구역 여부, 셔틀 정보, 입지 속성, 단지 시세)를 조회한다(도메인 §4.1, §5.5). 단지 시세는 저장값이 아닌 조회 시점 집계값이며, 매물이 0건이면 \"매물 없음\"으로 반환한다(도메인 §5.5, 실행계획 BE-8).",
+        "parameters": [ { "$ref": "#/components/parameters/ComplexIdPath" } ],
+        "responses": {
+          "200": {
+            "description": "단지 상세",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApartmentComplex" } } }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/listings": {
+      "get": {
+        "tags": ["listings"],
+        "summary": "매물 목록 조회 (매매가 필터)",
+        "description": "매매가(만원) 구간으로 매물을 필터링해 조회한다(도메인 §4.2, §2 탐색 범위, PRD F1). 매물과 소속 단지(apartment_complexes)를 join하여 매물 자체 정보(매매가/전용면적)와 소속 단지 정보(연식/셔틀 통근시간 등)를 함께 반환한다.",
+        "parameters": [
+          { "name": "minPrice", "in": "query", "description": "최소 매매가(만원). 미지정 시 기본값 70000", "required": false, "schema": { "type": "integer", "minimum": 70000, "maximum": 150000, "default": 70000, "example": 70000 } },
+          { "name": "maxPrice", "in": "query", "description": "최대 매매가(만원). 미지정 시 기본값 150000", "required": false, "schema": { "type": "integer", "minimum": 70000, "maximum": 150000, "default": 150000, "example": 150000 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "조건에 맞는 매물 목록. 조건에 맞는 매물이 0건이면 에러가 아닌 200과 빈 배열을 반환한다(도메인 §3.1, PRD F1 인수조건: \"조건에 맞는 매물이 0건입니다\")",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Listing" } } } }
+          }
+        }
+      }
+    },
+    "/api/listings/{id}": {
+      "get": {
+        "tags": ["listings"],
+        "summary": "매물 상세 조회 (+소속 단지 정보)",
+        "description": "매물 상세와 소속 단지(apartment_complexes) 정보를 함께 조회한다(도메인 §4.2).",
+        "parameters": [ { "$ref": "#/components/parameters/ListingIdPath" } ],
+        "responses": {
+          "200": { "description": "매물 상세", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Listing" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/listings/{id}/regulation": {
+      "get": {
+        "tags": ["regulation"],
+        "summary": "매물 상세 - 규제/대출 분석 (F4)",
+        "description": "매물이 속한 단지의 규제 현황(토지거래허가구역, 투기과열지구/조정대상지역 여부)과 매물 매매가를 기준으로 산출한 최대 대출가능금액, 갭투자 가능 여부, 실거주 필수 기간을 반환한다(도메인 §3.4, §5.1~§5.2, PRD F4). 소속 단지의 토지거래허가구역 여부가 미고시(null)이면 \"확인필요\" 상태를, 규제지역 여부가 미확정(예: 평택)이면 임시로 비규제지역 LTV(하한값)를 적용했음을 안내한다(PRD F4 인수조건). \"내 정보\"(사용자 프로필) 미입력 상태에서는 규제 현황은 정상 반환하되 최대 대출가능금액은 null과 함께 \"내 정보 입력 필요\" 안내를 반환한다(실행계획 BE-4-3, PRD F6과의 경계).",
+        "parameters": [ { "$ref": "#/components/parameters/ListingIdPath" } ],
+        "responses": {
+          "200": { "description": "규제/대출 분석 결과", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RegulationInfo" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/listings/{id}/locality": {
+      "get": {
+        "tags": ["locality"],
+        "summary": "매물 상세 - 입지 정보 (F5)",
+        "description": "매물이 속한 단지 기준의 입지 축(교통/상권/학군/강남 접근성/유흥·공원/개발호재/주변일자리)과 단지 기본정보(연식/리모델링/재건축/주변 재개발 정보)를 조회한다(도메인 §3.5, PRD F5). 소속 단지의 `locality_attributes`에 값이 없는 축은 \"정보 없음\"으로 반환한다.",
+        "parameters": [ { "$ref": "#/components/parameters/ListingIdPath" } ],
+        "responses": {
+          "200": { "description": "입지 정보", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LocalityInfo" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/listings/{id}/loan-simulation": {
+      "get": {
+        "tags": ["loan-simulation"],
+        "summary": "매물 상세 - 대출 시뮬레이션 (F6)",
+        "description": "저장된 사용자 프로필(명의 구성/소득/성과금/자본금/세대 주택 보유 구분)과 매물 매매가, 소속 단지의 규제 정보를 기준으로 부부합산 vs 단독명의 두 시나리오의 최대 대출가능금액과 10/20/30년 원리금균등상환액을 계산·비교한다(도메인 §3.6, §5.3~§5.4, PRD F6). \"내 정보\" 미입력 상태에서는 에러가 아닌 200과 `profileIncomplete: true`를 반환한다(PRD F6 인수조건, 실행계획 BE-6-2).",
+        "parameters": [ { "$ref": "#/components/parameters/ListingIdPath" } ],
+        "responses": {
+          "200": {
+            "description": "대출 시뮬레이션 결과 (프로필 미입력 시 profileIncomplete 상태 포함)",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LoanSimulationResult" } } }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/listings/{id}/price-history": {
+      "get": {
+        "tags": ["price-history"],
+        "summary": "매물 상세 - 매매가 변동 이력 (F7, 단지 기준)",
+        "description": "매물이 속한 단지 단위로 관리되는 국토교통부 아파트 실거래가 공개시스템(오픈API) 기반 최근 20년 매매가 변동 이력을 조회한다(도메인 §3.7, §4.7, PRD F7). 단지의 실거래 데이터가 20년 미만이면 최초거래 시점 이후 데이터만 반환하고, 데이터가 0건이면 빈 배열과 함께 \"실거래 이력 없음\"을 반환한다.",
+        "parameters": [ { "$ref": "#/components/parameters/ListingIdPath" } ],
+        "responses": {
+          "200": { "description": "매매가 변동 이력", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PriceHistoryResponse" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/favorites/complexes": {
+      "get": {
+        "tags": ["favorites"],
+        "summary": "단지 즐겨찾기 목록 조회",
+        "description": "단일 사용자 프로필의 단지 즐겨찾기 목록을 단지 정보와 함께 조회한다(도메인 §3.2, §4.4, PRD F2). 매물 즐겨찾기와 완전히 독립된 목록이다.",
+        "responses": {
+          "200": { "description": "단지 즐겨찾기 목록", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/FavoriteComplex" } } } } }
+        }
+      },
+      "post": {
+        "tags": ["favorites"],
+        "summary": "단지 즐겨찾기 추가",
+        "description": "단지를 즐겨찾기에 추가한다(도메인 §4.4). (user_profile_id, complex_id) 조합은 유니크하다.",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["complexId"], "properties": { "complexId": { "type": "integer", "example": 1 } } } } }
+        },
+        "responses": {
+          "201": { "description": "추가된 즐겨찾기", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/FavoriteComplex" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/DuplicateFavorite" }
+        }
+      }
+    },
+    "/api/favorites/complexes/{complexId}": {
+      "delete": {
+        "tags": ["favorites"],
+        "summary": "단지 즐겨찾기 해제",
+        "description": "단지 즐겨찾기를 해제한다(도메인 §3.2, §4.4).",
+        "parameters": [ { "name": "complexId", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 1 } ],
+        "responses": {
+          "200": { "description": "해제 완료" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/favorites/listings": {
+      "get": {
+        "tags": ["favorites"],
+        "summary": "매물 즐겨찾기 목록 조회",
+        "description": "단일 사용자 프로필의 매물 즐겨찾기 목록을 매물+소속 단지 정보와 함께 조회한다(도메인 §3.2, §4.4, PRD F2). 단지 즐겨찾기와 완전히 독립된 목록이다.",
+        "responses": {
+          "200": { "description": "매물 즐겨찾기 목록", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/FavoriteListing" } } } } }
+        }
+      },
+      "post": {
+        "tags": ["favorites"],
+        "summary": "매물 즐겨찾기 추가",
+        "description": "매물을 즐겨찾기에 추가한다(도메인 §4.4). (user_profile_id, listing_id) 조합은 유니크하다.",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["listingId"], "properties": { "listingId": { "type": "integer", "example": 10 } } } } }
+        },
+        "responses": {
+          "201": { "description": "추가된 즐겨찾기", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/FavoriteListing" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/DuplicateFavorite" }
+        }
+      }
+    },
+    "/api/favorites/listings/{listingId}": {
+      "delete": {
+        "tags": ["favorites"],
+        "summary": "매물 즐겨찾기 해제",
+        "description": "매물 즐겨찾기를 해제한다(도메인 §3.2, §4.4).",
+        "parameters": [ { "name": "listingId", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 10 } ],
+        "responses": {
+          "200": { "description": "해제 완료" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/comparison-sets": {
+      "post": {
+        "tags": ["comparison-sets"],
+        "summary": "비교셋 생성 (단지 비교 / 매물 비교)",
+        "description": "비교 대상 유형(targetType: complex/listing)을 선택해 비교셋을 생성한다(도메인 §3.3, §4.5, PRD F3). targetType이 'complex'이면 complexIds를, 'listing'이면 listingIds를 사용하며 하나의 비교셋 내 대상은 동일 유형이어야 한다(단지/매물 혼합 불가).",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ComparisonSetCreateRequest" } } }
+        },
+        "responses": {
+          "201": { "description": "생성된 비교셋", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ComparisonSetDetail" } } } },
+          "400": {
+            "description": "대상 개수가 2개 미만이거나 6개 이상인 경우(도메인 §4.5, PRD F3 인수조건)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "examples": {
+                  "tooFew": { "value": { "message": "비교하려면 2개 이상 선택해야 합니다" } },
+                  "tooMany": { "value": { "message": "비교셋은 최대 5개까지 선택할 수 있습니다" } }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/comparison-sets/{id}": {
+      "get": {
+        "tags": ["comparison-sets"],
+        "summary": "비교셋 상세 조회 (단지 비교 / 매물 비교 데이터)",
+        "description": "비교셋의 target_type에 따라 응답이 분기된다(도메인 §5.5, PRD F3). **단지 비교**는 단지 기본정보(연식/리모델링/재건축/주변 재개발 정보)와 입지 축, 단지 시세(매물 0건 시 \"매물 없음\")를 단지별로 반환한다. **매물 비교**는 매물 자체 속성(매매가/전용면적)과 소속 단지의 동일 축 정보를 매물별로 조합해 반환한다. 동일 단지 내 매물끼리 비교하는 경우 단지 축 값이 모든 대상에서 동일하게 반환되는 것은 정상 동작이다(도메인 §5.5).",
+        "parameters": [ { "$ref": "#/components/parameters/ComparisonSetIdPath" } ],
+        "responses": {
+          "200": { "description": "비교셋 상세", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ComparisonSetDetail" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/comparison-sets/{id}/complexes": {
+      "post": {
+        "tags": ["comparison-sets"],
+        "summary": "비교셋에 단지 추가 (단지 비교 전용)",
+        "description": "targetType이 'complex'인 비교셋에 단지를 추가한다(도메인 §3.3, §4.5). 이미 포함된 단지를 다시 추가하면 (comparison_set_id, complex_id) UNIQUE 위반으로 409 \"중복입니다\"를 반환하고 추가하지 않는다.",
+        "parameters": [ { "$ref": "#/components/parameters/ComparisonSetIdPath" } ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["complexId"], "properties": { "complexId": { "type": "integer", "example": 2 } } } } }
+        },
+        "responses": {
+          "201": { "description": "추가 후 비교셋 상세", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ComparisonSetDetail" } } } },
+          "400": { "description": "6개 이상이 되는 추가 시도(도메인 §4.5, PRD F3 인수조건)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }, "example": { "message": "비교셋은 최대 5개까지 선택할 수 있습니다" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": {
+            "description": "이미 포함된 단지를 동일 비교셋에 재추가 시도(도메인 §3.3 \"중복입니다\")",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }, "example": { "message": "중복입니다" } } }
+          }
+        }
+      }
+    },
+    "/api/comparison-sets/{id}/listings": {
+      "post": {
+        "tags": ["comparison-sets"],
+        "summary": "비교셋에 매물 추가 (매물 비교 전용)",
+        "description": "targetType이 'listing'인 비교셋에 매물을 추가한다(도메인 §3.3, §4.5). 동일 단지에 속한 매물끼리 추가하는 것도 허용된다. 이미 포함된 매물을 다시 추가하면 (comparison_set_id, listing_id) UNIQUE 위반으로 409 \"중복입니다\"를 반환하고 추가하지 않는다.",
+        "parameters": [ { "$ref": "#/components/parameters/ComparisonSetIdPath" } ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["listingId"], "properties": { "listingId": { "type": "integer", "example": 11 } } } } }
+        },
+        "responses": {
+          "201": { "description": "추가 후 비교셋 상세", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ComparisonSetDetail" } } } },
+          "400": { "description": "6개 이상이 되는 추가 시도(도메인 §4.5, PRD F3 인수조건)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }, "example": { "message": "비교셋은 최대 5개까지 선택할 수 있습니다" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": {
+            "description": "이미 포함된 매물을 동일 비교셋에 재추가 시도(도메인 §3.3 \"중복입니다\")",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }, "example": { "message": "중복입니다" } } }
+          }
+        }
+      }
+    },
+    "/api/user-profile": {
+      "get": {
+        "tags": ["user-profile"],
+        "summary": "내 정보(단일 사용자 프로필) 조회",
+        "description": "고정 id=1인 단일 사용자 프로필을 조회한다(도메인 §4.3, PRD F6). 미입력 상태에서도 200과 null 필드가 포함된 객체를 반환한다(에러 아님).",
+        "responses": {
+          "200": { "description": "사용자 프로필", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserProfile" } } } }
+        }
+      },
+      "put": {
+        "tags": ["user-profile"],
+        "summary": "내 정보(단일 사용자 프로필) 수정",
+        "description": "명의 구성/연소득/성과금/자본금/세대 주택 보유 구분/생애최초 해당 여부/근무지를 수정한다(도메인 §3.6, §4.3, PRD F6). 수정 즉시 대출 시뮬레이션이 최신값 기준으로 재계산된다.",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserProfileUpdateRequest" } } }
+        },
+        "responses": {
+          "200": { "description": "수정된 사용자 프로필", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserProfile" } } } },
+          "400": {
+            "description": "housingOwnershipTier가 '무주택'이 아닌데 isFirstTimeBuyer=true인 경우, 또는 workplace가 '화성'/'평택'/null 외의 값인 경우(도메인 §4.6, 실행계획 BE-6-1)",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "ComplexIdPath": { "name": "id", "in": "path", "required": true, "description": "아파트 단지 ID", "schema": { "type": "integer" }, "example": 1 },
+      "ListingIdPath": { "name": "id", "in": "path", "required": true, "description": "매물 ID", "schema": { "type": "integer" }, "example": 10 },
+      "ComparisonSetIdPath": { "name": "id", "in": "path", "required": true, "description": "비교셋 ID", "schema": { "type": "integer" }, "example": 1 }
+    },
+    "responses": {
+      "NotFound": {
+        "description": "존재하지 않는 id (도메인/PRD 공통 규칙)",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      },
+      "DuplicateFavorite": {
+        "description": "이미 즐겨찾기된 대상에 재요청(도메인 §4.4 UNIQUE 제약, 시나리오 2-2)",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }, "example": { "message": "중복입니다" } } }
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string", "example": "존재하지 않는 리소스입니다" }
+        },
+        "required": ["message"]
+      },
+      "RemodelingStatus": { "type": "string", "enum": ["해당없음", "추진중", "완료"], "example": "해당없음" },
+      "ReconstructionStatus": {
+        "type": "string",
+        "description": "재건축 추진현황 7단계(도메인 §4.1)",
+        "enum": ["해당없음", "추진위원회", "조합설립인가", "사업시행인가", "관리처분인가", "이주철거중", "착공"],
+        "example": "해당없음"
+      },
+      "LandTransactionPermissionZoneStatus": {
+        "description": "토지거래허가구역 여부. 미고시 지역은 null이며 이 경우 서비스는 \"확인필요\" 배지를 표시한다(도메인 §4.1)",
+        "oneOf": [
+          { "type": "boolean" },
+          { "type": "string", "enum": ["확인필요"] }
+        ],
+        "example": true
+      },
+      "LocalityAttributes": {
+        "type": "object",
+        "description": "입지 속성. 값이 없는 축은 \"정보 없음\"으로 채워 반환한다(도메인 §4.1, 실행계획 BE-5/BE-8).",
+        "properties": {
+          "transportation": { "type": "string", "example": "지하철 SRT 동탄역 도보 10분, 광역버스 다수" },
+          "commercialArea": { "type": "string", "example": "정보 없음" },
+          "schoolDistrict": { "type": "string", "example": "정보 없음" },
+          "gangnamAccessibility": { "type": "string", "example": "SRT 이용 시 강남 접근 30분대" },
+          "entertainmentAndParks": { "type": "string", "example": "정보 없음" },
+          "developmentProspects": { "type": "string", "example": "GTX-A 동탄역 개통 예정" },
+          "nearbyJobs": { "type": "string", "example": "삼성전자 화성캠퍼스" }
+        }
+      },
+      "PriceRange": {
+        "description": "단지 시세. 해당 단지에 속한 매물들의 매매가(listings.sale_price)를 조회 시점에 MIN/MAX/AVG로 집계한 비영속 계산값이다(도메인 §2, §5.5). 매물이 0건이면 문자열 \"매물 없음\"을 반환한다.",
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "minPrice": { "type": "integer", "description": "만원", "example": 90000 },
+              "maxPrice": { "type": "integer", "description": "만원", "example": 110000 },
+              "avgPrice": { "type": "integer", "description": "만원", "example": 100000 }
+            }
+          },
+          { "type": "string", "enum": ["매물 없음"] }
+        ]
+      },
+      "ApartmentComplexSummary": {
+        "type": "object",
+        "description": "목록/join 용 단지 요약 정보(도메인 §4.1)",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "complexName": { "type": "string", "example": "동탄역 시범 우남퍼스트빌" },
+          "address": { "type": "string", "example": "경기도 화성시 동탄역로 123" },
+          "completionYear": { "type": "integer", "minimum": 1970, "example": 2021 },
+          "remodelingStatus": { "$ref": "#/components/schemas/RemodelingStatus" },
+          "reconstructionStatus": { "$ref": "#/components/schemas/ReconstructionStatus" },
+          "isRegulatedArea": { "type": "boolean", "default": false, "example": true },
+          "isLandTransactionPermissionZone": { "$ref": "#/components/schemas/LandTransactionPermissionZoneStatus" },
+          "nearestShuttleStopName": { "type": "string", "nullable": true, "description": "배차 정보 미확보 시 null(\"정보 없음\" 표시, 도메인 §4.1)", "example": "동탄역 셔틀정류장" },
+          "nearestShuttleStopDistance": { "type": "integer", "nullable": true, "description": "m", "example": 350 },
+          "shuttleCommuteMinutes": { "type": "integer", "nullable": true, "description": "분", "example": 42 }
+        }
+      },
+      "ApartmentComplex": {
+        "type": "object",
+        "description": "아파트 단지 상세(도메인 §4.1)",
+        "allOf": [
+          { "$ref": "#/components/schemas/ApartmentComplexSummary" },
+          {
+            "type": "object",
+            "properties": {
+              "latitude": { "type": "number", "format": "double", "example": 37.1996 },
+              "longitude": { "type": "number", "format": "double", "example": 127.0982 },
+              "remodelingCompletionYear": { "type": "integer", "nullable": true, "description": "리모델링 추진현황이 '완료'일 때만 값 존재", "example": null },
+              "reconstructionStatus": { "$ref": "#/components/schemas/ReconstructionStatus" },
+              "nearbyRedevelopmentInfo": { "type": "string", "nullable": true, "example": "OO구역 재개발 정비사업 조합설립인가 단계(2025)" },
+              "localityAttributes": { "$ref": "#/components/schemas/LocalityAttributes" },
+              "priceRange": { "$ref": "#/components/schemas/PriceRange" }
+            }
+          }
+        ]
+      },
+      "Listing": {
+        "type": "object",
+        "description": "매물(개별 판매 건, 도메인 §4.2). 소속 단지 정보를 join하여 함께 반환한다.",
+        "properties": {
+          "id": { "type": "integer", "example": 10 },
+          "complexId": { "type": "integer", "example": 1 },
+          "salePrice": { "type": "integer", "description": "매매가(만원), 70000~150000", "minimum": 70000, "maximum": 150000, "example": 95000 },
+          "exclusiveArea": { "type": "number", "format": "double", "description": "전용면적(m^2), > 0", "example": 84.98 },
+          "complex": { "$ref": "#/components/schemas/ApartmentComplexSummary" }
+        },
+        "required": ["id", "complexId", "salePrice", "exclusiveArea"]
+      },
+      "FavoriteComplex": {
+        "type": "object",
+        "description": "단지 즐겨찾기(도메인 §4.4)",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "userProfileId": { "type": "integer", "example": 1 },
+          "complexId": { "type": "integer", "example": 1 },
+          "registeredAt": { "type": "string", "format": "date-time" },
+          "complex": { "$ref": "#/components/schemas/ApartmentComplexSummary" }
+        }
+      },
+      "FavoriteListing": {
+        "type": "object",
+        "description": "매물 즐겨찾기(도메인 §4.4)",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "userProfileId": { "type": "integer", "example": 1 },
+          "listingId": { "type": "integer", "example": 10 },
+          "registeredAt": { "type": "string", "format": "date-time" },
+          "listing": { "$ref": "#/components/schemas/Listing" }
+        }
+      },
+      "ComparisonSetCreateRequest": {
+        "type": "object",
+        "description": "비교셋 생성 요청. targetType에 따라 complexIds 또는 listingIds 중 하나만 사용한다(도메인 §4.5, 혼합 불가).",
+        "properties": {
+          "targetType": { "type": "string", "enum": ["complex", "listing"], "example": "complex" },
+          "complexIds": { "type": "array", "items": { "type": "integer" }, "minItems": 2, "maxItems": 5, "example": [1, 2, 3] },
+          "listingIds": { "type": "array", "items": { "type": "integer" }, "minItems": 2, "maxItems": 5, "example": [10, 11] }
+        },
+        "required": ["targetType"]
+      },
+      "ComparisonComplexItem": {
+        "type": "object",
+        "description": "단지 비교 시 단지별 비교 데이터(도메인 §5.5)",
+        "properties": {
+          "complexId": { "type": "integer", "example": 1 },
+          "complexName": { "type": "string", "example": "동탄역 시범 우남퍼스트빌" },
+          "completionYear": { "type": "integer", "example": 2021 },
+          "remodelingStatus": { "$ref": "#/components/schemas/RemodelingStatus" },
+          "reconstructionStatus": { "$ref": "#/components/schemas/ReconstructionStatus" },
+          "nearbyRedevelopmentInfo": { "type": "string", "nullable": true, "example": "정보 없음" },
+          "localityAttributes": { "$ref": "#/components/schemas/LocalityAttributes" },
+          "shuttleCommuteMinutes": { "type": "integer", "nullable": true, "example": 42 },
+          "priceRange": { "$ref": "#/components/schemas/PriceRange" }
+        }
+      },
+      "ComparisonListingItem": {
+        "type": "object",
+        "description": "매물 비교 시 매물별 비교 데이터. 소속 단지 축을 함께 포함하며, 동일 단지 매물끼리 비교 시 단지 축 값은 모든 대상에서 동일하다(도메인 §5.5, 정상 동작)",
+        "properties": {
+          "listingId": { "type": "integer", "example": 10 },
+          "complexId": { "type": "integer", "example": 1 },
+          "salePrice": { "type": "integer", "example": 95000 },
+          "exclusiveArea": { "type": "number", "example": 84.98 },
+          "complexName": { "type": "string", "example": "동탄역 시범 우남퍼스트빌" },
+          "completionYear": { "type": "integer", "example": 2021 },
+          "remodelingStatus": { "$ref": "#/components/schemas/RemodelingStatus" },
+          "reconstructionStatus": { "$ref": "#/components/schemas/ReconstructionStatus" },
+          "nearbyRedevelopmentInfo": { "type": "string", "nullable": true, "example": "정보 없음" },
+          "localityAttributes": { "$ref": "#/components/schemas/LocalityAttributes" },
+          "shuttleCommuteMinutes": { "type": "integer", "nullable": true, "example": 42 }
+        }
+      },
+      "ComparisonSetDetail": {
+        "type": "object",
+        "description": "비교셋 상세. targetType에 따라 complexes 또는 listings 중 하나만 채워진다(도메인 §4.5, §5.5).",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "userProfileId": { "type": "integer", "example": 1 },
+          "targetType": { "type": "string", "enum": ["complex", "listing"], "example": "complex" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "complexes": { "type": "array", "items": { "$ref": "#/components/schemas/ComparisonComplexItem" }, "nullable": true },
+          "listings": { "type": "array", "items": { "$ref": "#/components/schemas/ComparisonListingItem" }, "nullable": true }
+        }
+      },
+      "RegulationInfo": {
+        "type": "object",
+        "description": "매물이 속한 단지 기준 규제/대출 분석 결과(도메인 §5.1~§5.2, PRD F4)",
+        "properties": {
+          "listingId": { "type": "integer", "example": 10 },
+          "complexId": { "type": "integer", "example": 1 },
+          "isRegulatedArea": { "type": "boolean", "example": true },
+          "isLandTransactionPermissionZone": { "$ref": "#/components/schemas/LandTransactionPermissionZoneStatus" },
+          "regulationConfirmationNeeded": { "type": "boolean", "description": "소속 단지의 규제지역 여부가 미확정(예: 평택)인 경우 true. 이 경우 비규제지역 LTV(하한값)를 임시 적용한 값임을 의미한다(PRD F4 인수조건)", "example": false },
+          "ltvPercent": { "type": "integer", "description": "적용된 LTV(%). 세대 주택 보유 구분×규제지역 여부 조합(도메인 §5.1.3): 무주택-생애최초 70/80, 무주택-미해당 60/70, 1주택 50/60, 다주택 0/60(규제/비규제 순)", "example": 60 },
+          "maxLoanAmount": {
+            "description": "최대 대출가능금액(만원). \"내 정보\" 미입력 상태에서는 null과 함께 profileMessage로 안내한다(실행계획 BE-4-3).",
+            "type": "integer",
+            "nullable": true,
+            "example": 57000
+          },
+          "profileMessage": { "type": "string", "nullable": true, "example": "내 정보 입력 필요" },
+          "gapInvestmentAllowed": { "type": "boolean", "description": "갭투자 가능 여부 = NOT(토허구역) AND NOT(규제지역 내 주담대 실행)(도메인 §5.1.5)", "example": false },
+          "occupancyRequirementMonths": { "type": "integer", "nullable": true, "description": "실거주 의무 기간(개월). 토허구역 기본 24개월, 규제지역 주담대 실행 시 6개월", "example": 24 },
+          "regionalLoanCapAmount": { "type": "integer", "nullable": true, "description": "규제지역 내 주택구입 목적 주담대 상한(만원), 고정 60000(도메인 §5.1.4)", "example": 60000 }
+        }
+      },
+      "LocalityInfo": {
+        "type": "object",
+        "description": "매물이 속한 단지 기준 입지 정보(도메인 §3.5, PRD F5)",
+        "properties": {
+          "listingId": { "type": "integer", "example": 10 },
+          "complexId": { "type": "integer", "example": 1 },
+          "completionYear": { "type": "integer", "example": 2021 },
+          "remodelingStatus": { "$ref": "#/components/schemas/RemodelingStatus" },
+          "reconstructionStatus": { "$ref": "#/components/schemas/ReconstructionStatus" },
+          "nearbyRedevelopmentInfo": { "type": "string", "nullable": true, "example": "정보 없음" },
+          "localityAttributes": { "$ref": "#/components/schemas/LocalityAttributes" }
+        }
+      },
+      "LoanScenarioResult": {
+        "type": "object",
+        "description": "대출 시나리오(부부합산 또는 단독명의) 산출 결과(도메인 §4.6, §5.2~§5.4)",
+        "properties": {
+          "ownershipStructure": { "type": "string", "enum": ["단독", "부부합산"], "example": "부부합산" },
+          "ltvPercent": { "type": "integer", "example": 60 },
+          "maxLoanAmount": { "type": "integer", "description": "만원", "example": 57000 },
+          "requiredCapital": { "type": "integer", "description": "필요 자기자본(만원) = 매매가 - 대출액 - 보유 자본금", "example": 38000 },
+          "capitalSufficient": { "type": "boolean", "description": "필요 자기자본이 보유 자본금 이내인지(자금 조달 가능 여부, 도메인 §5.4)", "example": true },
+          "dsrUsageRate": { "type": "number", "format": "double", "description": "DSR 실사용률", "example": 0.32 },
+          "monthlyRepayment10y": { "type": "integer", "description": "10년 원리금균등 월 상환액(만원)", "example": 550 },
+          "monthlyRepayment20y": { "type": "integer", "example": 310 },
+          "monthlyRepayment30y": { "type": "integer", "example": 230 },
+          "occupancyRequirementMonths": { "type": "integer", "nullable": true, "example": 6 }
+        }
+      },
+      "LoanSimulationResult": {
+        "type": "object",
+        "description": "대출 시뮬레이션 응답. profileIncomplete=true이면 \"내 정보\" 미입력 상태이며 scenarios/recommendedScenario는 제공되지 않는다(도메인 §3.6, PRD F6 인수조건).",
+        "properties": {
+          "listingId": { "type": "integer", "example": 10 },
+          "profileIncomplete": { "type": "boolean", "example": false },
+          "scenarios": { "type": "array", "items": { "$ref": "#/components/schemas/LoanScenarioResult" }, "nullable": true },
+          "recommendedScenario": { "type": "string", "enum": ["단독", "부부합산"], "nullable": true, "description": "도메인 §5.4 판단 절차(자금조달가능→대출가능금액 최댓값→DSR실사용률 최솟값→동률 시 부부합산 우선)로 선정된 유리한 시나리오", "example": "부부합산" },
+          "policyMortgageNotice": { "type": "string", "example": "디딤돌대출·보금자리론 등 정책모기지는 계산 범위에서 제외되며, 필요 시 한국주택금융공사·주택도시기금 채널에서 별도 확인이 필요합니다." }
+        }
+      },
+      "PriceHistoryEntry": {
+        "type": "object",
+        "description": "매매가 변동 이력 1건(도메인 §4.7)",
+        "properties": {
+          "transactionDate": { "type": "string", "format": "date", "example": "2024-11-02" },
+          "transactionPrice": { "type": "integer", "description": "만원", "example": 92000 },
+          "dataSource": { "type": "string", "enum": ["국토교통부 아파트 실거래가 공개시스템(오픈API)"], "example": "국토교통부 아파트 실거래가 공개시스템(오픈API)" }
+        }
+      },
+      "PriceHistoryResponse": {
+        "type": "object",
+        "description": "매물이 속한 단지 단위 매매가 변동 이력 응답(도메인 §4.7, §3.7, PRD F7)",
+        "properties": {
+          "listingId": { "type": "integer", "example": 10 },
+          "complexId": { "type": "integer", "example": 1 },
+          "lookupPeriodType": { "type": "string", "enum": ["최근 20년", "최초거래 이후", "실거래 이력 없음"], "example": "최근 20년" },
+          "firstTransactionMonth": { "type": "string", "nullable": true, "description": "lookupPeriodType이 '최초거래 이후'일 때 YYYY-MM", "example": "2018-03" },
+          "entries": { "type": "array", "items": { "$ref": "#/components/schemas/PriceHistoryEntry" }, "description": "실거래 데이터가 0건이면 빈 배열(도메인 §3.7)" }
+        }
+      },
+      "UserProfile": {
+        "type": "object",
+        "description": "단일 사용자 프로필(고정 id=1, 도메인 §4.3). 미입력 상태에서는 workplace 이하 필드가 전부 null이다.",
+        "properties": {
+          "id": { "type": "integer", "enum": [1], "example": 1 },
+          "workplace": { "type": "string", "enum": ["화성", "평택"], "nullable": true, "example": "화성" },
+          "ownershipStructure": { "type": "string", "enum": ["단독", "부부합산"], "nullable": true, "example": "부부합산" },
+          "annualIncome": { "type": "integer", "nullable": true, "description": "연소득(만원)", "example": 7000 },
+          "annualBonus": { "type": "integer", "nullable": true, "description": "성과금(연 환산, 만원), 기본값 0", "example": 10000 },
+          "availableCapital": { "type": "integer", "nullable": true, "description": "자본금(만원)", "example": 25000 },
+          "housingOwnershipTier": { "type": "string", "enum": ["무주택", "1주택", "다주택"], "nullable": true, "example": "1주택" },
+          "isFirstTimeBuyer": { "type": "boolean", "nullable": true, "description": "housingOwnershipTier가 '무주택'일 때만 true 가능(도메인 §4.6)", "example": false }
+        },
+        "required": ["id"]
+      },
+      "UserProfileUpdateRequest": {
+        "type": "object",
+        "description": "내 정보 수정 요청(도메인 §4.3, §4.6, PRD F6)",
+        "properties": {
+          "workplace": { "type": "string", "enum": ["화성", "평택"], "nullable": true },
+          "ownershipStructure": { "type": "string", "enum": ["단독", "부부합산"], "nullable": true },
+          "annualIncome": { "type": "integer", "minimum": 0, "nullable": true },
+          "annualBonus": { "type": "integer", "minimum": 0, "nullable": true, "default": 0 },
+          "availableCapital": { "type": "integer", "minimum": 0, "nullable": true },
+          "housingOwnershipTier": { "type": "string", "enum": ["무주택", "1주택", "다주택"], "nullable": true },
+          "isFirstTimeBuyer": { "type": "boolean", "nullable": true }
+        }
+      }
+    }
+  }
+}

@@ -19,7 +19,7 @@
     },
     "postgresql-mcp": {
       "command": "npx",
-      "args": ["-y", "@henkey/postgres-mcp-server"]
+      "args": ["-y", "@henkey/postgres-mcp-server", "--connection-string", "postgresql://postgres:postgres@localhost:5432/postgres"]
     }
   }
 }
