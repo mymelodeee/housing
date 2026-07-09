@@ -1,8 +1,8 @@
 # housing 프로젝트 구조 설계 원칙
 
-- 버전: v0.6
-- 최종 수정일: 2026-07-06
-- 참조 문서: [1-domain-definition.md](./1-domain-definition.md) (v0.8), [2-prd.md](./2-prd.md) (v0.6), [3-user-scenario.md](./3-user-scenario.md) (v0.5)
+- 버전: v0.8
+- 최종 수정일: 2026-07-08
+- 참조 문서: [1-domain-definition.md](./1-domain-definition.md) (v0.8), [2-prd.md](./2-prd.md) (v0.6), [3-user-scenario.md](./3-user-scenario.md) (v0.5), [9-style-guide.md](./9-style-guide.md) (v0.1)
 - 버전 관리 규칙: 본 문서를 수정할 때마다 상단 버전(v0.1 → v0.2 …)과 최종 수정일을 함께 갱신한다. 과거 버전 이력은 별도 변경이력 절에 누적 기록한다.
 
 ## 변경 이력
@@ -15,6 +15,8 @@
 | v0.4 | 2026-07-05 | 참조 문서 버전 갱신(도메인 v0.6, PRD v0.5, 사용자 시나리오 v0.4) — 비교셋 중복 매물 방지 규칙 반영 |
 | v0.5 | 2026-07-05 | **구조 변경(도메인 v0.8 반영)**: §3 네이밍 예시에 `apartment_complexes`/`complex_id` 추가 및 단지·매물 식별자 분리 원칙 명시, 즐겨찾기·비교셋 이원화(`favorite_complexes`/`favorite_listings`, `comparison_set_complexes`/`comparison_set_listings`) 원칙 추가. §6 프론트엔드 구조에 각 feature의 "소속 단지" 조회 책임 명시. §7 백엔드 구조에 `complexes.routes/controller.js`, `apartment-complexes.repository.js`, `comparison.service.js` 추가 및 즐겨찾기/비교셋 repository 파일 분리 반영 |
 | v0.6 | 2026-07-06 | 로컬 개발 환경에 실제 설치된 버전 확인 결과를 반영해 확정 기술 스택의 데이터베이스 버전을 PostgreSQL 17 → 18.4로 정정(§0, §5) |
+| v0.7 | 2026-07-06 | 백엔드 구현(BE-0~BE-8 등) 진행 중 발견한 공백 수정: §5 `.env` 관리 규칙이 "백엔드 루트"만 언급하고 프론트엔드 `.env`/API base URL 규칙이 전혀 없었음 → 프론트엔드는 `VITE_API_BASE_URL`(Vite `VITE_` 접두사 규칙)로 API 서버 주소를 주입하고 `shared/api/client.ts`에 하드코딩하지 않는다는 원칙과, 백엔드 `CORS_ORIGIN`과 프론트엔드 개발 서버 origin이 일치해야 한다는 상호 연동 규칙을 §5에 추가 |
+| v0.8 | 2026-07-08 | FE-2(네이버지도 연동) 진행에 맞춰 §5에 `VITE_NAVER_MAP_CLIENT_ID` 환경변수 규칙과 네이버 클라우드 플랫폼(NCP) 키 발급 사전 준비 절차 추가. 참조 문서에 `docs/9-style-guide.md`(신규) 추가 |
 
 ---
 
@@ -145,7 +147,12 @@ db (pg Pool 설정, 커넥션 관리)
 ## 5. 설정/보안/운영 원칙
 
 - **자격증명**: DB 접속정보(호스트/포트/유저/비밀번호), 외부 API 키(국토교통부 실거래가 API, 지도 API) 등 모든 주요 자격증명은 **환경변수**로만 관리한다(기존 backend-resolver skill 규칙). 코드/설정 파일에 하드코딩 금지.
-- **`.env` 관리**: 백엔드 루트에 `.env`(로컬 전용, 실제 값)와 `.env.example`(키 목록만, 값은 placeholder)을 둔다. `.env`는 반드시 `.gitignore`에 포함하고 저장소에 커밋하지 않는다.
+- **`.env` 관리**: 백엔드/프론트엔드 각 루트에 `.env`(로컬 전용, 실제 값)와 `.env.example`(키 목록만, 값은 placeholder)을 둔다. `.env`는 반드시 `.gitignore`에 포함하고 저장소에 커밋하지 않는다.
+  - **백엔드**: `POSTGRES_CONNECTION_STRING`, `TEST_POSTGRES_CONNECTION_STRING`(통합 테스트용 DB), `PORT`, `CORS_ORIGIN`(프론트엔드 개발 서버 origin, 아래 CORS 항목과 연동).
+  - **프론트엔드(Vite)**: API 서버 주소는 `shared/api/client.ts`에 하드코딩하지 않고 `VITE_API_BASE_URL` 환경변수로만 주입한다. Vite는 `VITE_` 접두사가 붙은 변수만 클라이언트 번들에 노출하므로(빌드 도구 자체 제약), 이 접두사를 반드시 지킨다. 로컬 `.env`에는 `VITE_API_BASE_URL=http://localhost:3000`(백엔드 BE-0의 `PORT` 값과 일치)을, `.env.example`에는 값 없이 키만 둔다.
+  - **프론트엔드 지도 API 키(FE-2)**: 네이버지도 JavaScript SDK 클라이언트 ID는 `VITE_NAVER_MAP_CLIENT_ID` 환경변수로만 주입하며, `src/shared/map/useNaverMapsScript.ts`가 SDK 스크립트 URL(`https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=...`)에 이 값을 동적으로 삽입한다. 코드에 키를 하드코딩하지 않는다. `.env.example`에는 값 없이 키만 두고, `.env`에는 실제 발급받은 값을 채운다 — **키가 없거나 비어 있으면 지도 SDK 로드가 실패한 것으로 간주해 앱 크래시 없이 대체 안내 문구를 표시**하도록 설계되어 있으므로(FE-2 완료조건), 키 미발급 상태에서도 개발 서버는 정상 기동된다.
+    - 키 발급 사전 준비(네이버 클라우드 플랫폼, NCP): ① ncloud.com 가입, ② 콘솔에서 AI·NAVER API > Maps 서비스 신청(결제수단 등록 필요할 수 있음), ③ Application 등록 시 Web Dynamic Map 등 필요한 서비스 선택 및 **서비스 URL**에 로컬 개발 origin(`http://localhost:5173`)과 배포 도메인을 등록, ④ 발급된 Client ID를 `frontend/.env`의 `VITE_NAVER_MAP_CLIENT_ID`에 입력.
+  - 백엔드 `.env`의 `CORS_ORIGIN`과 프론트엔드 개발 서버의 실제 origin(Vite 기본 `http://localhost:5173`)이 반드시 일치해야 하며, 어느 한쪽만 바꾸고 다른 쪽을 갱신하지 않으면 CORS 오류가 발생한다.
 - **로깅**: 모든 로깅은 **콘솔 기반**(`console.log`/`console.error` 등)을 사용한다(기존 backend-resolver skill 규칙). winston/pino 등 별도 로깅 라이브러리는 도입하지 않는다. 다만 최소한의 가독성을 위해 로그 레벨 성격만 접두사로 구분한다(예: `console.log('[INFO] ...')`, `console.error('[ERROR] ...')`, `console.warn('[WARN] ...')`) — 이는 문자열 접두사 규칙일 뿐 새로운 라이브러리/추상화가 아니다.
 - **CORS**: 프론트엔드 개발 서버 origin만 명시적으로 허용하는 최소 CORS 설정을 Express에 둔다(`cors` 미들웨어, 와일드카드 `*` 지양). 운영 환경 origin도 환경변수로 주입한다.
 - **PostgreSQL 접속 정보**: `pg.Pool` 설정값(host/port/database/user/password/max connection)은 전부 환경변수에서 읽어 `db/pool.js` 등 단일 초기화 지점에서만 생성한다. 애플리케이션 코드 곳곳에서 개별적으로 `new Client()`를 생성하지 않는다.

@@ -1,0 +1,33 @@
+.loan-simulation-tab {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.loan-simulation-tab__scenarios {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+@media (max-width: 768px) {
+  .loan-simulation-tab__scenarios {
+    grid-template-columns: 1fr;
+  }
+}
+
+.loan-simulation-tab__notice {
+  font-size: var(--font-size-sm);
+  color: var(--color-info);
+}
+
+.loan-simulation-tab__incomplete {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}

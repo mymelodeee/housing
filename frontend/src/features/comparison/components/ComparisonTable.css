@@ -1,0 +1,30 @@
+.comparison-table-wrapper {
+  overflow-x: auto;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.comparison-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.comparison-table th,
+.comparison-table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+}
+
+.comparison-table thead th {
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.comparison-table tbody th {
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}

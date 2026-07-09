@@ -1,0 +1,91 @@
+:root {
+  --color-bg: #f5f6f5;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f0f1f0;
+  --color-border: #e3e5e2;
+  --color-text-primary: #1c1e1b;
+  --color-text-secondary: #5b5f5a;
+  --color-text-disabled: #9aa09a;
+
+  --color-primary: #03c75a;
+  --color-primary-hover: #02a94d;
+  --color-primary-soft: #e6f9ee;
+
+  --color-accent-orange: #f5793b;
+  --color-accent-teal: #1fa6a0;
+  --color-accent-purple: #8b6bd8;
+  --color-accent-blue: #3d8bf0;
+  --color-chart-price-line: var(--color-accent-orange);
+
+  --color-success: #03c75a;
+  --color-warning: #e8a93b;
+  --color-warning-soft: #fbf0dc;
+  --color-danger: #e5484d;
+  --color-info: #3d8bf0;
+
+  --font-family-base: Pretendard, -apple-system, 'Malgun Gothic', sans-serif;
+  --font-size-xs: 12px;
+  --font-size-sm: 13px;
+  --font-size-base: 15px;
+  --font-size-lg: 17px;
+  --font-size-xl: 22px;
+
+  --radius-full: 999px;
+  --radius-lg: 16px;
+  --radius-md: 10px;
+  --radius-sm: 6px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.16);
+
+  --modal-backdrop: rgba(0, 0, 0, 0.4);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #16181a;
+    --color-surface: #22252a;
+    --color-surface-muted: #2c2f35;
+    --color-border: #383b42;
+    --color-text-primary: #edefec;
+    --color-text-secondary: #a6aba3;
+    --color-text-disabled: #6b706a;
+
+    --color-primary: #03c75a;
+    --color-primary-hover: #04e06b;
+    --color-primary-soft: #0e2a1b;
+
+    --color-warning: #f0be5c;
+    --color-warning-soft: #3a2f14;
+    --color-danger: #f16c70;
+    --color-info: #5ca3f5;
+    --color-chart-price-line: #d9611f;
+  }
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-base);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}

@@ -1,0 +1,5 @@
+.price-history-tab__notice {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-3);
+}

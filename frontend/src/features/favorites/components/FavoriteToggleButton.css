@@ -1,0 +1,14 @@
+.favorite-toggle-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--font-size-lg);
+}
+
+.favorite-toggle-button[data-favorited='true'] {
+  color: var(--color-primary);
+}
+
+.favorite-toggle-button[data-favorited='false'] {
+  color: var(--color-text-secondary);
+}

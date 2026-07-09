@@ -1,0 +1,31 @@
+.complex-card {
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.complex-card[data-clickable='true'] {
+  cursor: pointer;
+}
+
+.complex-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.complex-card__name {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.complex-card__address,
+.complex-card__meta {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}

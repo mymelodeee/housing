@@ -1,0 +1,37 @@
+.listing-card {
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.listing-card[data-clickable='true'] {
+  cursor: pointer;
+}
+
+.listing-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.listing-card__price {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.listing-card__complex-name {
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+}
+
+.listing-card__address,
+.listing-card__meta,
+.listing-card__shuttle {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}

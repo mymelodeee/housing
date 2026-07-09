@@ -4,16 +4,44 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "jest --coverage",
     "migrate": "node-pg-migrate --migrations-dir src/db/migrations --database-url-var POSTGRES_CONNECTION_STRING --envPath .env"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "collectCoverageFrom": [
+      "src/config/**/*.js",
+      "src/db/pool.js",
+      "src/middlewares/**/*.js",
+      "src/app.js",
+      "src/routes/**/*.js",
+      "src/controllers/**/*.js",
+      "src/services/**/*.js",
+      "src/repositories/**/*.js"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "lines": 80
+      }
+    }
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@tanstack/react-query": "^5.101.2",
+    "cors": "^2.8.6",
     "dotenv": "^17.4.2",
+    "express": "^5.2.1",
     "node-pg-migrate": "^8.0.4",
-    "pg": "^8.22.0"
+    "pg": "^8.22.0",
+    "react-router-dom": "^7.18.1"
+  },
+  "devDependencies": {
+    "jest": "^30.4.2",
+    "supertest": "^7.2.2"
   }
 }

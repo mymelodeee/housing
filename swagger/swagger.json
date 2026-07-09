@@ -421,7 +421,18 @@
           "complexId": { "type": "integer", "example": 1 },
           "salePrice": { "type": "integer", "description": "매매가(만원), 70000~150000", "minimum": 70000, "maximum": 150000, "example": 95000 },
           "exclusiveArea": { "type": "number", "format": "double", "description": "전용면적(m^2), > 0", "example": 84.98 },
-          "complex": { "$ref": "#/components/schemas/ApartmentComplexSummary" }
+          "complex": {
+            "allOf": [
+              { "$ref": "#/components/schemas/ApartmentComplexSummary" },
+              {
+                "type": "object",
+                "properties": {
+                  "latitude": { "type": "number", "format": "double", "example": 37.1996 },
+                  "longitude": { "type": "number", "format": "double", "example": 127.0982 }
+                }
+              }
+            ]
+          }
         },
         "required": ["id", "complexId", "salePrice", "exclusiveArea"]
       },

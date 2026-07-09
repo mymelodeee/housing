@@ -1,0 +1,41 @@
+.scenario-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  border: 2px solid transparent;
+}
+
+.scenario-card[data-recommended='true'] {
+  border: 2px solid var(--color-primary);
+}
+
+.scenario-card__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.scenario-card__title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-accent-purple);
+}
+
+.scenario-card__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.scenario-card__value {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
