@@ -1,5 +1,6 @@
 const apartmentComplexesRepository = require('../repositories/apartment-complexes.repository');
 const apartmentComplexPriceService = require('./apartment-complex-price.service');
+const localityEnrichmentService = require('./locality-enrichment.service');
 
 const LOCALITY_KEY_MAP = {
   교통: 'transportation',
@@ -56,6 +57,11 @@ async function getComplexDetail(id) {
   }
 
   const priceRange = await apartmentComplexPriceService.getComplexPriceRange(id);
+  const localityAttributes = await localityEnrichmentService.enrichLocalityAttributes(
+    mapLocalityAttributes(row.locality_attributes),
+    row.latitude,
+    row.longitude
+  );
 
   return {
     ...mapSummaryFields(row),
@@ -63,7 +69,7 @@ async function getComplexDetail(id) {
     longitude: row.longitude,
     remodelingCompletionYear: row.remodeling_completion_year,
     nearbyRedevelopmentInfo: row.nearby_redevelopment_info,
-    localityAttributes: mapLocalityAttributes(row.locality_attributes),
+    localityAttributes,
     priceRange
   };
 }

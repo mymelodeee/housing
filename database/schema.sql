@@ -202,6 +202,47 @@ CREATE TABLE price_history (
 CREATE INDEX idx_price_history_complex_id ON price_history (complex_id);
 
 -- -----------------------------------------------------------------------------
+-- 10. elementary_schools (입지 속성 "학군" 실시간 산출용, 전국초중등학교위치표준데이터
+-- 반기 갱신 정적 데이터셋을 1회성 시드 스크립트로 적재한 로컬 캐시 테이블)
+-- -----------------------------------------------------------------------------
+CREATE TABLE elementary_schools (
+    id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    school_name varchar(255) NOT NULL,
+    latitude numeric(9, 6) NOT NULL,
+    longitude numeric(9, 6) NOT NULL,
+    address varchar(255) NOT NULL
+);
+
+CREATE INDEX idx_elementary_schools_lat_lng ON elementary_schools (latitude, longitude);
+
+-- -----------------------------------------------------------------------------
+-- 11. regional_listing_cache (경기남부+서울 실시간(배치 캐싱) 매물 검색 기능, 도메인 v0.14 후속)
+-- 국토교통부 실거래가 API(지역+월 단위)를 배치 수집기(collect-regional-listings.js)로
+-- 주기적으로 수집해 캐싱하는 테이블. apartment_complexes/listings와 별개이며, 실제
+-- "매물 호가"가 아닌 "최근 실거래가"를 시세 근사치로 사용한다는 한계가 있다.
+-- 사용자가 검색 결과를 선택하면 그 순간 apartment_complexes/listings에 upsert된다.
+-- -----------------------------------------------------------------------------
+CREATE TABLE regional_listing_cache (
+    id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    lawd_cd varchar(5) NOT NULL, -- 법정동코드 앞5자리(target-regions.js 기준)
+    kapt_code varchar(20), -- 국토부 공동주택 단지 목록제공 서비스 kaptCode, 매칭 실패 시 null 허용
+    complex_name varchar(255) NOT NULL,
+    address varchar(255), -- 실거래가 API 지번/도로명 주소, 없으면 null 허용
+    exclusive_area numeric(6, 2) NOT NULL CHECK (exclusive_area > 0), -- m^2
+    sale_price integer NOT NULL CHECK (sale_price > 0), -- 최근 실거래가(만원)
+    transaction_date date NOT NULL, -- 대표값으로 채택한 거래의 거래일자
+    household_count integer, -- 세대수, apt-list.service.js가 추출 가능한 경우만 값 존재
+    latitude numeric(9, 6),
+    longitude numeric(9, 6),
+    collected_at timestamp NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX idx_regional_listing_cache_unique_entry
+    ON regional_listing_cache (lawd_cd, complex_name, exclusive_area);
+CREATE INDEX idx_regional_listing_cache_sale_price ON regional_listing_cache (sale_price);
+CREATE INDEX idx_regional_listing_cache_exclusive_area ON regional_listing_cache (exclusive_area);
+
+-- -----------------------------------------------------------------------------
 -- 시드 데이터: user_profiles 단일 레코드
 -- "내 정보 미입력" 초기 상태를 표현하기 위해 id=1 외 나머지 컬럼은 전부 NULL로 둔다
 -- (PRD F6 인수조건: 미입력 상태에서는 유도화면 표시).

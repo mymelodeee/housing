@@ -1,5 +1,10 @@
 import type { OwnershipStructure } from '../user-profile/types'
 
+export interface GraduatedRepayment {
+  initialMonthlyPayment: number
+  finalMonthlyPayment: number
+}
+
 export interface LoanScenarioResult {
   ownershipStructure: OwnershipStructure
   ltvPercent: number
@@ -11,6 +16,11 @@ export interface LoanScenarioResult {
   monthlyRepayment20y: number
   monthlyRepayment30y: number
   occupancyRequirementMonths: number | null
+  interestRatePercent: number
+  interestRateSource: string
+  graduatedRepayment10y: GraduatedRepayment
+  graduatedRepayment20y: GraduatedRepayment
+  graduatedRepayment30y: GraduatedRepayment
 }
 
 export interface LoanSimulationResult {

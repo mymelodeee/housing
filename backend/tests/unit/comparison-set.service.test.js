@@ -32,6 +32,35 @@ describe('comparison-set.service', () => {
     });
   });
 
+  describe('listComparisonSets', () => {
+    it('repository 결과를 요약 형태로 매핑해 반환한다', async () => {
+      comparisonSetsRepository.findSetsByUserProfileId.mockResolvedValue([
+        {
+          id: 1,
+          target_type: 'complex',
+          created_at: '2026-01-01',
+          item_count: 2,
+          item_names: ['단지1', '단지2']
+        }
+      ]);
+
+      const result = await comparisonSetService.listComparisonSets();
+
+      expect(comparisonSetsRepository.findSetsByUserProfileId).toHaveBeenCalledWith(1);
+      expect(result).toEqual([
+        { id: 1, targetType: 'complex', createdAt: '2026-01-01', itemCount: 2, itemNames: ['단지1', '단지2'] }
+      ]);
+    });
+
+    it('비교셋이 없으면 빈 배열을 반환한다', async () => {
+      comparisonSetsRepository.findSetsByUserProfileId.mockResolvedValue([]);
+
+      const result = await comparisonSetService.listComparisonSets();
+
+      expect(result).toEqual([]);
+    });
+  });
+
   describe('createComparisonSet', () => {
     it('대상이 2개 미만이면 repository를 호출하지 않고 status 400 에러를 던진다', async () => {
       await expect(

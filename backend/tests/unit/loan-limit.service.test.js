@@ -7,8 +7,8 @@ const { calculatePrincipalFromAnnualPayment } = require('../../src/services/repa
 
 describe('calculateLtvCapAmount', () => {
   test.each([
-    ['1주택', false, true, 88000, 50, 44000],
-    ['1주택', false, false, 88000, 60, 52800],
+    ['1주택', false, true, 88000, 40, 35200],
+    ['1주택', false, false, 88000, 70, 61600],
     ['무주택', true, true, 88000, 70, 61600],
     ['무주택', true, false, 88000, 80, 70400],
     ['다주택', false, true, 88000, 0, 0],
@@ -30,7 +30,7 @@ describe('calculateLtvCapAmount', () => {
 });
 
 describe('calculateDsrCapAmount', () => {
-  it('연소득+보너스의 40%를 연 원리금 상환액으로 보고, 금리 4%/30년 기준으로 역산한 원금과 일치한다', () => {
+  it('연소득+보너스의 40%를 연 원리금 상환액으로 보고, 금리 4.5%/30년 기준으로 역산한 원금과 일치한다', () => {
     const annualIncome = 7000;
     const annualBonus = 1000;
 
@@ -38,7 +38,7 @@ describe('calculateDsrCapAmount', () => {
 
     const expected = calculatePrincipalFromAnnualPayment({
       annualPayment: (annualIncome + annualBonus) * 0.4,
-      annualInterestRate: 0.04,
+      annualInterestRate: 0.045,
       years: 30,
     });
 
@@ -90,7 +90,7 @@ describe('calculateMaxLoanAmount', () => {
 
   it('지역 대출 한도가 최소값일 때: 규제지역 + 높은 salePrice + 매우 높은 소득 -> maxLoanAmount === 60000', () => {
     const params = {
-      salePrice: 150000,
+      salePrice: 200000,
       housingOwnershipTier: '1주택',
       isFirstTimeBuyer: false,
       isRegulatedArea: true,

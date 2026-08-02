@@ -4,10 +4,11 @@ import { MapView } from './MapView'
 import { useNaverMapsScript } from './useNaverMapsScript'
 import type { MapPoint } from './mapAdapter'
 
-const { initMock, setMarkersMock, destroyMock } = vi.hoisted(() => ({
+const { initMock, setMarkersMock, destroyMock, fitBoundsMock } = vi.hoisted(() => ({
   initMock: vi.fn(),
   setMarkersMock: vi.fn(),
   destroyMock: vi.fn(),
+  fitBoundsMock: vi.fn(),
 }))
 
 vi.mock('./naverMapAdapter', () => ({
@@ -16,6 +17,7 @@ vi.mock('./naverMapAdapter', () => ({
       init: initMock,
       setMarkers: setMarkersMock,
       destroy: destroyMock,
+      fitBounds: fitBoundsMock,
     }
   }),
 }))
@@ -31,6 +33,7 @@ describe('MapView', () => {
     initMock.mockClear()
     setMarkersMock.mockClear()
     destroyMock.mockClear()
+    fitBoundsMock.mockClear()
     mockedUseNaverMapsScript.mockReset()
   })
 
@@ -91,6 +94,57 @@ describe('MapView', () => {
     expect(initMock).toHaveBeenCalledTimes(1)
     expect(setMarkersMock).toHaveBeenCalledTimes(2)
     expect(setMarkersMock).toHaveBeenLastCalledWith(updatedListings, expect.any(Function))
+  })
+
+  it('listings가 처음 채워지면 fitBounds가 1회 호출된다', () => {
+    mockedUseNaverMapsScript.mockReturnValue('ready')
+    const listings: MapPoint[] = [{ id: 1, lat: 37.5, lng: 127.0 }]
+
+    render(<MapView listings={listings} onMarkerClick={vi.fn()} />)
+
+    expect(fitBoundsMock).toHaveBeenCalledTimes(1)
+    expect(fitBoundsMock).toHaveBeenCalledWith(listings)
+  })
+
+  it('listings가 비어있을 때 초기 렌더링되면 fitBounds가 호출되지 않는다', () => {
+    mockedUseNaverMapsScript.mockReturnValue('ready')
+
+    render(<MapView listings={[]} onMarkerClick={vi.fn()} />)
+
+    expect(fitBoundsMock).not.toHaveBeenCalled()
+  })
+
+  it('최초 fitBounds 이후 listings가 다시 변경되어도 fitBounds가 재호출되지 않는다', () => {
+    mockedUseNaverMapsScript.mockReturnValue('ready')
+    const onMarkerClick = vi.fn()
+    const initialListings: MapPoint[] = [{ id: 1, lat: 37.5, lng: 127.0 }]
+    const updatedListings: MapPoint[] = [
+      { id: 1, lat: 37.5, lng: 127.0 },
+      { id: 2, lat: 37.6, lng: 127.1 },
+    ]
+
+    const { rerender } = render(<MapView listings={initialListings} onMarkerClick={onMarkerClick} />)
+
+    expect(fitBoundsMock).toHaveBeenCalledTimes(1)
+
+    rerender(<MapView listings={updatedListings} onMarkerClick={onMarkerClick} />)
+
+    expect(fitBoundsMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('listings가 빈 배열로 시작했다가 채워지면 그 시점에 fitBounds가 1회 호출된다', () => {
+    mockedUseNaverMapsScript.mockReturnValue('ready')
+    const onMarkerClick = vi.fn()
+    const filledListings: MapPoint[] = [{ id: 1, lat: 37.5, lng: 127.0 }]
+
+    const { rerender } = render(<MapView listings={[]} onMarkerClick={onMarkerClick} />)
+
+    expect(fitBoundsMock).not.toHaveBeenCalled()
+
+    rerender(<MapView listings={filledListings} onMarkerClick={onMarkerClick} />)
+
+    expect(fitBoundsMock).toHaveBeenCalledTimes(1)
+    expect(fitBoundsMock).toHaveBeenCalledWith(filledListings)
   })
 
   it('status가 ready인 상태로 언마운트되면 adapter.destroy가 호출된다', () => {

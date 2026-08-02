@@ -1,0 +1,38 @@
+.comparison-set-list-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.comparison-set-list-screen__card {
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  cursor: pointer;
+}
+
+.comparison-set-list-screen__card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.comparison-set-list-screen__target-type {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.comparison-set-list-screen__item-count {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.comparison-set-list-screen__item-names {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}

@@ -21,16 +21,16 @@ function mapEntry(row) {
   };
 }
 
-function buildPriceHistoryResult({ rows, completionYear, now = new Date() }) {
+function buildPriceHistoryResult({ rows, now = new Date() }) {
   if (rows.length === 0) {
     return { lookupPeriodType: '실거래 이력 없음', firstTransactionMonth: null, entries: [] };
   }
 
-  const age = now.getUTCFullYear() - completionYear;
+  const cutoff = new Date(now);
+  cutoff.setFullYear(cutoff.getFullYear() - 20);
+  const earliestTransactionDate = new Date(rows[0].transaction_date);
 
-  if (age >= 20) {
-    const cutoff = new Date(now);
-    cutoff.setUTCFullYear(cutoff.getUTCFullYear() - 20);
+  if (earliestTransactionDate <= cutoff) {
     const filteredRows = rows.filter((row) => new Date(row.transaction_date) >= cutoff);
     return { lookupPeriodType: '최근 20년', firstTransactionMonth: null, entries: filteredRows.map(mapEntry) };
   }

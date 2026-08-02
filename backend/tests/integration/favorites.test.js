@@ -3,6 +3,8 @@ process.env.POSTGRES_CONNECTION_STRING =
   'postgresql://postgres:postgres@localhost:5432/housing_test';
 process.env.PORT = process.env.PORT || '3000';
 process.env.CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173';
+process.env.DATA_APT_KR_API_KEY = process.env.DATA_APT_KR_API_KEY || 'test-key';
+process.env.DATA_STORE_API_KEY = process.env.DATA_STORE_API_KEY || 'test-key';
 
 const request = require('supertest');
 const app = require('../../src/app');

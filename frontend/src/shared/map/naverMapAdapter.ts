@@ -30,6 +30,25 @@ export class NaverMapAdapter implements MapAdapter {
     })
   }
 
+  fitBounds(points: MapPoint[]): void {
+    if (!this.map || points.length === 0) return
+
+    if (points.length === 1) {
+      this.map.setCenter(new naver.maps.LatLng(points[0].lat, points[0].lng))
+      this.map.setZoom(DEFAULT_ZOOM)
+      return
+    }
+
+    const [first, ...rest] = points
+    const bounds = new naver.maps.LatLngBounds(
+      new naver.maps.LatLng(first.lat, first.lng),
+      new naver.maps.LatLng(first.lat, first.lng),
+    )
+    rest.forEach((point) => bounds.extend(new naver.maps.LatLng(point.lat, point.lng)))
+
+    this.map.fitBounds(bounds)
+  }
+
   destroy(): void {
     this.markers.forEach((marker) => marker.setMap(null))
     this.markers = []

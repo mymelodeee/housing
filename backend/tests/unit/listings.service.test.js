@@ -1,5 +1,6 @@
 jest.mock('../../src/repositories/listings.repository');
 jest.mock('../../src/repositories/apartment-complexes.repository');
+jest.mock('../../src/services/molit-price-history.service');
 jest.mock('../../src/services/apartment-complexes.service', () => {
   const actual = jest.requireActual('../../src/services/apartment-complexes.service');
   return {
@@ -13,6 +14,7 @@ jest.mock('../../src/services/loan-scenario.service');
 
 const listingsRepository = require('../../src/repositories/listings.repository');
 const apartmentComplexesRepository = require('../../src/repositories/apartment-complexes.repository');
+const molitPriceHistoryService = require('../../src/services/molit-price-history.service');
 const apartmentComplexesService = require('../../src/services/apartment-complexes.service');
 const userProfileService = require('../../src/services/user-profile.service');
 const loanLimitService = require('../../src/services/loan-limit.service');
@@ -232,7 +234,8 @@ describe('services/listings.service', () => {
     });
 
     it('매물과 실거래 이력이 있으면 listingId/complexId/lookupPeriodType/firstTransactionMonth/entries를 포함한 결과를 반환한다', async () => {
-      // baseRow.completion_year(1998)는 현재 시점 기준 age >= 20이므로 "최근 20년" 분기를 탄다.
+      // lookupPeriodType은 단지 준공년도가 아닌 실거래 데이터의 최초거래 시점 기준으로 결정된다.
+      // 최초거래(2021-06-01)가 20년 미만이므로 "최초거래 이후" 분기를 탄다.
       listingsRepository.findByIdWithComplex.mockResolvedValue(baseRow);
       apartmentComplexesRepository.findPriceHistoryByComplexId.mockResolvedValue([
         { transaction_date: new Date('2021-06-01T00:00:00Z'), transaction_price: 78000 },
@@ -245,8 +248,8 @@ describe('services/listings.service', () => {
       expect(result).toEqual({
         listingId: 1,
         complexId: 10,
-        lookupPeriodType: '최근 20년',
-        firstTransactionMonth: null,
+        lookupPeriodType: '최초거래 이후',
+        firstTransactionMonth: '2021-06',
         entries: [
           {
             transactionDate: '2021-06-01',
@@ -260,6 +263,61 @@ describe('services/listings.service', () => {
           },
         ],
       });
+    });
+
+    it('단지에 lawd_cd/molit_apt_name이 모두 있으면 국토부 API 조회 결과를 사용하고 lookupWindowNote가 포함되며, 로컬 price_history repository는 호출되지 않는다', async () => {
+      listingsRepository.findByIdWithComplex.mockResolvedValue({
+        ...baseRow,
+        lawd_cd: '41590',
+        molit_apt_name: '동탄역시범우남퍼스트빌',
+      });
+      molitPriceHistoryService.fetchPriceHistoryForComplex.mockResolvedValue({
+        lookupPeriodType: '최초거래 이후',
+        firstTransactionMonth: '2024-01',
+        entries: [
+          {
+            transactionDate: '2024-01-15',
+            transactionPrice: 95000,
+            dataSource: '국토교통부 아파트 실거래가 공개시스템(오픈API)',
+          },
+        ],
+      });
+
+      const result = await getPriceHistory(1);
+
+      expect(molitPriceHistoryService.fetchPriceHistoryForComplex).toHaveBeenCalledWith({
+        lawdCd: '41590',
+        aptName: '동탄역시범우남퍼스트빌',
+      });
+      expect(apartmentComplexesRepository.findPriceHistoryByComplexId).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        listingId: 1,
+        complexId: 10,
+        lookupPeriodType: '최초거래 이후',
+        firstTransactionMonth: '2024-01',
+        entries: [
+          {
+            transactionDate: '2024-01-15',
+            transactionPrice: 95000,
+            dataSource: '국토교통부 아파트 실거래가 공개시스템(오픈API)',
+          },
+        ],
+        lookupWindowNote: '실시간 연동 특성상 최근 3년(36개월) 범위만 조회합니다',
+      });
+    });
+
+    it('lawd_cd만 있고 molit_apt_name이 없으면 로컬 price_history repository로 폴백한다', async () => {
+      listingsRepository.findByIdWithComplex.mockResolvedValue({
+        ...baseRow,
+        lawd_cd: '41590',
+        molit_apt_name: null,
+      });
+      apartmentComplexesRepository.findPriceHistoryByComplexId.mockResolvedValue([]);
+
+      await getPriceHistory(1);
+
+      expect(molitPriceHistoryService.fetchPriceHistoryForComplex).not.toHaveBeenCalled();
+      expect(apartmentComplexesRepository.findPriceHistoryByComplexId).toHaveBeenCalledWith(10);
     });
   });
 

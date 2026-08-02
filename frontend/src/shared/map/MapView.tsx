@@ -13,6 +13,7 @@ export function MapView({ listings, onMarkerClick }: MapViewProps) {
   const status = useNaverMapsScript(import.meta.env.VITE_NAVER_MAP_CLIENT_ID)
   const containerRef = useRef<HTMLDivElement>(null)
   const adapterRef = useRef<NaverMapAdapter | null>(null)
+  const hasFitBoundsRef = useRef(false)
 
   useEffect(() => {
     if (status !== 'ready' || !containerRef.current) return
@@ -20,6 +21,7 @@ export function MapView({ listings, onMarkerClick }: MapViewProps) {
     const adapter = new NaverMapAdapter()
     adapter.init(containerRef.current)
     adapterRef.current = adapter
+    hasFitBoundsRef.current = false
 
     return () => {
       adapter.destroy()
@@ -30,6 +32,11 @@ export function MapView({ listings, onMarkerClick }: MapViewProps) {
   useEffect(() => {
     if (status !== 'ready' || !adapterRef.current) return
     adapterRef.current.setMarkers(listings, onMarkerClick)
+
+    if (!hasFitBoundsRef.current && listings.length > 0) {
+      adapterRef.current.fitBounds(listings)
+      hasFitBoundsRef.current = true
+    }
   }, [status, listings, onMarkerClick])
 
   if (status === 'error') {

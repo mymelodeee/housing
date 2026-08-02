@@ -1,7 +1,11 @@
+// 2025.9.7/6.28 가계부채 관리 대책 기준(2026.6.30 대책으로 화성 동탄구·용인 기흥구 등 규제지역 추가
+// 지정, LTV 수치 자체는 변경 없음). 1주택은 2025.6.28 대책 이후 원칙적으로 신규 주담대가 금지되고
+// 기존 주택 6개월 내 처분 조건부일 때만 대출이 실행되므로, 처분조건부를 전제로 무주택-미해당과
+// 동일 기준을 적용한다(도메인 §5.1.3).
 const LTV_TABLE = {
   '무주택-생애최초': { regulated: 70, nonRegulated: 80 },
-  '무주택-미해당': { regulated: 60, nonRegulated: 70 },
-  '1주택': { regulated: 50, nonRegulated: 60 },
+  '무주택-미해당': { regulated: 40, nonRegulated: 70 },
+  '1주택': { regulated: 40, nonRegulated: 70 },
   '다주택': { regulated: 0, nonRegulated: 60 }
 };
 

@@ -3,16 +3,26 @@ process.env.POSTGRES_CONNECTION_STRING =
   'postgresql://postgres:postgres@localhost:5432/housing_test';
 process.env.PORT = process.env.PORT || '3000';
 process.env.CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173';
+process.env.DATA_APT_KR_API_KEY = process.env.DATA_APT_KR_API_KEY || 'test-key';
+process.env.DATA_STORE_API_KEY = process.env.DATA_STORE_API_KEY || 'test-key';
+
+jest.mock('../../src/repositories/store-info-api.repository');
 
 const request = require('supertest');
 const app = require('../../src/app');
 const pool = require('../../src/db/pool');
+const storeInfoApiRepository = require('../../src/repositories/store-info-api.repository');
 
 describe('GET /api/listings', () => {
   let dongtanId;
   let pyeongtaekId;
 
   beforeAll(async () => {
+    storeInfoApiRepository.fetchStoresInRadius.mockResolvedValue({
+      header: { resultCode: '03', resultMsg: 'NODATA_ERROR' },
+      body: {},
+    });
+
     const res = await request(app).get('/api/complexes');
     const findIdByName = (name) => res.body.find((item) => item.complexName === name)?.id;
 
@@ -130,7 +140,7 @@ describe('GET /api/listings', () => {
         commercialArea: '정보 없음',
         schoolDistrict: '정보 없음',
         gangnamAccessibility: '정보 없음',
-        entertainmentAndParks: '정보 없음',
+        entertainmentAndParks: '유흥주점 없음 (700m 이내)',
         developmentProspects: '정보 없음',
         nearbyJobs: '정보 없음',
       });
@@ -175,7 +185,7 @@ describe('GET /api/listings', () => {
       expect(res.body.firstTransactionMonth).toBeNull();
       expect(res.body.entries).toHaveLength(4);
       expect(res.body.entries).toEqual([
-        { transactionDate: '2006-08-01', transactionPrice: 45000, dataSource: DATA_SOURCE },
+        { transactionDate: '2007-01-01', transactionPrice: 45000, dataSource: DATA_SOURCE },
         { transactionDate: '2012-03-15', transactionPrice: 68000, dataSource: DATA_SOURCE },
         { transactionDate: '2018-07-01', transactionPrice: 90000, dataSource: DATA_SOURCE },
         { transactionDate: '2024-11-02', transactionPrice: 95000, dataSource: DATA_SOURCE },
@@ -256,7 +266,7 @@ describe('GET /api/listings', () => {
       );
     }
 
-    it('동탄 매물(규제지역, 토허구역 확정 true) + 프로필 완료 시 200과 regulationConfirmationNeeded false, isLandTransactionPermissionZone true, ltvPercent 50, maxLoanAmount는 60000 이하 양의 정수, regionalLoanCapAmount 60000을 반환한다', async () => {
+    it('동탄 매물(규제지역, 토허구역 확정 true) + 프로필 완료 시 200과 regulationConfirmationNeeded false, isLandTransactionPermissionZone true, ltvPercent 40, maxLoanAmount는 60000 이하 양의 정수, regionalLoanCapAmount 60000을 반환한다', async () => {
       await request(app).put('/api/user-profile').send(completeProfilePayload);
       try {
         const listRes = await request(app).get('/api/listings');
@@ -269,7 +279,7 @@ describe('GET /api/listings', () => {
         expect(res.body.complexId).toBe(dongtanId);
         expect(res.body.regulationConfirmationNeeded).toBe(false);
         expect(res.body.isLandTransactionPermissionZone).toBe(true);
-        expect(res.body.ltvPercent).toBe(50);
+        expect(res.body.ltvPercent).toBe(40);
         expect(Number.isInteger(res.body.maxLoanAmount)).toBe(true);
         expect(res.body.maxLoanAmount).toBeGreaterThan(0);
         expect(res.body.maxLoanAmount).toBeLessThanOrEqual(60000);
@@ -279,7 +289,7 @@ describe('GET /api/listings', () => {
       }
     });
 
-    it('평택 매물(비규제지역, 토허구역 미확정 null) + 프로필 완료 시 200과 regulationConfirmationNeeded true, isLandTransactionPermissionZone "확인필요", regionalLoanCapAmount null, ltvPercent는 비규제 기준(60)으로 임시 적용된다', async () => {
+    it('평택 매물(비규제지역, 토허구역 미확정 null) + 프로필 완료 시 200과 regulationConfirmationNeeded true, isLandTransactionPermissionZone "확인필요", regionalLoanCapAmount null, ltvPercent는 비규제 기준(70)으로 임시 적용된다', async () => {
       await request(app).put('/api/user-profile').send(completeProfilePayload);
       try {
         const listRes = await request(app).get('/api/listings');
@@ -293,7 +303,7 @@ describe('GET /api/listings', () => {
         expect(res.body.regulationConfirmationNeeded).toBe(true);
         expect(res.body.isLandTransactionPermissionZone).toBe('확인필요');
         expect(res.body.regionalLoanCapAmount).toBeNull();
-        expect(res.body.ltvPercent).toBe(60);
+        expect(res.body.ltvPercent).toBe(70);
       } finally {
         await resetProfile();
       }
@@ -362,6 +372,14 @@ describe('GET /api/listings', () => {
         expect(structures).toEqual(expect.arrayContaining(['단독', '부부합산']));
         expect(['단독', '부부합산', null]).toContain(res.body.recommendedScenario);
         expect(res.body.policyMortgageNotice).toBe(POLICY_MORTGAGE_NOTICE);
+        res.body.scenarios.forEach((scenario) => {
+          expect(scenario.interestRatePercent).toBe(4.5);
+          expect(typeof scenario.interestRateSource).toBe('string');
+          ['graduatedRepayment10y', 'graduatedRepayment20y', 'graduatedRepayment30y'].forEach((key) => {
+            expect(typeof scenario[key].initialMonthlyPayment).toBe('number');
+            expect(typeof scenario[key].finalMonthlyPayment).toBe('number');
+          });
+        });
       } finally {
         await resetProfile();
       }

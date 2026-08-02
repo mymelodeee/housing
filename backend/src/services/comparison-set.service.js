@@ -21,6 +21,21 @@ function throwValidationError(message) {
   throw err;
 }
 
+function mapSetSummary(row) {
+  return {
+    id: row.id,
+    targetType: row.target_type,
+    createdAt: row.created_at,
+    itemCount: row.item_count,
+    itemNames: row.item_names
+  };
+}
+
+async function listComparisonSets() {
+  const rows = await comparisonSetsRepository.findSetsByUserProfileId(USER_PROFILE_ID);
+  return rows.map(mapSetSummary);
+}
+
 async function createComparisonSet({ targetType, complexIds, listingIds }) {
   const ids = targetType === 'complex' ? complexIds : listingIds;
   const validationError = validateMemberCount(ids);
@@ -48,4 +63,4 @@ async function addListingMember(setId, listingId) {
   return comparisonService.getComparisonSetDetail(setId);
 }
 
-module.exports = { validateMemberCount, createComparisonSet, addComplexMember, addListingMember };
+module.exports = { validateMemberCount, listComparisonSets, createComparisonSet, addComplexMember, addListingMember };

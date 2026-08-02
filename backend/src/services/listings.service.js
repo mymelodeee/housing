@@ -1,6 +1,7 @@
 const listingsRepository = require('../repositories/listings.repository');
 const apartmentComplexesService = require('./apartment-complexes.service');
 const priceHistoryService = require('./price-history.service');
+const molitPriceHistoryService = require('./molit-price-history.service');
 const apartmentComplexesRepository = require('../repositories/apartment-complexes.repository');
 const regulationService = require('./regulation.service');
 const loanLimitService = require('./loan-limit.service');
@@ -10,6 +11,7 @@ const loanScenarioService = require('./loan-scenario.service');
 const DEFAULT_MIN_PRICE = 70000;
 const DEFAULT_MAX_PRICE = 150000;
 const POLICY_MORTGAGE_NOTICE = '디딤돌대출·보금자리론 등 정책모기지는 계산 범위에서 제외되며, 필요 시 한국주택금융공사·주택도시기금 채널에서 별도 확인이 필요합니다.';
+const LOOKUP_WINDOW_NOTE = '실시간 연동 특성상 최근 3년(36개월) 범위만 조회합니다';
 
 function mapListingRow(row) {
   return {
@@ -73,11 +75,25 @@ async function getPriceHistory(id) {
   const listingRow = await listingsRepository.findByIdWithComplex(id);
   if (!listingRow) return null;
 
+  if (listingRow.lawd_cd && listingRow.molit_apt_name) {
+    const { lookupPeriodType, firstTransactionMonth, entries } =
+      await molitPriceHistoryService.fetchPriceHistoryForComplex({
+        lawdCd: listingRow.lawd_cd,
+        aptName: listingRow.molit_apt_name
+      });
+
+    return {
+      listingId: listingRow.id,
+      complexId: listingRow.complex_id,
+      lookupPeriodType,
+      firstTransactionMonth,
+      entries,
+      lookupWindowNote: LOOKUP_WINDOW_NOTE
+    };
+  }
+
   const rows = await apartmentComplexesRepository.findPriceHistoryByComplexId(listingRow.complex_id);
-  const { lookupPeriodType, firstTransactionMonth, entries } = priceHistoryService.buildPriceHistoryResult({
-    rows,
-    completionYear: listingRow.completion_year
-  });
+  const { lookupPeriodType, firstTransactionMonth, entries } = priceHistoryService.buildPriceHistoryResult({ rows });
 
   return {
     listingId: listingRow.id,
@@ -119,7 +135,7 @@ async function getListingRegulation(id) {
     });
     ltvPercent = loanLimit.ltvPercent;
     maxLoanAmount = loanLimit.maxLoanAmount;
-    isMortgageInRegulatedArea = isRegulatedArea && maxLoanAmount > 0;
+    isMortgageInRegulatedArea = effectiveIsRegulatedAreaForLoan && maxLoanAmount > 0;
   } else {
     profileMessage = '내 정보 입력 필요';
   }
@@ -141,7 +157,7 @@ async function getListingRegulation(id) {
       isLandTransactionPermissionZone: isLandTransactionPermissionZoneRaw,
       isMortgageInRegulatedArea
     }),
-    regionalLoanCapAmount: regulationService.getRegionalLoanCapAmount(isRegulatedArea)
+    regionalLoanCapAmount: regulationService.getRegionalLoanCapAmount(effectiveIsRegulatedAreaForLoan)
   };
 }
 

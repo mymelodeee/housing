@@ -5,7 +5,7 @@ const {
 const { determineOccupancyRequirementMonths } = require('../../src/services/regulation.service');
 
 describe('buildScenarios', () => {
-  it('단독/부부합산 모두 LTV는 1주택 tier로 고정 계산되어 규제지역이면 50, 비규제지역이면 60이 적용된다', () => {
+  it('단독/부부합산 모두 LTV는 1주택 tier로 고정 계산되어 규제지역이면 40, 비규제지역이면 70이 적용된다', () => {
     const regulated = buildScenarios({
       salePrice: 88000,
       isRegulatedArea: true,
@@ -23,8 +23,8 @@ describe('buildScenarios', () => {
       isLandTransactionPermissionZone: false,
     });
 
-    regulated.forEach((s) => expect(s.ltvPercent).toBe(50));
-    nonRegulated.forEach((s) => expect(s.ltvPercent).toBe(60));
+    regulated.forEach((s) => expect(s.ltvPercent).toBe(40));
+    nonRegulated.forEach((s) => expect(s.ltvPercent).toBe(70));
   });
 
   it('중간 소득 + 큰 매매가 + 비규제지역 조합에서는 단독은 DSR이 병목이 되고 부부합산은 소득이 2배가 되어 LTV가 병목이 되므로 부부합산의 maxLoanAmount가 단독보다 크거나 같다', () => {
@@ -101,6 +101,44 @@ describe('buildScenarios', () => {
         expect(scenario.occupancyRequirementMonths).toBe(expected);
       });
     });
+  });
+});
+
+describe('buildScenarios - 이율/체증식 상환 필드', () => {
+  it('각 시나리오는 interestRatePercent 4.5와 interestRateSource, graduatedRepayment10y/20y/30y를 포함한다', () => {
+    const [solo] = buildScenarios({
+      salePrice: 88000,
+      isRegulatedArea: false,
+      annualIncome: 7000,
+      annualBonus: 1000,
+      availableCapital: 20000,
+      isLandTransactionPermissionZone: false,
+    });
+
+    expect(solo.interestRatePercent).toBe(4.5);
+    expect(typeof solo.interestRateSource).toBe('string');
+    expect(solo.interestRateSource.length).toBeGreaterThan(0);
+
+    [solo.graduatedRepayment10y, solo.graduatedRepayment20y, solo.graduatedRepayment30y].forEach((g) => {
+      expect(typeof g.initialMonthlyPayment).toBe('number');
+      expect(typeof g.finalMonthlyPayment).toBe('number');
+      expect(g.finalMonthlyPayment).toBeGreaterThan(g.initialMonthlyPayment);
+    });
+  });
+
+  it('기존 monthlyRepayment10y/20y/30y(원리금균등)는 그대로 유지된다', () => {
+    const [solo] = buildScenarios({
+      salePrice: 88000,
+      isRegulatedArea: false,
+      annualIncome: 7000,
+      annualBonus: 1000,
+      availableCapital: 20000,
+      isLandTransactionPermissionZone: false,
+    });
+
+    expect(typeof solo.monthlyRepayment10y).toBe('number');
+    expect(typeof solo.monthlyRepayment20y).toBe('number');
+    expect(typeof solo.monthlyRepayment30y).toBe('number');
   });
 });
 

@@ -56,10 +56,14 @@
       "get": {
         "tags": ["listings"],
         "summary": "매물 목록 조회 (매매가 필터)",
-        "description": "매매가(만원) 구간으로 매물을 필터링해 조회한다(도메인 §4.2, §2 탐색 범위, PRD F1). 매물과 소속 단지(apartment_complexes)를 join하여 매물 자체 정보(매매가/전용면적)와 소속 단지 정보(연식/셔틀 통근시간 등)를 함께 반환한다.",
+        "description": "매매가(만원) 구간으로 매물을 필터링해 조회한다(도메인 §4.2, §2 탐색 범위, PRD F1). 매물과 소속 단지(apartment_complexes)를 join하여 매물 자체 정보(매매가/전용면적)와 소속 단지 정보(연식/셔틀 통근시간 등)를 함께 반환한다. minLat/maxLat/minLng/maxLng를 4개 모두 지정하면 소속 단지 좌표 기준 지도 bbox 필터가 추가로 적용된다(지도 화면(F1)에서 뷰포트 내 매물만 조회할 때 사용, 실행계획 FE-3).",
         "parameters": [
           { "name": "minPrice", "in": "query", "description": "최소 매매가(만원). 미지정 시 기본값 70000", "required": false, "schema": { "type": "integer", "minimum": 70000, "maximum": 150000, "default": 70000, "example": 70000 } },
-          { "name": "maxPrice", "in": "query", "description": "최대 매매가(만원). 미지정 시 기본값 150000", "required": false, "schema": { "type": "integer", "minimum": 70000, "maximum": 150000, "default": 150000, "example": 150000 } }
+          { "name": "maxPrice", "in": "query", "description": "최대 매매가(만원). 미지정 시 기본값 150000", "required": false, "schema": { "type": "integer", "minimum": 70000, "maximum": 150000, "default": 150000, "example": 150000 } },
+          { "name": "minLat", "in": "query", "description": "지도 bbox 필터 최소 위도. minLat/maxLat/minLng/maxLng 4개를 모두 지정해야 적용된다(하나라도 누락 시 bbox 필터 미적용).", "required": false, "schema": { "type": "number", "format": "double", "example": 37.15 } },
+          { "name": "maxLat", "in": "query", "description": "지도 bbox 필터 최대 위도", "required": false, "schema": { "type": "number", "format": "double", "example": 37.25 } },
+          { "name": "minLng", "in": "query", "description": "지도 bbox 필터 최소 경도", "required": false, "schema": { "type": "number", "format": "double", "example": 127.05 } },
+          { "name": "maxLng", "in": "query", "description": "지도 bbox 필터 최대 경도", "required": false, "schema": { "type": "number", "format": "double", "example": 127.15 } }
         ],
         "responses": {
           "200": {
@@ -152,7 +156,10 @@
         "responses": {
           "201": { "description": "추가된 즐겨찾기", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/FavoriteComplex" } } } },
           "404": { "$ref": "#/components/responses/NotFound" },
-          "409": { "$ref": "#/components/responses/DuplicateFavorite" }
+          "409": {
+            "description": "이미 즐겨찾기된 단지에 재요청(도메인 §4.4 UNIQUE 제약, 시나리오 2-2)",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }, "example": { "message": "이미 즐겨찾기에 추가된 단지입니다" } } }
+          }
         }
       }
     },
@@ -188,7 +195,10 @@
         "responses": {
           "201": { "description": "추가된 즐겨찾기", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/FavoriteListing" } } } },
           "404": { "$ref": "#/components/responses/NotFound" },
-          "409": { "$ref": "#/components/responses/DuplicateFavorite" }
+          "409": {
+            "description": "이미 즐겨찾기된 매물에 재요청(도메인 §4.4 UNIQUE 제약, 시나리오 2-2)",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }, "example": { "message": "이미 즐겨찾기에 추가된 매물입니다" } } }
+          }
         }
       }
     },
@@ -205,6 +215,17 @@
       }
     },
     "/api/comparison-sets": {
+      "get": {
+        "tags": ["comparison-sets"],
+        "summary": "내 비교셋 목록 조회",
+        "description": "단일 사용자 프로필(id=1) 기준으로 생성된 모든 비교셋을 최신순으로 반환한다. 각 항목은 대상 개수와 대상 이름 목록을 요약해서 포함한다(도메인 §4.5). 비교셋이 없으면 빈 배열을 반환한다.",
+        "responses": {
+          "200": {
+            "description": "비교셋 요약 목록",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/ComparisonSetSummary" } } } }
+          }
+        }
+      },
       "post": {
         "tags": ["comparison-sets"],
         "summary": "비교셋 생성 (단지 비교 / 매물 비교)",
@@ -321,10 +342,6 @@
       "NotFound": {
         "description": "존재하지 않는 id (도메인/PRD 공통 규칙)",
         "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
-      },
-      "DuplicateFavorite": {
-        "description": "이미 즐겨찾기된 대상에 재요청(도메인 §4.4 UNIQUE 제약, 시나리오 2-2)",
-        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }, "example": { "message": "중복입니다" } } }
       }
     },
     "schemas": {
@@ -352,13 +369,21 @@
       },
       "LocalityAttributes": {
         "type": "object",
-        "description": "입지 속성. 값이 없는 축은 \"정보 없음\"으로 채워 반환한다(도메인 §4.1, 실행계획 BE-5/BE-8).",
+        "description": "입지 속성. 값이 없는 축은 \"정보 없음\"으로 채워 반환한다(도메인 §4.1, 실행계획 BE-5/BE-8). schoolDistrict/entertainmentAndParks는 단지에 수동 입력된 값이 있으면 그 값을 그대로 우선 반환하고, 값이 없을 때만(즉 \"정보 없음\"일 때만) 공공데이터 API로 700m 반경을 실시간 조회해 채운다.",
         "properties": {
           "transportation": { "type": "string", "example": "지하철 SRT 동탄역 도보 10분, 광역버스 다수" },
           "commercialArea": { "type": "string", "example": "정보 없음" },
-          "schoolDistrict": { "type": "string", "example": "정보 없음" },
+          "schoolDistrict": {
+            "type": "string",
+            "description": "단지 좌표 기준 700m 이내 가장 가까운 초등학교명과 거리. 수동 입력 값이 없을 때 전국초중등학교위치표준데이터(data.go.kr 15021148)로 실시간 계산한다. 700m 이내 학교가 없으면 \"정보 없음\".",
+            "example": "동탄중앙초등학교 (350m 이내)"
+          },
           "gangnamAccessibility": { "type": "string", "example": "SRT 이용 시 강남 접근 30분대" },
-          "entertainmentAndParks": { "type": "string", "example": "정보 없음" },
+          "entertainmentAndParks": {
+            "type": "string",
+            "description": "단지 좌표 기준 700m 이내 일반유흥주점업 존재 여부. 수동 입력 값이 없을 때 소상공인시장진흥공단 상가(상권)정보 API(B553077 storeListInRadius)로 실시간 조회한다. 공원 정보는 이 필드에서 다루지 않는다(범위 제외).",
+            "example": "유흥주점 없음 (700m 이내)"
+          },
           "developmentProspects": { "type": "string", "example": "GTX-A 동탄역 개통 예정" },
           "nearbyJobs": { "type": "string", "example": "삼성전자 화성캠퍼스" }
         }
@@ -500,6 +525,17 @@
           "shuttleCommuteMinutes": { "type": "integer", "nullable": true, "example": 42 }
         }
       },
+      "ComparisonSetSummary": {
+        "type": "object",
+        "description": "비교셋 목록 조회 시 항목별 요약 정보. itemNames는 단지 비교인 경우 단지명, 매물 비교인 경우 \"단지명 매매가만원\" 형태의 짧은 라벨 배열이다.",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "targetType": { "type": "string", "enum": ["complex", "listing"], "example": "complex" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "itemCount": { "type": "integer", "example": 3 },
+          "itemNames": { "type": "array", "items": { "type": "string" }, "example": ["동탄역 시범 우남퍼스트빌", "평택 소사벌 한라비발디", "위례신도시 롯데캐슬"] }
+        }
+      },
       "ComparisonSetDetail": {
         "type": "object",
         "description": "비교셋 상세. targetType에 따라 complexes 또는 listings 중 하나만 채워진다(도메인 §4.5, §5.5).",
@@ -521,12 +557,12 @@
           "isRegulatedArea": { "type": "boolean", "example": true },
           "isLandTransactionPermissionZone": { "$ref": "#/components/schemas/LandTransactionPermissionZoneStatus" },
           "regulationConfirmationNeeded": { "type": "boolean", "description": "소속 단지의 규제지역 여부가 미확정(예: 평택)인 경우 true. 이 경우 비규제지역 LTV(하한값)를 임시 적용한 값임을 의미한다(PRD F4 인수조건)", "example": false },
-          "ltvPercent": { "type": "integer", "description": "적용된 LTV(%). 세대 주택 보유 구분×규제지역 여부 조합(도메인 §5.1.3): 무주택-생애최초 70/80, 무주택-미해당 60/70, 1주택 50/60, 다주택 0/60(규제/비규제 순)", "example": 60 },
+          "ltvPercent": { "type": "integer", "description": "적용된 LTV(%). 세대 주택 보유 구분×규제지역 여부 조합(도메인 §5.1.3, 2025.6.28/9.7 가계부채 관리 대책 기준): 무주택-생애최초 70/80, 무주택-미해당 40/70, 1주택(처분조건부 가정) 40/70, 다주택 0/60(규제/비규제 순)", "example": 40 },
           "maxLoanAmount": {
             "description": "최대 대출가능금액(만원). \"내 정보\" 미입력 상태에서는 null과 함께 profileMessage로 안내한다(실행계획 BE-4-3).",
             "type": "integer",
             "nullable": true,
-            "example": 57000
+            "example": 40800
           },
           "profileMessage": { "type": "string", "nullable": true, "example": "내 정보 입력 필요" },
           "gapInvestmentAllowed": { "type": "boolean", "description": "갭투자 가능 여부 = NOT(토허구역) AND NOT(규제지역 내 주담대 실행)(도메인 §5.1.5)", "example": false },
@@ -552,15 +588,32 @@
         "description": "대출 시나리오(부부합산 또는 단독명의) 산출 결과(도메인 §4.6, §5.2~§5.4)",
         "properties": {
           "ownershipStructure": { "type": "string", "enum": ["단독", "부부합산"], "example": "부부합산" },
-          "ltvPercent": { "type": "integer", "example": 60 },
-          "maxLoanAmount": { "type": "integer", "description": "만원", "example": 57000 },
-          "requiredCapital": { "type": "integer", "description": "필요 자기자본(만원) = 매매가 - 대출액 - 보유 자본금", "example": 38000 },
+          "ltvPercent": { "type": "integer", "example": 70 },
+          "maxLoanAmount": { "type": "integer", "description": "만원", "example": 66500 },
+          "requiredCapital": { "type": "integer", "description": "필요 자기자본(만원) = 매매가 - 대출액 - 보유 자본금", "example": 28500 },
           "capitalSufficient": { "type": "boolean", "description": "필요 자기자본이 보유 자본금 이내인지(자금 조달 가능 여부, 도메인 §5.4)", "example": true },
           "dsrUsageRate": { "type": "number", "format": "double", "description": "DSR 실사용률", "example": 0.32 },
           "monthlyRepayment10y": { "type": "integer", "description": "10년 원리금균등 월 상환액(만원)", "example": 550 },
           "monthlyRepayment20y": { "type": "integer", "example": 310 },
           "monthlyRepayment30y": { "type": "integer", "example": 230 },
-          "occupancyRequirementMonths": { "type": "integer", "nullable": true, "example": 6 }
+          "occupancyRequirementMonths": { "type": "integer", "nullable": true, "example": 6 },
+          "interestRatePercent": { "type": "number", "format": "double", "description": "대출 시뮬레이션에 적용된 연 이율(%)", "example": 4.5 },
+          "interestRateSource": {
+            "type": "string",
+            "description": "적용 이율의 출처와 한계. 우리은행 공식 고시금리 페이지 자동조회 불가로 뉴스 보도 기반 대체값을 사용했음을 명시한다.",
+            "example": "우리은행 우리아파트론 변동금리 신규취급 하단 연 4.37%(2026.6.11 확인)와 한국은행 신규취급액 기준 전체은행 가중평균금리 연 4.34%(2026.3월)를 교차검증한 대표값. 우리은행 공식 고시금리 페이지 자동조회 불가로 뉴스 보도 기반 대체값을 사용했으며 실제 고시금리와 다를 수 있음."
+          },
+          "graduatedRepayment10y": { "$ref": "#/components/schemas/GraduatedRepayment" },
+          "graduatedRepayment20y": { "$ref": "#/components/schemas/GraduatedRepayment" },
+          "graduatedRepayment30y": { "$ref": "#/components/schemas/GraduatedRepayment" }
+        }
+      },
+      "GraduatedRepayment": {
+        "type": "object",
+        "description": "체증식(계단식) 상환 시뮬레이션 결과. 5년 단위 구간으로 나누어 구간마다 월상환액이 20%씩 증가하는 단순화 규칙을 적용한다.",
+        "properties": {
+          "initialMonthlyPayment": { "type": "integer", "description": "초기 구간(0~5년) 월 상환액(만원)", "example": 200 },
+          "finalMonthlyPayment": { "type": "integer", "description": "마지막 구간 월 상환액(만원)", "example": 497 }
         }
       },
       "LoanSimulationResult": {
@@ -589,9 +642,10 @@
         "properties": {
           "listingId": { "type": "integer", "example": 10 },
           "complexId": { "type": "integer", "example": 1 },
-          "lookupPeriodType": { "type": "string", "enum": ["최근 20년", "최초거래 이후", "실거래 이력 없음"], "example": "최근 20년" },
+          "lookupPeriodType": { "type": "string", "enum": ["최근 20년", "최근 3년", "최초거래 이후", "실거래 이력 없음"], "example": "최근 20년" },
           "firstTransactionMonth": { "type": "string", "nullable": true, "description": "lookupPeriodType이 '최초거래 이후'일 때 YYYY-MM", "example": "2018-03" },
-          "entries": { "type": "array", "items": { "$ref": "#/components/schemas/PriceHistoryEntry" }, "description": "실거래 데이터가 0건이면 빈 배열(도메인 §3.7)" }
+          "entries": { "type": "array", "items": { "$ref": "#/components/schemas/PriceHistoryEntry" }, "description": "실거래 데이터가 0건이면 빈 배열(도메인 §3.7)" },
+          "lookupWindowNote": { "type": "string", "nullable": true, "description": "단지에 국토교통부 실거래가 API 연동 정보(lawd_cd/molit_apt_name)가 설정되어 실시간 조회된 경우에만 포함되는 안내 문구. 로컬 데이터로 폴백된 경우에는 이 필드가 없다.", "example": "실시간 연동 특성상 최근 3년(36개월) 범위만 조회합니다" }
         }
       },
       "UserProfile": {

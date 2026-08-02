@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import { UserProfileForm } from './UserProfileForm'
 import { apiClient } from '../../../shared/api/client'
 import type { UserProfile } from '../types'
@@ -16,7 +17,9 @@ const mockedApiClient = vi.mocked(apiClient)
 function renderForm() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const Wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={['/profile']}>{children}</MemoryRouter>
+    </QueryClientProvider>
   )
   return render(<UserProfileForm />, { wrapper: Wrapper })
 }
@@ -210,5 +213,34 @@ describe('UserProfileForm', () => {
 
     await waitFor(() => expect(screen.getByText('저장되었습니다')).toBeInTheDocument())
     await waitFor(() => expect(mockedApiClient).toHaveBeenCalledTimes(3))
+  })
+
+  it('저장 성공 시 첫 화면(/)으로 이동한다', async () => {
+    mockedApiClient.mockResolvedValueOnce(emptyProfile)
+    mockedApiClient.mockResolvedValueOnce({ ...emptyProfile })
+    mockedApiClient.mockResolvedValue({ ...emptyProfile })
+    const user = userEvent.setup()
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    let location: string | undefined
+    const LocationSpy = () => {
+      location = useLocation().pathname
+      return null
+    }
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/profile']}>
+          <UserProfileForm />
+          <LocationSpy />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByLabelText('연소득(만원)')).toBeInTheDocument())
+
+    await user.click(screen.getByRole('button', { name: /저장/ }))
+
+    await waitFor(() => expect(mockedApiClient).toHaveBeenCalledTimes(3))
+    await waitFor(() => expect(location).toBe('/'))
   })
 })

@@ -13,6 +13,15 @@ async function create(req, res, next) {
   }
 }
 
+async function list(req, res, next) {
+  try {
+    const result = await comparisonSetService.listComparisonSets();
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function getDetail(req, res, next) {
   try {
     const result = await comparisonService.getComparisonSetDetail(Number(req.params.id));
@@ -51,4 +60,4 @@ async function addListing(req, res, next) {
   }
 }
 
-module.exports = { create, getDetail, addComplex, addListing };
+module.exports = { create, list, getDetail, addComplex, addListing };

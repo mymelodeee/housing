@@ -27,6 +27,37 @@ async function createSetWithMembers(userProfileId, targetType, ids) {
   }
 }
 
+async function findSetsByUserProfileId(userProfileId) {
+  const { rows } = await pool.query(
+    `SELECT
+        cs.id,
+        cs.target_type,
+        cs.created_at,
+        COALESCE(items.item_count, 0)::int AS item_count,
+        COALESCE(items.item_names, ARRAY[]::text[]) AS item_names
+     FROM comparison_sets cs
+     LEFT JOIN LATERAL (
+        SELECT COUNT(*)::int AS item_count, array_agg(name) AS item_names
+        FROM (
+          SELECT ac.complex_name AS name
+          FROM comparison_set_complexes csc
+          JOIN apartment_complexes ac ON ac.id = csc.complex_id
+          WHERE csc.comparison_set_id = cs.id
+          UNION ALL
+          SELECT ac.complex_name || ' ' || l.sale_price::text || '만원' AS name
+          FROM comparison_set_listings csl
+          JOIN listings l ON l.id = csl.listing_id
+          JOIN apartment_complexes ac ON ac.id = l.complex_id
+          WHERE csl.comparison_set_id = cs.id
+        ) names
+     ) items ON true
+     WHERE cs.user_profile_id = $1
+     ORDER BY cs.created_at DESC, cs.id DESC`,
+    [userProfileId]
+  );
+  return rows;
+}
+
 async function findSetById(id) {
   const { rows } = await pool.query('SELECT * FROM comparison_sets WHERE id = $1', [id]);
   return rows[0] || null;
@@ -69,6 +100,6 @@ async function addListingMember(setId, listingId) {
 }
 
 module.exports = {
-  createSetWithMembers, findSetById, findComplexIdsBySetId, findListingIdsBySetId,
+  createSetWithMembers, findSetsByUserProfileId, findSetById, findComplexIdsBySetId, findListingIdsBySetId,
   countComplexMembers, countListingMembers, addComplexMember, addListingMember
 };

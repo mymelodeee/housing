@@ -32,6 +32,14 @@ export interface ComparisonListingItem {
   shuttleCommuteMinutes: number | null
 }
 
+export interface ComparisonSetSummary {
+  id: number
+  targetType: ComparisonTargetType
+  createdAt: string
+  itemCount: number
+  itemNames: string[]
+}
+
 export interface ComparisonSetDetail {
   id: number
   userProfileId: number

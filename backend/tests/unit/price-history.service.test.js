@@ -10,8 +10,8 @@ const DATA_SOURCE = '국토교통부 아파트 실거래가 공개시스템(오�
 
 describe('services/price-history.service', () => {
   describe('buildPriceHistoryResult', () => {
-    it('rows가 빈 배열이면 completionYear와 무관하게 "실거래 이력 없음"을 반환한다', () => {
-      const result = buildPriceHistoryResult({ rows: [], completionYear: 1990, now: NOW });
+    it('rows가 빈 배열이면 "실거래 이력 없음"을 반환한다', () => {
+      const result = buildPriceHistoryResult({ rows: [], now: NOW });
 
       expect(result).toEqual({
         lookupPeriodType: '실거래 이력 없음',
@@ -20,15 +20,7 @@ describe('services/price-history.service', () => {
       });
     });
 
-    it('completionYear가 젊어도(2023) rows가 빈 배열이면 "실거래 이력 없음"이다', () => {
-      const result = buildPriceHistoryResult({ rows: [], completionYear: 2023, now: NOW });
-
-      expect(result.lookupPeriodType).toBe('실거래 이력 없음');
-      expect(result.entries).toEqual([]);
-      expect(result.firstTransactionMonth).toBeNull();
-    });
-
-    it('준공 20년 이상(1990, age=36) 단지는 최근 20년(2006-07-06 이후) 데이터만 필터링해 반환한다', () => {
+    it('최초거래(2000-01-01)가 20년(2006-07-06) 이상 지났으면 최근 20년 데이터만 필터링해 반환한다', () => {
       const rows = [
         { transaction_date: new Date('2000-01-01T00:00:00Z'), transaction_price: 30000 },
         { transaction_date: new Date('2005-12-31T00:00:00Z'), transaction_price: 40000 },
@@ -37,7 +29,7 @@ describe('services/price-history.service', () => {
         { transaction_date: new Date('2024-11-02T00:00:00Z'), transaction_price: 95000 },
       ];
 
-      const result = buildPriceHistoryResult({ rows, completionYear: 1990, now: NOW });
+      const result = buildPriceHistoryResult({ rows, now: NOW });
 
       expect(result.lookupPeriodType).toBe('최근 20년');
       expect(result.firstTransactionMonth).toBeNull();
@@ -48,28 +40,29 @@ describe('services/price-history.service', () => {
       ]);
     });
 
-    it('age가 정확히 20인 경계값(completionYear=2006)은 "최근 20년" 분기를 탄다 (age >= 20)', () => {
-      const rows = [{ transaction_date: new Date('2010-01-01T00:00:00Z'), transaction_price: 50000 }];
+    it('최초거래가 정확히 20년 전(경계값)이면 "최근 20년" 분기를 탄다', () => {
+      const rows = [
+        { transaction_date: new Date('2006-07-06T00:00:00Z'), transaction_price: 40000 },
+        { transaction_date: new Date('2010-01-01T00:00:00Z'), transaction_price: 50000 },
+      ];
 
-      const result = buildPriceHistoryResult({ rows, completionYear: 2006, now: NOW });
+      const result = buildPriceHistoryResult({ rows, now: NOW });
 
       expect(result.lookupPeriodType).toBe('최근 20년');
       expect(result.firstTransactionMonth).toBeNull();
     });
 
-    it('준공 20년 미만(2023, age=3) 단지는 오래된 데이터를 포함해 전부 반환하고 firstTransactionMonth는 최초 row 기준이다', () => {
+    it('최초거래가 20년 미만이면(단지가 오래되었어도) "최초거래 이후"로 전체 데이터를 반환한다', () => {
       const rows = [
-        { transaction_date: new Date('1999-05-01T00:00:00Z'), transaction_price: 20000 },
         { transaction_date: new Date('2021-06-01T00:00:00Z'), transaction_price: 78000 },
         { transaction_date: new Date('2025-01-20T00:00:00Z'), transaction_price: 105000 },
       ];
 
-      const result = buildPriceHistoryResult({ rows, completionYear: 2023, now: NOW });
+      const result = buildPriceHistoryResult({ rows, now: NOW });
 
       expect(result.lookupPeriodType).toBe('최초거래 이후');
-      expect(result.firstTransactionMonth).toBe('1999-05');
+      expect(result.firstTransactionMonth).toBe('2021-06');
       expect(result.entries).toEqual([
-        { transactionDate: '1999-05-01', transactionPrice: 20000, dataSource: DATA_SOURCE },
         { transactionDate: '2021-06-01', transactionPrice: 78000, dataSource: DATA_SOURCE },
         { transactionDate: '2025-01-20', transactionPrice: 105000, dataSource: DATA_SOURCE },
       ]);

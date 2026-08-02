@@ -34,10 +34,13 @@ INSERT INTO listings (complex_id, sale_price, exclusive_area) VALUES
     ((SELECT id FROM apartment_complexes WHERE complex_name = '동탄역 시범 우남퍼스트빌'), 110000, 101.23),
     ((SELECT id FROM apartment_complexes WHERE complex_name = '동탄역 시범 우남퍼스트빌'), 88000, 59.87);
 
--- 실거래 이력 20년 이상 케이스(시나리오 7-1): 준공(1998)이 20년도 더 이전이라
--- 실제 이력은 20년을 넘지만, 조회 결과는 최근 20년 창(2006-07-06 이후)만 반환한다.
+-- 실거래 이력 20년 이상 케이스(시나리오 7-1): lookupPeriodType은 단지 준공년도가 아닌
+-- 최초거래 시점(2000-01-01) 기준으로 결정된다. 최초거래가 20년보다 확실히 이전이므로
+-- "최근 20년" 분기를 안정적으로 타며, 조회 결과는 최근 20년 창 이내 데이터만 반환한다
+-- (2000-01-01 앵커 row 자체는 20년 창 밖이라 응답 entries에는 포함되지 않는다).
 INSERT INTO price_history (complex_id, transaction_date, transaction_price, lookup_period_type) VALUES
-    ((SELECT id FROM apartment_complexes WHERE complex_name = '동탄역 시범 우남퍼스트빌'), '2006-08-01', 45000, '최근 20년'),
+    ((SELECT id FROM apartment_complexes WHERE complex_name = '동탄역 시범 우남퍼스트빌'), '2000-01-01', 32000, '최근 20년'),
+    ((SELECT id FROM apartment_complexes WHERE complex_name = '동탄역 시범 우남퍼스트빌'), '2007-01-01', 45000, '최근 20년'),
     ((SELECT id FROM apartment_complexes WHERE complex_name = '동탄역 시범 우남퍼스트빌'), '2012-03-15', 68000, '최근 20년'),
     ((SELECT id FROM apartment_complexes WHERE complex_name = '동탄역 시범 우남퍼스트빌'), '2018-07-01', 90000, '최근 20년'),
     ((SELECT id FROM apartment_complexes WHERE complex_name = '동탄역 시범 우남퍼스트빌'), '2024-11-02', 95000, '최근 20년');

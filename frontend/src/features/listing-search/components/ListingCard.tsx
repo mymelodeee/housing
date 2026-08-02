@@ -7,9 +7,10 @@ interface ListingCardProps {
   listing: Listing
   onClick?: (listingId: number) => void
   favoriteSlot?: ReactNode
+  compareSlot?: ReactNode
 }
 
-export function ListingCard({ listing, onClick, favoriteSlot }: ListingCardProps) {
+export function ListingCard({ listing, onClick, favoriteSlot, compareSlot }: ListingCardProps) {
   const { complex } = listing
 
   return (
@@ -20,7 +21,10 @@ export function ListingCard({ listing, onClick, favoriteSlot }: ListingCardProps
     >
       <div className="listing-card__header">
         <span className="listing-card__price">{formatPriceKorean(listing.salePrice)}</span>
-        {favoriteSlot}
+        <div className="listing-card__actions">
+          {compareSlot}
+          {favoriteSlot}
+        </div>
       </div>
       <div className="listing-card__complex-name">{complex.complexName}</div>
       <div className="listing-card__address">{complex.address}</div>

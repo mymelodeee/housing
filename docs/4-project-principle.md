@@ -1,7 +1,7 @@
 # housing 프로젝트 구조 설계 원칙
 
-- 버전: v0.8
-- 최종 수정일: 2026-07-08
+- 버전: v0.9
+- 최종 수정일: 2026-07-10
 - 참조 문서: [1-domain-definition.md](./1-domain-definition.md) (v0.8), [2-prd.md](./2-prd.md) (v0.6), [3-user-scenario.md](./3-user-scenario.md) (v0.5), [9-style-guide.md](./9-style-guide.md) (v0.1)
 - 버전 관리 규칙: 본 문서를 수정할 때마다 상단 버전(v0.1 → v0.2 …)과 최종 수정일을 함께 갱신한다. 과거 버전 이력은 별도 변경이력 절에 누적 기록한다.
 
@@ -17,6 +17,7 @@
 | v0.6 | 2026-07-06 | 로컬 개발 환경에 실제 설치된 버전 확인 결과를 반영해 확정 기술 스택의 데이터베이스 버전을 PostgreSQL 17 → 18.4로 정정(§0, §5) |
 | v0.7 | 2026-07-06 | 백엔드 구현(BE-0~BE-8 등) 진행 중 발견한 공백 수정: §5 `.env` 관리 규칙이 "백엔드 루트"만 언급하고 프론트엔드 `.env`/API base URL 규칙이 전혀 없었음 → 프론트엔드는 `VITE_API_BASE_URL`(Vite `VITE_` 접두사 규칙)로 API 서버 주소를 주입하고 `shared/api/client.ts`에 하드코딩하지 않는다는 원칙과, 백엔드 `CORS_ORIGIN`과 프론트엔드 개발 서버 origin이 일치해야 한다는 상호 연동 규칙을 §5에 추가 |
 | v0.8 | 2026-07-08 | FE-2(네이버지도 연동) 진행에 맞춰 §5에 `VITE_NAVER_MAP_CLIENT_ID` 환경변수 규칙과 네이버 클라우드 플랫폼(NCP) 키 발급 사전 준비 절차 추가. 참조 문서에 `docs/9-style-guide.md`(신규) 추가 |
+| v0.9 | 2026-07-10 | 백엔드 API와 문서 정합성 점검 결과 반영: §7 백엔드 디렉토리 구조를 실제 구현과 일치하도록 정정(계획 단계의 `loan-simulation.routes/controller.js`, `shuttle-commute.service.js`, `price-history.repository.js`는 실제로 존재하지 않으며 각각 `listings.*`/`apartment-complexes.repository.js`로 통합 구현됨; 실제 존재하는 서비스 파일 목록 보완; `swagger/` 디렉토리와 `tests/fixtures/` 추가) |
 
 ---
 
@@ -210,53 +211,58 @@ frontend/
 backend/
 ├── src/
 │   ├── routes/                   # URL ↔ controller 매핑만. 로직 없음
-│   │   ├── complexes.routes.js       # 단지 조회, 단지 규제/입지/가격이력
-│   │   ├── listings.routes.js        # 매물 조회(매매가/전용면적)
+│   │   ├── complexes.routes.js       # 단지 조회
+│   │   ├── listings.routes.js        # 매물 조회 + 매물 상세 하위 자원(규제/입지/대출시뮬레이션/가격이력)
 │   │   ├── favorites.routes.js       # /api/favorites/complexes, /api/favorites/listings
 │   │   ├── comparison-sets.routes.js # target_type(complex/listing) 분기
-│   │   ├── loan-simulation.routes.js
 │   │   └── user-profile.routes.js
 │   ├── controllers/               # 요청 파싱, 응답 포맷, 상태코드 결정
 │   │   ├── complexes.controller.js
-│   │   ├── listings.controller.js
+│   │   ├── listings.controller.js   # 매물 조회 + 규제/입지/대출시뮬레이션/가격이력 컨트롤러 겸용
 │   │   ├── favorites.controller.js
 │   │   ├── comparison-sets.controller.js
-│   │   ├── loan-simulation.controller.js
 │   │   └── user-profile.controller.js
 │   ├── services/                  # 순수 도메인 로직(DB 접근 없음)
-│   │   ├── regulation.service.js  # 도메인 §5.1 규제/갭투자/실거주 판단
-│   │   ├── loan-limit.service.js  # 도메인 §5.2 최대 대출가능금액 산출
-│   │   ├── repayment.service.js   # 도메인 §5.3 원리금균등상환(PMT) 계산
-│   │   ├── loan-scenario.service.js # 도메인 §5.4 부부합산 vs 단독명의 비교
-│   │   ├── comparison.service.js  # 도메인 §5.5 단지 비교(시세 집계)/매물 비교 데이터 조합
-│   │   └── shuttle-commute.service.js
+│   │   ├── regulation.service.js       # 도메인 §5.1 규제/갭투자/실거주 판단
+│   │   ├── loan-limit.service.js       # 도메인 §5.2 최대 대출가능금액 산출
+│   │   ├── repayment.service.js        # 도메인 §5.3 원리금균등상환(PMT) 계산
+│   │   ├── loan-scenario.service.js    # 도메인 §5.4 부부합산 vs 단독명의 비교
+│   │   ├── comparison.service.js       # 도메인 §5.5 단지 비교/매물 비교 데이터 조합
+│   │   ├── comparison-set.service.js   # 비교셋 생성·멤버 추가(개수 제한 검증)
+│   │   ├── price-history.service.js    # 도메인 §4.7 매매가 변동 이력 기간 구분
+│   │   ├── apartment-complexes.service.js
+│   │   ├── apartment-complex-price.service.js  # 단지 시세(비영속 집계값) 계산
+│   │   ├── favorites.service.js
+│   │   ├── listings.service.js         # 매물 조회 + 규제/입지/대출시뮬레이션/가격이력 조합
+│   │   └── user-profile.service.js
 │   ├── repositories/               # raw SQL은 이 계층에만 존재
-│   │   ├── apartment-complexes.repository.js  # findComplexById, aggregateComplexPriceRange 등
+│   │   ├── apartment-complexes.repository.js  # 단지 조회 + price_history 조회(complex_id 기준) 포함
 │   │   ├── listings.repository.js
 │   │   ├── favorite-complexes.repository.js
 │   │   ├── favorite-listings.repository.js
 │   │   ├── comparison-sets.repository.js       # comparison_set_complexes/comparison_set_listings 모두 처리
-│   │   ├── user-profile.repository.js
-│   │   └── price-history.repository.js         # complex_id 기준 조회
+│   │   └── user-profile.repository.js
 │   ├── db/
 │   │   ├── pool.js                # pg.Pool 단일 초기화 지점 (환경변수 기반)
-│   │   └── migrations/            # node-pg-migrate SQL 마이그레이션 파일
-│   │       ├── 1690000000000_create-apartment-complexes.js
-│   │       ├── 1690000000001_create-listings.js
-│   │       └── ...
+│   │   └── migrations/            # node-pg-migrate SQL 마이그레이션 파일(타임스탬프 접두 파일명)
 │   ├── middlewares/
-│   │   ├── error-handler.js       # 공통 에러 응답 포맷
+│   │   ├── error-handler.js       # 공통 에러 응답 포맷(FK 위반 → 404 변환 포함)
 │   │   └── cors.js
 │   ├── config/
 │   │   └── env.js                 # 환경변수 로딩/검증 단일 지점
-│   └── app.js                     # Express 앱 조립(라우트 등록, 미들웨어 장착)
+│   └── app.js                     # Express 앱 조립(라우트 등록, 미들웨어 장착, 개발환경 한정 Swagger UI 마운트)
+├── swagger/
+│   └── swagger.json               # OpenAPI 3.0 명세, NODE_ENV!=='production'일 때 /api-docs로 서빙
 ├── tests/
 │   ├── unit/                      # services 단위 테스트(계산 로직 중심)
-│   └── integration/               # routes~repository~테스트 DB 통합 테스트
+│   ├── integration/                # routes~repository~테스트 DB(housing_test) 통합 테스트
+│   └── fixtures/fixtures.sql      # 통합 테스트용 housing_test 시드 데이터
 ├── .env.example
 ├── .gitignore
 └── package.json
 ```
+
+- 당초 별도 라우트/컨트롤러로 계획했던 `loan-simulation`은 구현 단계에서 `/api/listings/:id/loan-simulation`(매물 상세의 하위 자원)으로 편입되어 `listings.routes.js`/`listings.controller.js`/`listings.service.js`가 함께 처리한다. `shuttle-commute.service.js`는 셔틀 정보가 `apartment_complexes` 컬럼 값을 그대로 반환하는 수준이라 별도 서비스 없이 생략했다(오버엔지니어링 금지).
 
 - **SQL 위치**: 쿼리 문자열은 `repositories/*.js` 파일 내부에 파라미터 바인딩(`$1, $2 ...`)과 함께 작성한다. 재사용 빈도가 높거나 긴 쿼리는 같은 폴더 내 `*.sql`로 분리해 `fs.readFileSync`로 로드하는 것도 허용하되, 이번 규모(F1~F7)에서는 JS 파일 내 문자열 작성만으로 충분하다(오버엔지니어링 금지).
 - **마이그레이션 관리**: `node-pg-migrate`로 스키마 변경 이력을 SQL 마이그레이션 파일로 관리한다. 각 마이그레이션 파일은 순차 실행 가능한 단위여야 하며, 운영 반영 전 로컬 PostgreSQL 18.4에서 up/down을 검증한다.

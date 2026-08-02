@@ -1,0 +1,14 @@
+.complex-favorite-star {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--font-size-lg);
+}
+
+.complex-favorite-star[data-favorited='true'] {
+  color: var(--color-primary);
+}
+
+.complex-favorite-star[data-favorited='false'] {
+  color: var(--color-text-secondary);
+}

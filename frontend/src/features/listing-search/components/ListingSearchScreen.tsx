@@ -3,7 +3,15 @@ import { useNavigate } from 'react-router-dom'
 import { useListings } from '../hooks/useListings'
 import { PriceRangeFilter } from './PriceRangeFilter'
 import { ListingCard } from './ListingCard'
+import { ComplexFavoriteStar } from './ComplexFavoriteStar'
+import { ComplexCompareToggle } from './ComplexCompareToggle'
 import { MapView } from '../../../shared/map/MapView'
+import { useFavoriteComplexes } from '../../favorites/hooks/useFavoriteComplexes'
+import { useAddFavoriteComplex } from '../../favorites/hooks/useAddFavoriteComplex'
+import { useRemoveFavoriteComplex } from '../../favorites/hooks/useRemoveFavoriteComplex'
+import { useComplexComparisonSelection } from '../../comparison/hooks/useComplexComparisonSelection'
+import { ApiError } from '../../../shared/api/client'
+import { Modal } from '../../../shared/components/Modal'
 import './ListingSearchScreen.css'
 
 const DEFAULT_MIN_PRICE = 70000
@@ -14,6 +22,24 @@ export function ListingSearchScreen() {
   const [mobileView, setMobileView] = useState<'map' | 'list'>('list')
   const navigate = useNavigate()
   const { data, isLoading, isError } = useListings(priceRange.minPrice, priceRange.maxPrice)
+  const favoriteComplexes = useFavoriteComplexes()
+  const addFavoriteComplex = useAddFavoriteComplex()
+  const removeFavoriteComplex = useRemoveFavoriteComplex()
+  const favoriteComplexIds = new Set((favoriteComplexes.data ?? []).map((favorite) => favorite.complexId))
+  const { selectedComplexIds, handleToggle, handleCompare, warningModal, closeWarningModal } =
+    useComplexComparisonSelection()
+
+  function handleToggleFavorite(complexId: number) {
+    const mutation = favoriteComplexIds.has(complexId) ? removeFavoriteComplex : addFavoriteComplex
+    mutation.mutate(complexId, {
+      onError: (err) => {
+        if (import.meta.env.DEV) {
+          const message = err instanceof ApiError ? err.message : err
+          console.error('[ERROR] 단지 즐겨찾기 처리 실패', message)
+        }
+      },
+    })
+  }
 
   const mapPoints = (data ?? []).map((listing) => ({
     id: listing.id,
@@ -47,12 +73,39 @@ export function ListingSearchScreen() {
           {!isLoading && !isError && data && data.length > 0 && (
             <div className="listing-search-screen__cards">
               {data.map((listing) => (
-                <ListingCard key={listing.id} listing={listing} onClick={(id) => navigate(`/listings/${id}`)} />
+                <ListingCard
+                  key={listing.id}
+                  listing={listing}
+                  onClick={(id) => navigate(`/listings/${id}`)}
+                  favoriteSlot={
+                    <ComplexFavoriteStar
+                      isFavorited={favoriteComplexIds.has(listing.complex.id)}
+                      onToggle={() => handleToggleFavorite(listing.complex.id)}
+                    />
+                  }
+                  compareSlot={
+                    <ComplexCompareToggle
+                      isSelected={selectedComplexIds.has(listing.complex.id)}
+                      onToggle={() => handleToggle(listing.complex.id)}
+                    />
+                  }
+                />
               ))}
             </div>
           )}
         </div>
       </div>
+      {selectedComplexIds.size > 0 && (
+        <div className="listing-search-screen__compare-bar">
+          <span className="listing-search-screen__compare-count">{selectedComplexIds.size}개 선택됨</span>
+          <button type="button" className="listing-search-screen__compare-button" onClick={handleCompare}>
+            비교하기
+          </button>
+        </div>
+      )}
+      <Modal open={warningModal !== null} title={warningModal?.title ?? ''} onClose={closeWarningModal}>
+        {warningModal?.body}
+      </Modal>
     </div>
   )
 }

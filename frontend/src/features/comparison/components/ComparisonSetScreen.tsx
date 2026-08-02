@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { useState } from 'react'
 import { useComparisonSet } from '../hooks/useComparisonSet'
 import { useAddComplexToComparisonSet } from '../hooks/useAddComplexToComparisonSet'
@@ -58,6 +58,9 @@ export function ComparisonSetScreen() {
 
   return (
     <div className="comparison-set-screen">
+      <Link to="/comparison-sets" className="comparison-set-screen__back-link">
+        ← 비교셋 목록으로
+      </Link>
       {data.targetType === 'complex' && data.complexes && (
         <>
           <ComparisonComplexTable items={data.complexes} />

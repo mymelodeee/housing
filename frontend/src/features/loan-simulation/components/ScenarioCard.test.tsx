@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { ScenarioCard } from './ScenarioCard'
 import type { LoanScenarioResult } from '../types'
 
@@ -15,6 +16,11 @@ function makeScenario(overrides: Partial<LoanScenarioResult> = {}): LoanScenario
     monthlyRepayment20y: 300,
     monthlyRepayment30y: 200,
     occupancyRequirementMonths: null,
+    interestRatePercent: 4.5,
+    interestRateSource: 'DSR 산정 기준 금리(고정)를 적용한 값이며 실제 대출 금리와 다를 수 있습니다.',
+    graduatedRepayment10y: { initialMonthlyPayment: 350, finalMonthlyPayment: 650 },
+    graduatedRepayment20y: { initialMonthlyPayment: 200, finalMonthlyPayment: 400 },
+    graduatedRepayment30y: { initialMonthlyPayment: 150, finalMonthlyPayment: 300 },
     ...overrides,
   }
 }
@@ -72,5 +78,35 @@ describe('ScenarioCard', () => {
 
     expect(screen.queryByText('자금 부족')).not.toBeInTheDocument()
     expect(container.firstChild).toHaveAttribute('data-insufficient', 'false')
+  })
+
+  it('적용 금리와 금리 출처 안내 문구를 표시한다', () => {
+    render(<ScenarioCard scenario={makeScenario()} recommended={false} />)
+
+    expect(screen.getByText('연 4.5%')).toBeInTheDocument()
+    expect(
+      screen.getByText('DSR 산정 기준 금리(고정)를 적용한 값이며 실제 대출 금리와 다를 수 있습니다.'),
+    ).toBeInTheDocument()
+  })
+
+  it('기본으로 원리금균등상환 방식의 상환액을 표시한다', () => {
+    render(<ScenarioCard scenario={makeScenario()} recommended={false} />)
+
+    expect(screen.getByRole('radio', { name: '원리금균등상환' })).toBeChecked()
+    expect(screen.getByText('500만원')).toBeInTheDocument()
+    expect(screen.getByText('300만원')).toBeInTheDocument()
+    expect(screen.getByText('200만원')).toBeInTheDocument()
+  })
+
+  it('체증식 상환을 선택하면 초기/최종 상환액을 표시한다', async () => {
+    const user = userEvent.setup()
+    render(<ScenarioCard scenario={makeScenario()} recommended={false} />)
+
+    await user.click(screen.getByRole('radio', { name: '체증식 상환' }))
+
+    expect(screen.getByText('초기 350만원 → 최종 650만원')).toBeInTheDocument()
+    expect(screen.getByText('초기 200만원 → 최종 400만원')).toBeInTheDocument()
+    expect(screen.getByText('초기 150만원 → 최종 300만원')).toBeInTheDocument()
+    expect(screen.queryByText('500만원')).not.toBeInTheDocument()
   })
 })

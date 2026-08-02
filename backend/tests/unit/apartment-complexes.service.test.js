@@ -1,8 +1,10 @@
 jest.mock('../../src/repositories/apartment-complexes.repository');
 jest.mock('../../src/services/apartment-complex-price.service');
+jest.mock('../../src/services/locality-enrichment.service');
 
 const apartmentComplexesRepository = require('../../src/repositories/apartment-complexes.repository');
 const apartmentComplexPriceService = require('../../src/services/apartment-complex-price.service');
+const localityEnrichmentService = require('../../src/services/locality-enrichment.service');
 const {
   getComplexDetail,
   listComplexSummaries,
@@ -28,6 +30,12 @@ const baseRow = {
 };
 
 describe('services/apartment-complexes.service', () => {
+  beforeEach(() => {
+    localityEnrichmentService.enrichLocalityAttributes.mockImplementation(
+      async (baseAttributes) => baseAttributes
+    );
+  });
+
   afterEach(() => {
     jest.resetAllMocks();
   });
@@ -120,6 +128,30 @@ describe('services/apartment-complexes.service', () => {
         developmentProspects: '정보 없음',
         nearbyJobs: '정보 없음',
       });
+    });
+
+    it('locality-enrichment 서비스에 매핑된 속성과 좌표를 전달하고 반환값을 결과로 사용한다', async () => {
+      apartmentComplexesRepository.findById.mockResolvedValue(baseRow);
+      apartmentComplexPriceService.getComplexPriceRange.mockResolvedValue('매물 없음');
+      localityEnrichmentService.enrichLocalityAttributes.mockResolvedValue({
+        transportation: '지하철 SRT 동탄역 도보 10분',
+        commercialArea: '정보 없음',
+        schoolDistrict: '동탄중앙초등학교 (350m 이내)',
+        gangnamAccessibility: '정보 없음',
+        entertainmentAndParks: '유흥주점 없음 (700m 이내)',
+        developmentProspects: '정보 없음',
+        nearbyJobs: '정보 없음',
+      });
+
+      const result = await getComplexDetail(1);
+
+      expect(localityEnrichmentService.enrichLocalityAttributes).toHaveBeenCalledWith(
+        expect.objectContaining({ transportation: '지하철 SRT 동탄역 도보 10분', schoolDistrict: '정보 없음' }),
+        baseRow.latitude,
+        baseRow.longitude
+      );
+      expect(result.localityAttributes.schoolDistrict).toBe('동탄중앙초등학교 (350m 이내)');
+      expect(result.localityAttributes.entertainmentAndParks).toBe('유흥주점 없음 (700m 이내)');
     });
   });
 

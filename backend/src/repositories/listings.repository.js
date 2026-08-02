@@ -45,7 +45,7 @@ async function findByIdWithComplex(id) {
        c.remodeling_status, c.reconstruction_status, c.is_regulated_area,
        c.is_land_transaction_permission_zone,
        c.nearest_shuttle_stop_name, c.nearest_shuttle_stop_distance, c.shuttle_commute_minutes,
-      c.latitude, c.longitude
+      c.latitude, c.longitude, c.lawd_cd, c.molit_apt_name
      FROM listings l
      JOIN apartment_complexes c ON c.id = l.complex_id
      WHERE l.id = $1`,
@@ -54,4 +54,26 @@ async function findByIdWithComplex(id) {
   return rows[0] || null;
 }
 
-module.exports = { aggregatePriceRangeByComplexId, findByPriceRange, findByIdWithComplex };
+async function findByComplexAndArea({ complexId, salePrice, exclusiveArea }) {
+  const { rows } = await pool.query(
+    'SELECT * FROM listings WHERE complex_id = $1 AND sale_price = $2 AND exclusive_area = $3',
+    [complexId, salePrice, exclusiveArea]
+  );
+  return rows[0] || null;
+}
+
+async function insert({ complexId, salePrice, exclusiveArea }) {
+  const { rows } = await pool.query(
+    'INSERT INTO listings (complex_id, sale_price, exclusive_area) VALUES ($1, $2, $3) RETURNING *',
+    [complexId, salePrice, exclusiveArea]
+  );
+  return rows[0];
+}
+
+module.exports = {
+  aggregatePriceRangeByComplexId,
+  findByPriceRange,
+  findByIdWithComplex,
+  findByComplexAndArea,
+  insert
+};

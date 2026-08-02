@@ -1,8 +1,8 @@
 # housing ERD (Entity-Relationship Diagram)
 
-- 버전: v0.6
-- 최종 수정일: 2026-07-06
-- 참조 문서: [1-domain-definition.md](./1-domain-definition.md) (v0.8), [2-prd.md](./2-prd.md) (v0.6), [4-project-principle.md](./4-project-principle.md) (v0.5)
+- 버전: v0.7
+- 최종 수정일: 2026-07-10
+- 참조 문서: [1-domain-definition.md](./1-domain-definition.md) (v0.10), [2-prd.md](./2-prd.md) (v0.6), [4-project-principle.md](./4-project-principle.md) (v0.5)
 - 버전 관리 규칙: 본 문서를 수정할 때마다 상단 버전(v0.1 → v0.2 …)과 최종 수정일을 함께 갱신한다. 과거 버전 이력은 별도 변경이력 절에 누적 기록한다.
 
 ## 변경 이력
@@ -15,6 +15,7 @@
 | v0.4 | 2026-07-05 | **구조 변경(도메인 v0.8 반영)**: 단일 `listings` 테이블을 `apartment_complexes`(단지: 위치·연식·리모델링·재건축·주변 재개발·규제지역·토허구역·셔틀·입지 속성)와 `listings`(매물: complex_id FK·매매가·전용면적)로 분리. 즐겨찾기를 `favorite_complexes`/`favorite_listings`로 이원화. 비교셋에 `target_type` 컬럼 추가 및 `comparison_set_complexes` 신설(기존 `comparison_set_listings`는 유지). `price_history.listing_id`를 `price_history.complex_id`로 재소속(매매가 변동 이력은 단지 단위 관리). "단지 시세"가 `listings.sale_price`의 조회 시점 집계값(비영속)임을 §1에 추가 명시 |
 | v0.5 | 2026-07-05 | 참조 문서 버전 갱신(PRD v0.6, 프로젝트 구조 원칙 v0.5) |
 | v0.6 | 2026-07-06 | 로컬 개발 환경에 실제 설치된 버전 확인 결과를 반영해 대상 DB 버전을 PostgreSQL 17 → 18.4로 정정 |
+| v0.7 | 2026-07-10 | 실데이터 연동 반영(도메인 v0.10): `apartment_complexes`에 `lawd_cd`/`molit_apt_name` 추가(국토부 실거래가 API 실시간 조회 매핑용, 둘 다 nullable). 학군 정보 산출을 위한 `elementary_schools` 테이블 신설(FK 관계 없는 독립 참조 테이블, data.go.kr 정적 데이터셋 임포트 결과). `price_history`는 매핑 정보가 없는 단지의 폴백 데이터로 역할이 한정됨을 명시 |
 
 ---
 
@@ -96,7 +97,18 @@ erDiagram
         integer nearest_shuttle_stop_distance "최근접 셔틀 정류장까지 거리(m, null 허용)"
         integer shuttle_commute_minutes "셔틀 통근시간(분, null 허용)"
         jsonb locality_attributes "입지 속성(교통/상권/학군/강남접근성/유흥·공원/개발호재/주변일자리, null 허용)"
+        varchar lawd_cd "법정동코드 앞5자리(국토부 실거래가 API 조회용, null 허용)"
+        varchar molit_apt_name "국토부 실거래가 API상 단지명(자체 표기와 다를 수 있어 별도 보관, null 허용)"
     }
+
+    elementary_schools {
+        integer id PK
+        varchar school_name "학교명"
+        decimal latitude "위도"
+        decimal longitude "경도"
+        varchar address "주소"
+    }
+    %% 전국초중등학교위치표준데이터(data.go.kr, 정적 데이터셋) 임포트 결과. 단지와 FK 관계 없음 — 조회 시점에 좌표로 최근접 학교를 계산(§3.7.1)
 
     listings {
         integer id PK
@@ -150,6 +162,7 @@ erDiagram
         varchar data_source "데이터 출처(고정값: 국토교통부 아파트 실거래가 공개시스템)"
         varchar lookup_period_type "조회 기간 구분(최근 20년 / 최초거래 이후)"
     }
+    %% apartment_complexes.lawd_cd/molit_apt_name이 모두 있는 단지는 이 테이블 대신 국토부 API를 매 요청마다 실시간 조회(fetch-through)하며, 조회 기간은 항상 "최근 3년"이다(§3.7). 이 테이블은 매핑 정보가 없는 단지의 폴백 데이터로만 쓰인다.
 ```
 
 ---
@@ -159,14 +172,15 @@ erDiagram
 | 테이블 | 대응 도메인 절 | 비고 |
 |---|---|---|
 | `user_profiles` | §4.3 | 인증 체계가 없는 단일 사용자 앱이므로 항상 1행만 존재한다. PK는 고정값(예: `id = 1`)으로 취급하고 신규 행을 추가로 생성하지 않는다(4-project-principle.md §1.5 "단일 사용자 전제의 단순화" 반영). |
-| `apartment_complexes` | §4.1 | 도메인 v0.8에서 신설. 단지명·위치·연식·리모델링·재건축·주변 재개발·규제지역·토허구역·셔틀·입지 속성을 보유한다. `locality_attributes`는 `jsonb` 타입으로 저장한다. |
+| `apartment_complexes` | §4.1 | 도메인 v0.8에서 신설. 단지명·위치·연식·리모델링·재건축·주변 재개발·규제지역·토허구역·셔틀·입지 속성을 보유한다. `locality_attributes`는 `jsonb` 타입으로 저장한다. `lawd_cd`/`molit_apt_name`은 국토부 실거래가 API 실시간 조회를 위한 매핑 컬럼으로, 둘 다 존재하는 단지만 fetch-through 대상이 된다(도메인 §3.7, 둘 다 nullable). |
 | `listings` | §4.2 | 도메인 v0.8에서 단지 속성이 전부 `apartment_complexes`로 이동하고, `complex_id`(NOT NULL FK) + 매매가 + 전용면적만 남았다. 반드시 하나의 단지에 속한다(도메인 §4.2 "단지 FK 필수"). |
 | `favorite_complexes` | §4.4 | 도메인 v0.8 신설. `(user_profile_id, complex_id)` 조합 유니크 제약으로 중복 즐겨찾기를 막는다. |
 | `favorite_listings` | §4.4 | 기존 `favorites`를 개명. `(user_profile_id, listing_id)` 조합 유니크 제약 유지. |
 | `comparison_sets` | §4.5 | `target_type` 컬럼(complex/listing)을 도메인 v0.8에서 추가. 포함 대상 목록은 유형에 따라 `comparison_set_complexes` 또는 `comparison_set_listings`로 분리한다. target_type과 실제 사용된 매핑 테이블 간 정합성은 DB가 아닌 서비스 레이어에서 강제한다(§2 참조, 트리거 도입 안 함). |
 | `comparison_set_complexes` | §4.5(도메인 v0.8 신설) | 단지 비교용 N:M 매핑 테이블. `(comparison_set_id, complex_id)` UNIQUE 제약으로 동일 단지 중복 포함을 DB 레벨에서 방지한다. |
 | `comparison_set_listings` | §4.5(추가 설계) | 매물 비교용 N:M 매핑 테이블. 하나의 비교셋에 2~5개 대상이 포함되어야 하는 제약은 서비스 레이어에서 검증한다. `(comparison_set_id, listing_id)` UNIQUE 제약으로 동일 매물의 중복 포함은 DB 레벨에서 방지하며, 프론트엔드는 이 제약 위반 시 "중복입니다" 팝업을 표시한다(도메인 §3.3/§4.5, PRD F3). |
-| `price_history` | §4.7 | 도메인 v0.8에서 `listing_id` → `complex_id`로 재소속(단지별로 다건의 거래 이력이 쌓이는 1:N 구조). `lookup_period_type`은 20년 이상 데이터 보유 여부에 따라 "최근 20년" 또는 "최초거래 이후" 값을 갖는다(도메인 §4.7, §3.7). |
+| `price_history` | §4.7 | 도메인 v0.8에서 `listing_id` → `complex_id`로 재소속(단지별로 다건의 거래 이력이 쌓이는 1:N 구조). `lookup_period_type`은 20년 이상 데이터 보유 여부에 따라 "최근 20년" 또는 "최초거래 이후" 값을 갖는다(도메인 §4.7, §3.7). `apartment_complexes.lawd_cd`/`molit_apt_name`이 모두 있는 단지는 이 테이블을 쓰지 않고 국토부 API를 실시간 조회(fetch-through)하므로, 이 테이블은 매핑 정보가 없는 단지의 폴백 데이터로만 채운다. |
+| `elementary_schools` | §3.7.1(도메인 v0.10 신설) | 전국초중등학교위치표준데이터(data.go.kr, 정적 데이터셋) 임포트 결과. 다른 테이블과 FK 관계 없이 독립적으로 존재하며, 조회 시점에 단지 좌표와의 haversine 거리 계산으로 최근접 학교를 산정하는 데만 쓰인다. 2026-07-10 기준 data.go.kr API 활용신청 승인 대기 중이라 데이터가 비어 있다. |
 
 ---
 

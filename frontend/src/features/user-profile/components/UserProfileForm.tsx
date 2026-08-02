@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useUserProfile } from '../hooks/useUserProfile'
 import { useUpdateUserProfile } from '../hooks/useUpdateUserProfile'
 import type {
@@ -43,6 +44,7 @@ function toFormState(data: UserProfile): FormState {
 }
 
 export function UserProfileForm() {
+  const navigate = useNavigate()
   const { data, isLoading } = useUserProfile()
   const { mutate, isPending, isError, isSuccess, error } = useUpdateUserProfile()
   const [form, setForm] = useState<FormState>(initialFormState)
@@ -77,7 +79,7 @@ export function UserProfileForm() {
       isFirstTimeBuyer: form.housingOwnershipTier === '무주택' ? form.isFirstTimeBuyer : false,
     }
 
-    mutate(patch)
+    mutate(patch, { onSuccess: () => navigate('/') })
   }
 
   return (

@@ -10,6 +10,9 @@ describe('NaverMapAdapter', () => {
   let markerMock: ReturnType<typeof vi.fn>
   let addListenerMock: ReturnType<typeof vi.fn>
   let mapMock: ReturnType<typeof vi.fn>
+  let mapInstance: { setCenter: ReturnType<typeof vi.fn>; setZoom: ReturnType<typeof vi.fn>; fitBounds: ReturnType<typeof vi.fn> }
+  let latLngBoundsMock: ReturnType<typeof vi.fn>
+  let boundsExtendMock: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
     markerInstances = []
@@ -19,8 +22,13 @@ describe('NaverMapAdapter', () => {
       return instance
     })
     addListenerMock = vi.fn()
+    mapInstance = { setCenter: vi.fn(), setZoom: vi.fn(), fitBounds: vi.fn() }
     mapMock = vi.fn(function MapCtor() {
-      return {}
+      return mapInstance
+    })
+    boundsExtendMock = vi.fn()
+    latLngBoundsMock = vi.fn(function LatLngBoundsCtor() {
+      return { extend: boundsExtendMock }
     })
 
     vi.stubGlobal('naver', {
@@ -30,6 +38,7 @@ describe('NaverMapAdapter', () => {
         LatLng: vi.fn(function LatLngCtor(lat: number, lng: number) {
           return { lat, lng }
         }),
+        LatLngBounds: latLngBoundsMock,
         Event: { addListener: addListenerMock },
       },
     })
@@ -85,6 +94,48 @@ describe('NaverMapAdapter', () => {
     expect(firstBatchMarker.setMap).toHaveBeenCalledWith(null)
     expect(markerInstances).toHaveLength(2)
     expect(markerInstances[1].setMap).not.toHaveBeenCalled()
+  })
+
+  it('fitBounds는 points가 0개면 아무것도 호출하지 않는다', () => {
+    const adapter = new NaverMapAdapter()
+    const container = document.createElement('div')
+    adapter.init(container)
+
+    adapter.fitBounds([])
+
+    expect(mapInstance.fitBounds).not.toHaveBeenCalled()
+    expect(mapInstance.setCenter).not.toHaveBeenCalled()
+    expect(latLngBoundsMock).not.toHaveBeenCalled()
+  })
+
+  it('fitBounds는 points가 1개면 setCenter와 setZoom을 호출한다', () => {
+    const adapter = new NaverMapAdapter()
+    const container = document.createElement('div')
+    adapter.init(container)
+
+    adapter.fitBounds([{ id: 1, lat: 37.5, lng: 127.0 }])
+
+    expect(mapInstance.setCenter).toHaveBeenCalledWith({ lat: 37.5, lng: 127.0 })
+    expect(mapInstance.setZoom).toHaveBeenCalledTimes(1)
+    expect(mapInstance.fitBounds).not.toHaveBeenCalled()
+  })
+
+  it('fitBounds는 points가 여러 개면 LatLngBounds를 확장해 map.fitBounds를 호출한다', () => {
+    const adapter = new NaverMapAdapter()
+    const container = document.createElement('div')
+    adapter.init(container)
+
+    const points = [
+      { id: 1, lat: 37.5, lng: 127.0 },
+      { id: 2, lat: 37.6, lng: 127.1 },
+    ]
+
+    adapter.fitBounds(points)
+
+    expect(latLngBoundsMock).toHaveBeenCalledTimes(1)
+    expect(boundsExtendMock).toHaveBeenCalledTimes(1)
+    expect(boundsExtendMock).toHaveBeenCalledWith({ lat: 37.6, lng: 127.1 })
+    expect(mapInstance.fitBounds).toHaveBeenCalledTimes(1)
   })
 
   it('destroy는 현재 모든 마커를 정리한다', () => {

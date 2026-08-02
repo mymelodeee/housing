@@ -5,6 +5,13 @@
   padding: var(--space-4);
 }
 
+.comparison-set-screen__back-link {
+  align-self: flex-start;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+}
+
 .comparison-set-screen__add-row {
   display: flex;
   align-items: center;

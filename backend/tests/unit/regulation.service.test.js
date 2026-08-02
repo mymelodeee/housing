@@ -11,10 +11,10 @@ describe('getLtvPercent', () => {
   test.each([
     ['무주택', true, true, 70],
     ['무주택', true, false, 80],
-    ['무주택', false, true, 60],
+    ['무주택', false, true, 40],
     ['무주택', false, false, 70],
-    ['1주택', true, true, 50],
-    ['1주택', true, false, 60],
+    ['1주택', true, true, 40],
+    ['1주택', true, false, 70],
     ['다주택', true, true, 0],
     ['다주택', true, false, 60],
   ])(
@@ -97,7 +97,7 @@ describe('evaluateRegulation', () => {
     });
 
     expect(result).toEqual({
-      ltvPercent: 60,
+      ltvPercent: 70,
       isLandTransactionPermissionZone: '확인필요',
       regionalLoanCapAmount: null,
       gapInvestmentAllowed: true,

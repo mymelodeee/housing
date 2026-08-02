@@ -34,4 +34,26 @@ async function findPriceHistoryByComplexId(complexId) {
   return rows;
 }
 
-module.exports = { findAll, findById, findWithinBoundingBox, findPriceHistoryByComplexId };
+async function findByAddress(address) {
+  const { rows } = await pool.query('SELECT * FROM apartment_complexes WHERE address = $1', [address]);
+  return rows[0] || null;
+}
+
+async function insert({ complexName, latitude, longitude, address, completionYear, lawdCd, molitAptName }) {
+  const { rows } = await pool.query(
+    `INSERT INTO apartment_complexes (complex_name, latitude, longitude, address, completion_year, lawd_cd, molit_apt_name)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     RETURNING *`,
+    [complexName, latitude, longitude, address, completionYear, lawdCd, molitAptName]
+  );
+  return rows[0];
+}
+
+module.exports = {
+  findAll,
+  findById,
+  findWithinBoundingBox,
+  findPriceHistoryByComplexId,
+  findByAddress,
+  insert
+};

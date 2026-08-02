@@ -18,6 +18,12 @@
   justify-content: space-between;
 }
 
+.listing-card__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .listing-card__price {
   font-size: var(--font-size-lg);
   font-weight: 700;

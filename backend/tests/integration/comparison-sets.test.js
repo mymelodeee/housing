@@ -1,10 +1,15 @@
 process.env.POSTGRES_CONNECTION_STRING = process.env.TEST_POSTGRES_CONNECTION_STRING || 'postgresql://postgres:postgres@localhost:5432/housing_test';
 process.env.PORT = process.env.PORT || '3000';
 process.env.CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173';
+process.env.DATA_APT_KR_API_KEY = process.env.DATA_APT_KR_API_KEY || 'test-key';
+process.env.DATA_STORE_API_KEY = process.env.DATA_STORE_API_KEY || 'test-key';
+
+jest.mock('../../src/repositories/store-info-api.repository');
 
 const request = require('supertest');
 const app = require('../../src/app');
 const pool = require('../../src/db/pool');
+const storeInfoApiRepository = require('../../src/repositories/store-info-api.repository');
 
 describe('comparison-sets 통합 테스트', () => {
   let dongtanId;
@@ -13,6 +18,11 @@ describe('comparison-sets 통합 테스트', () => {
   let dongtanListingIds;
 
   beforeAll(async () => {
+    storeInfoApiRepository.fetchStoresInRadius.mockResolvedValue({
+      header: { resultCode: '03', resultMsg: 'NODATA_ERROR' },
+      body: {},
+    });
+
     const complexesRes = await request(app).get('/api/complexes');
     const dongtan = complexesRes.body.find((c) => c.complexName === '동탄역 시범 우남퍼스트빌');
     const pyeongtaek = complexesRes.body.find((c) => c.complexName === '평택 소사벌 한라비발디');
@@ -27,6 +37,51 @@ describe('comparison-sets 통합 테스트', () => {
 
   afterAll(async () => {
     await pool.end();
+  });
+
+  it('비교셋 목록 조회 시 생성한 비교셋이 요약 정보와 함께 포함된다', async () => {
+    const createRes = await request(app)
+      .post('/api/comparison-sets')
+      .send({ targetType: 'complex', complexIds: [dongtanId, pyeongtaekId] });
+
+    expect(createRes.status).toBe(201);
+    const setId = createRes.body.id;
+
+    const listRes = await request(app).get('/api/comparison-sets');
+
+    expect(listRes.status).toBe(200);
+    expect(Array.isArray(listRes.body)).toBe(true);
+
+    const created = listRes.body.find((s) => s.id === setId);
+    expect(created).toMatchObject({
+      id: setId,
+      targetType: 'complex',
+      itemCount: 2
+    });
+    expect(created.itemNames).toEqual(
+      expect.arrayContaining(['동탄역 시범 우남퍼스트빌', '평택 소사벌 한라비발디'])
+    );
+  });
+
+  it('매물 비교셋도 목록 조회 시 단지명과 매매가가 포함된 라벨로 나온다', async () => {
+    expect(dongtanListingIds.length).toBeGreaterThanOrEqual(2);
+    const [listingIdA, listingIdB] = dongtanListingIds;
+
+    const createRes = await request(app)
+      .post('/api/comparison-sets')
+      .send({ targetType: 'listing', listingIds: [listingIdA, listingIdB] });
+
+    expect(createRes.status).toBe(201);
+    const setId = createRes.body.id;
+
+    const listRes = await request(app).get('/api/comparison-sets');
+
+    expect(listRes.status).toBe(200);
+    const created = listRes.body.find((s) => s.id === setId);
+    expect(created).toMatchObject({ id: setId, targetType: 'listing', itemCount: 2 });
+    created.itemNames.forEach((name) => {
+      expect(name).toContain('동탄역 시범 우남퍼스트빌');
+    });
   });
 
   it('단지 3개로 비교셋을 생성하고 상세 조회 시 priceRange가 각 단지 기준으로 나온다', async () => {
