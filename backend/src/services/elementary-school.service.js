@@ -44,14 +44,43 @@ function selectNearestWithin700m(candidates, latitude, longitude) {
 
 async function findNearestElementarySchoolWithin700m(latitude, longitude) {
   const boundingBox = buildBoundingBoxDegrees(latitude, longitude, RADIUS_METERS);
-  const candidates = await elementarySchoolsRepository.findWithinBoundingBox(boundingBox);
+  const candidates = await elementarySchoolsRepository.findWithinBoundingBox({
+    ...boundingBox,
+    schoolLevel: '초등학교'
+  });
   return selectNearestWithin700m(candidates, latitude, longitude);
+}
+
+// 배정학교 표시는 반경 제한 없이(탐색 반경 3km 내) 가장 가까운 학교를 근사치로 사용한다.
+// 실제 배정은 교육청 학구도에 따라 달라질 수 있다(도메인 문서에 한계 명시).
+const ASSIGNED_SCHOOL_SEARCH_RADIUS_METERS = 3000;
+
+function selectNearest(candidates, latitude, longitude) {
+  let nearest = null;
+
+  for (const school of candidates) {
+    const distanceMeters = haversineDistanceMeters(latitude, longitude, school.latitude, school.longitude);
+    if (!nearest || distanceMeters < nearest.distanceMeters) {
+      nearest = { schoolName: school.school_name, distanceMeters: Math.round(distanceMeters) };
+    }
+  }
+
+  return nearest;
+}
+
+async function findNearestSchoolByLevel(latitude, longitude, schoolLevel) {
+  const boundingBox = buildBoundingBoxDegrees(latitude, longitude, ASSIGNED_SCHOOL_SEARCH_RADIUS_METERS);
+  const candidates = await elementarySchoolsRepository.findWithinBoundingBox({ ...boundingBox, schoolLevel });
+  return selectNearest(candidates, latitude, longitude);
 }
 
 module.exports = {
   RADIUS_METERS,
+  ASSIGNED_SCHOOL_SEARCH_RADIUS_METERS,
   haversineDistanceMeters,
   buildBoundingBoxDegrees,
   selectNearestWithin700m,
-  findNearestElementarySchoolWithin700m
+  selectNearest,
+  findNearestElementarySchoolWithin700m,
+  findNearestSchoolByLevel
 };

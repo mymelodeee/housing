@@ -11,6 +11,8 @@ jest.mock('../../src/services/apartment-complexes.service', () => {
 jest.mock('../../src/services/user-profile.service');
 jest.mock('../../src/services/loan-limit.service');
 jest.mock('../../src/services/loan-scenario.service');
+jest.mock('../../src/services/jeonse-history.service');
+jest.mock('../../src/services/elementary-school.service');
 
 const listingsRepository = require('../../src/repositories/listings.repository');
 const apartmentComplexesRepository = require('../../src/repositories/apartment-complexes.repository');
@@ -19,11 +21,15 @@ const apartmentComplexesService = require('../../src/services/apartment-complexe
 const userProfileService = require('../../src/services/user-profile.service');
 const loanLimitService = require('../../src/services/loan-limit.service');
 const loanScenarioService = require('../../src/services/loan-scenario.service');
+const jeonseHistoryService = require('../../src/services/jeonse-history.service');
+const elementarySchoolService = require('../../src/services/elementary-school.service');
 const {
   listListings,
   getListingDetail,
   getListingLocality,
   getPriceHistory,
+  getJeonseHistory,
+  getAssignedSchools,
   getListingRegulation,
   getListingLoanSimulation,
 } = require('../../src/services/listings.service');
@@ -318,6 +324,82 @@ describe('services/listings.service', () => {
 
       expect(molitPriceHistoryService.fetchPriceHistoryForComplex).not.toHaveBeenCalled();
       expect(apartmentComplexesRepository.findPriceHistoryByComplexId).toHaveBeenCalledWith(10);
+    });
+  });
+
+  describe('getJeonseHistory', () => {
+    it('존재하지 않는 매물이면 null을 반환한다', async () => {
+      listingsRepository.findByIdWithComplex.mockResolvedValue(null);
+
+      expect(await getJeonseHistory(999)).toBeNull();
+    });
+
+    it('lawd_cd/molit_apt_name 매핑이 없으면 빈 이력들을 반환하고 외부 API를 호출하지 않는다', async () => {
+      listingsRepository.findByIdWithComplex.mockResolvedValue({ ...baseRow, lawd_cd: null, molit_apt_name: null });
+
+      const result = await getJeonseHistory(1);
+
+      expect(result).toMatchObject({ listingId: 1, complexId: 10, saleEntries: [], jeonseEntries: [], ratioEntries: [] });
+      expect(molitPriceHistoryService.fetchPriceHistoryForComplex).not.toHaveBeenCalled();
+      expect(jeonseHistoryService.fetchJeonseTransactionsForComplex).not.toHaveBeenCalled();
+    });
+
+    it('매핑이 있으면 매매/전세 이력을 병렬 조회하고 전세가율을 계산해 반환한다', async () => {
+      listingsRepository.findByIdWithComplex.mockResolvedValue({
+        ...baseRow,
+        lawd_cd: '41597',
+        molit_apt_name: '동탄역 시범 우남퍼스트빌',
+      });
+      const saleEntries = [{ transactionDate: '2026-06-10', transactionPrice: 100000, dataSource: 'x' }];
+      const jeonseEntries = [{ transactionDate: '2026-06-15', deposit: 60000, dataSource: 'y' }];
+      const ratioEntries = [{ month: '2026-06', jeonseRatioPercent: 60 }];
+      molitPriceHistoryService.fetchPriceHistoryForComplex.mockResolvedValue({ entries: saleEntries });
+      jeonseHistoryService.fetchJeonseTransactionsForComplex.mockResolvedValue(jeonseEntries);
+      jeonseHistoryService.buildJeonseRatioEntries.mockReturnValue(ratioEntries);
+
+      const result = await getJeonseHistory(1);
+
+      expect(result).toEqual({
+        listingId: 1,
+        complexId: 10,
+        saleEntries,
+        jeonseEntries,
+        ratioEntries,
+        lookupWindowNote: '실시간 연동 특성상 최근 3년(36개월) 범위만 조회합니다',
+      });
+      expect(jeonseHistoryService.buildJeonseRatioEntries).toHaveBeenCalledWith({ saleEntries, jeonseEntries });
+    });
+  });
+
+  describe('getAssignedSchools', () => {
+    it('존재하지 않는 매물이면 null을 반환한다', async () => {
+      listingsRepository.findByIdWithComplex.mockResolvedValue(null);
+
+      expect(await getAssignedSchools(999)).toBeNull();
+    });
+
+    it('단지 좌표가 없으면 학교 조회 없이 null 학교들을 반환한다', async () => {
+      listingsRepository.findByIdWithComplex.mockResolvedValue({ ...baseRow, latitude: null, longitude: null });
+
+      const result = await getAssignedSchools(1);
+
+      expect(result).toMatchObject({ listingId: 1, elementarySchool: null, middleSchool: null });
+      expect(elementarySchoolService.findNearestSchoolByLevel).not.toHaveBeenCalled();
+    });
+
+    it('좌표가 있으면 최근접 초/중학교를 각각 조회해 반환한다', async () => {
+      listingsRepository.findByIdWithComplex.mockResolvedValue({ ...baseRow, latitude: 37.2, longitude: 127.1 });
+      elementarySchoolService.findNearestSchoolByLevel
+        .mockResolvedValueOnce({ schoolName: '동탄초등학교', distanceMeters: 320 })
+        .mockResolvedValueOnce({ schoolName: '동탄중학교', distanceMeters: 540 });
+
+      const result = await getAssignedSchools(1);
+
+      expect(elementarySchoolService.findNearestSchoolByLevel).toHaveBeenCalledWith(37.2, 127.1, '초등학교');
+      expect(elementarySchoolService.findNearestSchoolByLevel).toHaveBeenCalledWith(37.2, 127.1, '중학교');
+      expect(result.elementarySchool).toEqual({ schoolName: '동탄초등학교', distanceMeters: 320 });
+      expect(result.middleSchool).toEqual({ schoolName: '동탄중학교', distanceMeters: 540 });
+      expect(typeof result.assignmentNote).toBe('string');
     });
   });
 

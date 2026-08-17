@@ -174,6 +174,30 @@
         }
       }
     },
+    "/api/listings/{id}/jeonse-history": {
+      "get": {
+        "tags": ["price-history"],
+        "summary": "매물 상세 - 전세가 변동 이력 (매매가·전세가율 동시 제공)",
+        "description": "매물이 속한 단지의 국토부 아파트 전월세 실거래가 자료(오픈API) 기반 최근 3년(36개월) 순수 전세(월세 0) 이력과, 같은 기간 매매 이력, 월별 평균 기준 전세가율(%)을 함께 반환한다(도메인 v0.19). 단지에 lawd_cd/molit_apt_name 매핑이 없으면 빈 배열들을 반환한다. 전월세 API 활용신청 미승인 상태에서는 전세 이력이 항상 빈 배열이다.",
+        "parameters": [ { "$ref": "#/components/parameters/ListingIdPath" } ],
+        "responses": {
+          "200": { "description": "전세가 변동 이력", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/JeonseHistoryResponse" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/listings/{id}/assigned-schools": {
+      "get": {
+        "tags": ["locality"],
+        "summary": "매물 상세 - 배정학교 (최근접 초·중학교)",
+        "description": "매물이 속한 단지 좌표 기준 탐색 반경 3km 내 최근접 초등학교/중학교와 거리(m)를 반환한다(도메인 v0.19). 실제 배정은 교육청 학구도에 따라 달라질 수 있는 근사치임을 assignmentNote로 함께 안내한다. 학교 시드 데이터가 비어 있으면 두 학교 모두 null이다.",
+        "parameters": [ { "$ref": "#/components/parameters/ListingIdPath" } ],
+        "responses": {
+          "200": { "description": "배정학교 정보", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AssignedSchoolsResponse" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
     "/api/favorites/complexes": {
       "get": {
         "tags": ["favorites"],
@@ -406,6 +430,71 @@
           "latitude": { "type": "number", "nullable": true, "example": 37.554 },
           "longitude": { "type": "number", "nullable": true, "example": 127.154 },
           "collectedAt": { "type": "string", "format": "date-time", "example": "2026-08-17T00:00:00Z" }
+        }
+      },
+      "JeonseHistoryResponse": {
+        "type": "object",
+        "properties": {
+          "listingId": { "type": "integer", "example": 12 },
+          "complexId": { "type": "integer", "example": 8 },
+          "saleEntries": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "transactionDate": { "type": "string", "format": "date", "example": "2026-06-10" },
+                "transactionPrice": { "type": "integer", "description": "매매가(만원)", "example": 100000 },
+                "dataSource": { "type": "string", "example": "국토교통부 아파트 실거래가 공개시스템(오픈API)" }
+              }
+            }
+          },
+          "jeonseEntries": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "transactionDate": { "type": "string", "format": "date", "example": "2026-06-15" },
+                "deposit": { "type": "integer", "description": "전세 보증금(만원)", "example": 60000 },
+                "dataSource": { "type": "string", "example": "국토교통부 아파트 전월세 실거래가 자료(오픈API)" }
+              }
+            }
+          },
+          "ratioEntries": {
+            "type": "array",
+            "description": "월별 평균 전세가/평균 매매가 기준 전세가율(%). 두 값이 모두 있는 월만 포함",
+            "items": {
+              "type": "object",
+              "properties": {
+                "month": { "type": "string", "example": "2026-06" },
+                "jeonseRatioPercent": { "type": "number", "example": 60.0 }
+              }
+            }
+          },
+          "lookupWindowNote": { "type": "string", "example": "실시간 연동 특성상 최근 3년(36개월) 범위만 조회합니다" }
+        }
+      },
+      "AssignedSchoolsResponse": {
+        "type": "object",
+        "properties": {
+          "listingId": { "type": "integer", "example": 12 },
+          "complexId": { "type": "integer", "example": 8 },
+          "elementarySchool": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "schoolName": { "type": "string", "example": "동탄초등학교" },
+              "distanceMeters": { "type": "integer", "example": 320 }
+            }
+          },
+          "middleSchool": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "schoolName": { "type": "string", "example": "동탄중학교" },
+              "distanceMeters": { "type": "integer", "example": 540 }
+            }
+          },
+          "assignmentNote": { "type": "string", "example": "최근접 학교 기준 근사치이며, 실제 배정은 교육청 학구도에 따라 달라질 수 있습니다" }
         }
       },
       "RemodelingStatus": { "type": "string", "enum": ["해당없음", "추진중", "완료"], "example": "해당없음" },

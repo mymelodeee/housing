@@ -69,6 +69,38 @@ async function getPriceHistory(req, res, next) {
   }
 }
 
+async function getJeonseHistory(req, res, next) {
+  try {
+    const id = Number(req.params.id);
+    const result = await listingsService.getJeonseHistory(id);
+    if (!result) {
+      const err = new Error('존재하지 않는 매물입니다');
+      err.status = 404;
+      next(err);
+      return;
+    }
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function getAssignedSchools(req, res, next) {
+  try {
+    const id = Number(req.params.id);
+    const result = await listingsService.getAssignedSchools(id);
+    if (!result) {
+      const err = new Error('존재하지 않는 매물입니다');
+      err.status = 404;
+      next(err);
+      return;
+    }
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function getListingRegulation(req, res, next) {
   try {
     const id = Number(req.params.id);
@@ -106,6 +138,8 @@ module.exports = {
   getListing,
   getListingLocality,
   getPriceHistory,
+  getJeonseHistory,
+  getAssignedSchools,
   getListingRegulation,
   getListingLoanSimulation
 };

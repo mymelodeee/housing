@@ -16,6 +16,8 @@
   --color-accent-purple: #8b6bd8;
   --color-accent-blue: #3d8bf0;
   --color-chart-price-line: var(--color-accent-orange);
+  --color-chart-jeonse-line: var(--color-accent-teal);
+  --color-chart-ratio-line: var(--color-accent-purple);
 
   --color-success: #03c75a;
   --color-warning: #e8a93b;
@@ -68,6 +70,8 @@
     --color-danger: #f16c70;
     --color-info: #5ca3f5;
     --color-chart-price-line: #d9611f;
+    --color-chart-jeonse-line: #1fa6a0;
+    --color-chart-ratio-line: #8b6bd8;
   }
 }
 

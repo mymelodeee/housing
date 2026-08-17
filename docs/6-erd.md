@@ -1,6 +1,6 @@
 # housing ERD (Entity-Relationship Diagram)
 
-- 버전: v0.8
+- 버전: v0.9
 - 최종 수정일: 2026-08-17
 - 참조 문서: [1-domain-definition.md](./1-domain-definition.md) (v0.10), [2-prd.md](./2-prd.md) (v0.6), [4-project-principle.md](./4-project-principle.md) (v0.5)
 - 버전 관리 규칙: 본 문서를 수정할 때마다 상단 버전(v0.1 → v0.2 …)과 최종 수정일을 함께 갱신한다. 과거 버전 이력은 별도 변경이력 절에 누적 기록한다.
@@ -17,6 +17,7 @@
 | v0.6 | 2026-07-06 | 로컬 개발 환경에 실제 설치된 버전 확인 결과를 반영해 대상 DB 버전을 PostgreSQL 17 → 18.4로 정정 |
 | v0.7 | 2026-07-10 | 실데이터 연동 반영(도메인 v0.10): `apartment_complexes`에 `lawd_cd`/`molit_apt_name` 추가(국토부 실거래가 API 실시간 조회 매핑용, 둘 다 nullable). 학군 정보 산출을 위한 `elementary_schools` 테이블 신설(FK 관계 없는 독립 참조 테이블, data.go.kr 정적 데이터셋 임포트 결과). `price_history`는 매핑 정보가 없는 단지의 폴백 데이터로 역할이 한정됨을 명시 |
 | v0.8 | 2026-08-17 | 문서 누락 보완: `database/schema.sql`(테이블 11번)과 마이그레이션 파일에는 이미 존재하던 `regional_listing_cache`(경기남부+서울 실시간(배치 캐싱) 매물 검색용 캐시 테이블, 도메인 v0.14 후속)를 ERD와 테이블별 비고에 추가. FK 관계 없는 독립 테이블이며, 사용자가 검색 결과를 선택하는 시점에 `apartment_complexes`/`listings`로 승격(upsert)되는 구조임을 명시 |
+| v0.9 | 2026-08-17 | 배정학교 탭 신설 반영(도메인 v0.19): `elementary_schools`에 `school_level varchar(20) NOT NULL DEFAULT '초등학교'` 컬럼 및 인덱스 추가('초등학교'/'중학교'). 시드 스크립트가 초·중학교를 함께 적재하며, 테이블명은 기존 코드 호환을 위해 `elementary_schools`를 유지한다(초등 전용이 아니게 되었음을 비고에 명시) |
 
 ---
 
@@ -105,11 +106,12 @@ erDiagram
     elementary_schools {
         integer id PK
         varchar school_name "학교명"
+        varchar school_level "학교급(초등학교/중학교, 기본 초등학교)"
         decimal latitude "위도"
         decimal longitude "경도"
         varchar address "주소"
     }
-    %% 전국초중등학교위치표준데이터(data.go.kr, 정적 데이터셋) 임포트 결과. 단지와 FK 관계 없음 — 조회 시점에 좌표로 최근접 학교를 계산(§3.7.1)
+    %% 전국초중등학교위치표준데이터(data.go.kr, 정적 데이터셋) 임포트 결과. 단지와 FK 관계 없음 — 조회 시점에 좌표로 최근접 학교를 계산(§3.7.1, 배정학교 탭은 도메인 v0.19)
 
     listings {
         integer id PK
@@ -197,7 +199,7 @@ erDiagram
 | `comparison_set_complexes` | §4.5(도메인 v0.8 신설) | 단지 비교용 N:M 매핑 테이블. `(comparison_set_id, complex_id)` UNIQUE 제약으로 동일 단지 중복 포함을 DB 레벨에서 방지한다. |
 | `comparison_set_listings` | §4.5(추가 설계) | 매물 비교용 N:M 매핑 테이블. 하나의 비교셋에 2~5개 대상이 포함되어야 하는 제약은 서비스 레이어에서 검증한다. `(comparison_set_id, listing_id)` UNIQUE 제약으로 동일 매물의 중복 포함은 DB 레벨에서 방지하며, 프론트엔드는 이 제약 위반 시 "중복입니다" 팝업을 표시한다(도메인 §3.3/§4.5, PRD F3). |
 | `price_history` | §4.7 | 도메인 v0.8에서 `listing_id` → `complex_id`로 재소속(단지별로 다건의 거래 이력이 쌓이는 1:N 구조). `lookup_period_type`은 20년 이상 데이터 보유 여부에 따라 "최근 20년" 또는 "최초거래 이후" 값을 갖는다(도메인 §4.7, §3.7). `apartment_complexes.lawd_cd`/`molit_apt_name`이 모두 있는 단지는 이 테이블을 쓰지 않고 국토부 API를 실시간 조회(fetch-through)하므로, 이 테이블은 매핑 정보가 없는 단지의 폴백 데이터로만 채운다. |
-| `elementary_schools` | §3.7.1(도메인 v0.10 신설) | 전국초중등학교위치표준데이터(data.go.kr, 정적 데이터셋) 임포트 결과. 다른 테이블과 FK 관계 없이 독립적으로 존재하며, 조회 시점에 단지 좌표와의 haversine 거리 계산으로 최근접 학교를 산정하는 데만 쓰인다. 2026-07-10 기준 data.go.kr API 활용신청 승인 대기 중이라 데이터가 비어 있다. |
+| `elementary_schools` | §3.7.1(도메인 v0.10 신설), 배정학교 탭(도메인 v0.19) | 전국초중등학교위치표준데이터(data.go.kr, 정적 데이터셋) 임포트 결과. 다른 테이블과 FK 관계 없이 독립적으로 존재하며, 조회 시점에 단지 좌표와의 haversine 거리 계산으로 최근접 학교를 산정하는 데 쓰인다(학군 입지 축은 700m 반경 초등학교, 배정학교 탭은 3km 반경 초·중학교). 도메인 v0.19부터 `school_level`('초등학교'/'중학교')로 중학교도 함께 적재하므로 테이블명과 달리 초등 전용이 아니다(기존 코드 호환을 위해 테이블명 유지). 2026-08-17 기준 data.go.kr API 활용신청 미승인이라 데이터가 비어 있다(승인 후 시드 스크립트 재실행 필요). |
 | `regional_listing_cache` | 도메인 v0.14 후속(실시간 지역 매물 검색) | 국토교통부 실거래가 API(지역+월 단위)를 배치 수집기(`backend/scripts/collect-regional-listings.js`, `npm run collect-listings`)로 주기 수집해 캐싱하는 테이블. `apartment_complexes`/`listings`와 별개의 독립 테이블(FK 없음)이며, 실제 "매물 호가"가 아닌 "최근 실거래가"를 시세 근사치로 사용한다. `GET /api/listings/live-search`가 이 테이블을 조회하고, 사용자가 결과를 선택(`POST /api/listings/live-search/select`)하는 시점에 해당 행이 `apartment_complexes`/`listings`로 승격(upsert)된다. `(lawd_cd, complex_name, exclusive_area)` UNIQUE로 재수집 시 중복을 방지한다. |
 
 ---

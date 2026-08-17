@@ -6,6 +6,32 @@ const LOOKUP_MONTHS = 36;
 
 const xmlParser = new XMLParser();
 
+// 공공데이터포털은 초당 요청 수를 엄격히 제한한다(실측: 배치당 20건 동시 호출은 물론,
+// 수 초 간격을 둔 단발 호출 2건도 종종 LIMITED_NUMBER_OF_SERVICE_REQUESTS_PER_SECOND_EXCEEDS_ERROR로
+// 실패함). 실패한 월은 조용히 빈 배열로 처리되므로(parseAptTradeXml), 동시성이 높으면
+// "매매/전세 이력 없음"으로 오인될 정도로 데이터가 통째로 누락될 수 있다. 이를 막기 위해
+// 월별 호출을 완전히 순차 실행(배치 크기 1)하고 각 호출 사이에 간격을 둔다.
+const REQUEST_BATCH_SIZE = 1;
+const REQUEST_BATCH_DELAY_MS = 300;
+
+function delay(ms) {
+  // 테스트에서는 실제 대기 없이 스로틀링 로직(순차 실행 순서·배치 분할)만 검증한다.
+  const effectiveMs = process.env.NODE_ENV === 'test' ? 0 : ms;
+  return new Promise((resolve) => setTimeout(resolve, effectiveMs));
+}
+
+async function settleInBatches(taskFactories, batchSize = REQUEST_BATCH_SIZE, delayMs = REQUEST_BATCH_DELAY_MS) {
+  const results = [];
+  for (let i = 0; i < taskFactories.length; i += batchSize) {
+    if (i > 0) {
+      await delay(delayMs);
+    }
+    const settled = await Promise.allSettled(taskFactories.slice(i, i + batchSize).map((factory) => factory()));
+    results.push(...settled);
+  }
+  return results;
+}
+
 function generateRecentDealYmds(monthsCount = LOOKUP_MONTHS, now = new Date()) {
   const result = [];
   for (let i = monthsCount - 1; i >= 0; i--) {
@@ -90,8 +116,8 @@ function buildMolitPriceHistoryResult({ transactions, now = new Date() }) {
 async function fetchPriceHistoryForComplex({ lawdCd, aptName, now = new Date() }) {
   const dealYmds = generateRecentDealYmds(LOOKUP_MONTHS, now);
 
-  const settledResults = await Promise.allSettled(
-    dealYmds.map((dealYmd) => molitApiRepository.fetchAptTradeXml({ lawdCd, dealYmd }))
+  const settledResults = await settleInBatches(
+    dealYmds.map((dealYmd) => () => molitApiRepository.fetchAptTradeXml({ lawdCd, dealYmd }))
   );
 
   const allItems = settledResults.flatMap((result) =>
@@ -105,6 +131,7 @@ async function fetchPriceHistoryForComplex({ lawdCd, aptName, now = new Date() }
 
 module.exports = {
   generateRecentDealYmds,
+  settleInBatches,
   parseAptTradeXml,
   mapTradeItem,
   filterByAptName,

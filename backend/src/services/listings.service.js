@@ -2,6 +2,8 @@ const listingsRepository = require('../repositories/listings.repository');
 const apartmentComplexesService = require('./apartment-complexes.service');
 const priceHistoryService = require('./price-history.service');
 const molitPriceHistoryService = require('./molit-price-history.service');
+const jeonseHistoryService = require('./jeonse-history.service');
+const elementarySchoolService = require('./elementary-school.service');
 const apartmentComplexesRepository = require('../repositories/apartment-complexes.repository');
 const regulationService = require('./regulation.service');
 const loanLimitService = require('./loan-limit.service');
@@ -104,6 +106,75 @@ async function getPriceHistory(id) {
   };
 }
 
+async function getJeonseHistory(id) {
+  const listingRow = await listingsRepository.findByIdWithComplex(id);
+  if (!listingRow) return null;
+
+  if (!listingRow.lawd_cd || !listingRow.molit_apt_name) {
+    return {
+      listingId: listingRow.id,
+      complexId: listingRow.complex_id,
+      saleEntries: [],
+      jeonseEntries: [],
+      ratioEntries: [],
+      lookupWindowNote: LOOKUP_WINDOW_NOTE
+    };
+  }
+
+  // 공공데이터포털 초당 요청 제한 때문에 매매/전세 조회를 동시에 실행하지 않고 순차 실행한다.
+  const saleResult = await molitPriceHistoryService.fetchPriceHistoryForComplex({
+    lawdCd: listingRow.lawd_cd,
+    aptName: listingRow.molit_apt_name
+  });
+  const jeonseEntries = await jeonseHistoryService.fetchJeonseTransactionsForComplex({
+    lawdCd: listingRow.lawd_cd,
+    aptName: listingRow.molit_apt_name
+  });
+
+  return {
+    listingId: listingRow.id,
+    complexId: listingRow.complex_id,
+    saleEntries: saleResult.entries,
+    jeonseEntries,
+    ratioEntries: jeonseHistoryService.buildJeonseRatioEntries({
+      saleEntries: saleResult.entries,
+      jeonseEntries
+    }),
+    lookupWindowNote: LOOKUP_WINDOW_NOTE
+  };
+}
+
+const ASSIGNMENT_NOTE =
+  '최근접 학교 기준 근사치이며, 실제 배정은 교육청 학구도에 따라 달라질 수 있습니다';
+
+async function getAssignedSchools(id) {
+  const listingRow = await listingsRepository.findByIdWithComplex(id);
+  if (!listingRow) return null;
+
+  if (listingRow.latitude === null || listingRow.longitude === null) {
+    return {
+      listingId: listingRow.id,
+      complexId: listingRow.complex_id,
+      elementarySchool: null,
+      middleSchool: null,
+      assignmentNote: ASSIGNMENT_NOTE
+    };
+  }
+
+  const [elementarySchool, middleSchool] = await Promise.all([
+    elementarySchoolService.findNearestSchoolByLevel(listingRow.latitude, listingRow.longitude, '초등학교'),
+    elementarySchoolService.findNearestSchoolByLevel(listingRow.latitude, listingRow.longitude, '중학교')
+  ]);
+
+  return {
+    listingId: listingRow.id,
+    complexId: listingRow.complex_id,
+    elementarySchool,
+    middleSchool,
+    assignmentNote: ASSIGNMENT_NOTE
+  };
+}
+
 async function getListingRegulation(id) {
   const listingRow = await listingsRepository.findByIdWithComplex(id);
   if (!listingRow) return null;
@@ -203,6 +274,8 @@ module.exports = {
   getListingDetail,
   getListingLocality,
   getPriceHistory,
+  getJeonseHistory,
+  getAssignedSchools,
   getListingRegulation,
   getListingLoanSimulation
 };

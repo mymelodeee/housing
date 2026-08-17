@@ -9,6 +9,8 @@ router.post('/live-search/select', regionalListingsController.selectLiveListing)
 router.get('/:id', listingsController.getListing);
 router.get('/:id/locality', listingsController.getListingLocality);
 router.get('/:id/price-history', listingsController.getPriceHistory);
+router.get('/:id/jeonse-history', listingsController.getJeonseHistory);
+router.get('/:id/assigned-schools', listingsController.getAssignedSchools);
 router.get('/:id/regulation', listingsController.getListingRegulation);
 router.get('/:id/loan-simulation', listingsController.getListingLoanSimulation);
 

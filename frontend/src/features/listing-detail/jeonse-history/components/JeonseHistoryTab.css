@@ -1,0 +1,24 @@
+.jeonse-history-tab__notice {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-3);
+}
+
+.jeonse-history-tab__table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: var(--space-4);
+  font-size: var(--font-size-sm);
+}
+
+.jeonse-history-tab__table th,
+.jeonse-history-tab__table td {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.jeonse-history-tab__table th {
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}

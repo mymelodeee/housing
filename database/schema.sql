@@ -202,18 +202,21 @@ CREATE TABLE price_history (
 CREATE INDEX idx_price_history_complex_id ON price_history (complex_id);
 
 -- -----------------------------------------------------------------------------
--- 10. elementary_schools (입지 속성 "학군" 실시간 산출용, 전국초중등학교위치표준데이터
--- 반기 갱신 정적 데이터셋을 1회성 시드 스크립트로 적재한 로컬 캐시 테이블)
+-- 10. elementary_schools (입지 속성 "학군" 실시간 산출 + 배정학교 탭용,
+-- 전국초중등학교위치표준데이터 반기 갱신 정적 데이터셋을 1회성 시드 스크립트로 적재한
+-- 로컬 캐시 테이블. 도메인 v0.19부터 초등학교 외에 중학교도 함께 적재한다)
 -- -----------------------------------------------------------------------------
 CREATE TABLE elementary_schools (
     id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     school_name varchar(255) NOT NULL,
+    school_level varchar(20) NOT NULL DEFAULT '초등학교', -- '초등학교' | '중학교'
     latitude numeric(9, 6) NOT NULL,
     longitude numeric(9, 6) NOT NULL,
     address varchar(255) NOT NULL
 );
 
 CREATE INDEX idx_elementary_schools_lat_lng ON elementary_schools (latitude, longitude);
+CREATE INDEX idx_elementary_schools_school_level ON elementary_schools (school_level);
 
 -- -----------------------------------------------------------------------------
 -- 11. regional_listing_cache (경기남부+서울 실시간(배치 캐싱) 매물 검색 기능, 도메인 v0.14 후속)

@@ -10,7 +10,6 @@ const TARGET_REGIONS = [
   { regionName: '화성시 병점구', lawdCd: '41595' },
   { regionName: '화성시 동탄구', lawdCd: '41597' },
   { regionName: '수원시 영통구', lawdCd: '41117' },
-  { regionName: '용인기흥', lawdCd: '41463' },
   { regionName: '서울 강동구', lawdCd: '11740' },
   { regionName: '성남시 수정구', lawdCd: '41131' },
   { regionName: '성남시 중원구', lawdCd: '41133' },

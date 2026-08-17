@@ -23,14 +23,30 @@ describe('ListingDetailTabs', () => {
     vi.restoreAllMocks()
   })
 
-  it('4개의 탭 버튼이 올바른 한글 라벨로 렌더링된다', () => {
+  it('6개의 탭 버튼이 올바른 한글 라벨로 렌더링된다', () => {
     renderTabs()
 
     expect(screen.getByRole('tab', { name: '규제/대출' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: '입지 정보' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: '대출 시뮬레이션' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: '매매가 변동 이력' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: '전세가 변동 이력' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: '배정학교' })).toBeInTheDocument()
     expect(apiClient).toHaveBeenCalled()
+  })
+
+  it('전세가 변동 이력 탭이 매매가 변동 이력 바로 다음, 배정학교 탭이 그 다음 순서로 배치된다', () => {
+    renderTabs()
+
+    const labels = screen.getAllByRole('tab').map((tab) => tab.textContent)
+    expect(labels).toEqual([
+      '규제/대출',
+      '입지 정보',
+      '대출 시뮬레이션',
+      '매매가 변동 이력',
+      '전세가 변동 이력',
+      '배정학교',
+    ])
   })
 
   it('초기 상태에는 규제/대출 탭 패널만 보이고 나머지는 숨겨진다', () => {

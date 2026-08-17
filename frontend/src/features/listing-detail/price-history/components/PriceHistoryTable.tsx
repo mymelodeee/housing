@@ -6,7 +6,7 @@ interface PriceHistoryTableProps {
 }
 
 export function PriceHistoryTable({ entries }: PriceHistoryTableProps) {
-  const sorted = [...entries].sort((a, b) => a.transactionDate.localeCompare(b.transactionDate))
+  const sorted = [...entries].sort((a, b) => b.transactionDate.localeCompare(a.transactionDate))
 
   return (
     <table className="price-history-table">
@@ -18,8 +18,8 @@ export function PriceHistoryTable({ entries }: PriceHistoryTableProps) {
         </tr>
       </thead>
       <tbody>
-        {sorted.map((entry) => (
-          <tr key={entry.transactionDate}>
+        {sorted.map((entry, i) => (
+          <tr key={`${entry.transactionDate}-${i}`}>
             <td>{entry.transactionDate}</td>
             <td>{entry.transactionPrice.toLocaleString()}만원</td>
             <td>{entry.dataSource}</td>
