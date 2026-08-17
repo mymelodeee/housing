@@ -14,7 +14,7 @@ const {
 
 const baseCacheRow = {
   id: 1,
-  lawd_cd: '41590',
+  lawd_cd: '41597',
   kapt_code: 'A1',
   complex_name: '동탄역 시범 우남퍼스트빌',
   address: '경기도 화성시 동탄역로 123',
@@ -42,7 +42,8 @@ describe('services/regional-listings.service', () => {
         minPrice: 70000,
         maxPrice: 150000,
         minArea: 0,
-        maxArea: 999
+        maxArea: 999,
+        minHouseholdCount: 500
       });
     });
 
@@ -55,12 +56,13 @@ describe('services/regional-listings.service', () => {
         minPrice: 90000,
         maxPrice: 100000,
         minArea: 80,
-        maxArea: 90
+        maxArea: 90,
+        minHouseholdCount: 500
       });
       expect(result).toEqual([
         {
           id: 1,
-          lawdCd: '41590',
+          lawdCd: '41597',
           kaptCode: 'A1',
           complexName: '동탄역 시범 우남퍼스트빌',
           address: '경기도 화성시 동탄역로 123',
@@ -73,6 +75,16 @@ describe('services/regional-listings.service', () => {
           collectedAt: '2026-07-01T00:00:00Z'
         }
       ]);
+    });
+
+    it('transaction_date가 Date 객체이면 로컬 기준 YYYY-MM-DD 문자열로 변환한다', async () => {
+      regionalListingCacheRepository.findByFilters.mockResolvedValue([
+        { ...baseCacheRow, transaction_date: new Date(2026, 5, 30) }
+      ]);
+
+      const result = await searchLiveListings({});
+
+      expect(result[0].transactionDate).toBe('2026-06-30');
     });
   });
 
@@ -122,7 +134,7 @@ describe('services/regional-listings.service', () => {
           latitude: 37.1,
           longitude: 127.1,
           address: '경기도 화성시 동탄역로 123',
-          lawdCd: '41590',
+          lawdCd: '41597',
           molitAptName: '동탄역 시범 우남퍼스트빌'
         })
       );
@@ -157,7 +169,7 @@ describe('services/regional-listings.service', () => {
 
       await selectCacheEntry(1);
 
-      expect(geocodingService.geocodeAddress).toHaveBeenCalledWith('화성 동탄역 시범 우남퍼스트빌');
+      expect(geocodingService.geocodeAddress).toHaveBeenCalledWith('화성시 동탄구 동탄역 시범 우남퍼스트빌');
     });
   });
 });

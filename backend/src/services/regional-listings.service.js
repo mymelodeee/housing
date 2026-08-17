@@ -10,6 +10,18 @@ const DEFAULT_MIN_AREA = 0;
 const DEFAULT_MAX_AREA = 999;
 const LISTING_MIN_SALE_PRICE = 70000;
 const LISTING_MAX_SALE_PRICE = 150000;
+const MIN_HOUSEHOLD_COUNT = 500;
+
+// pg는 DATE 컬럼을 로컬 자정 기준 Date 객체로 파싱하므로, JSON 직렬화 시
+// UTC ISO 문자열로 변환되어 UTC+9 환경에서 날짜가 하루 밀려 보인다(BE-7과 동일 이슈).
+// 로컬 getter 기준 YYYY-MM-DD 문자열로 변환해 반환한다.
+function formatLocalDate(value) {
+  if (!(value instanceof Date)) return value;
+  const yyyy = value.getFullYear();
+  const mm = String(value.getMonth() + 1).padStart(2, '0');
+  const dd = String(value.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
 
 function mapCacheRow(row) {
   return {
@@ -20,7 +32,7 @@ function mapCacheRow(row) {
     address: row.address,
     exclusiveArea: row.exclusive_area,
     salePrice: row.sale_price,
-    transactionDate: row.transaction_date,
+    transactionDate: formatLocalDate(row.transaction_date),
     householdCount: row.household_count,
     latitude: row.latitude,
     longitude: row.longitude,
@@ -33,7 +45,8 @@ async function searchLiveListings({ minPrice, maxPrice, minArea, maxArea } = {})
     minPrice: minPrice === undefined ? DEFAULT_MIN_PRICE : minPrice,
     maxPrice: maxPrice === undefined ? DEFAULT_MAX_PRICE : maxPrice,
     minArea: minArea === undefined ? DEFAULT_MIN_AREA : minArea,
-    maxArea: maxArea === undefined ? DEFAULT_MAX_AREA : maxArea
+    maxArea: maxArea === undefined ? DEFAULT_MAX_AREA : maxArea,
+    minHouseholdCount: MIN_HOUSEHOLD_COUNT
   });
   return rows.map(mapCacheRow);
 }

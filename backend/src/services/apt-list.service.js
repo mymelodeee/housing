@@ -1,41 +1,46 @@
-const { XMLParser } = require('fast-xml-parser');
 const aptListApiRepository = require('../repositories/apt-list-api.repository');
 
-const parser = new XMLParser();
+function safeJsonParse(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
 
-function parseAptListXml(xml) {
-  const parsed = parser.parse(xml);
-  const items = parsed && parsed.response && parsed.response.body && parsed.response.body.items
-    ? parsed.response.body.items.item
-    : undefined;
+function parseAptListJson(jsonText) {
+  const parsed = safeJsonParse(jsonText);
+  const items = parsed && parsed.response && parsed.response.body && parsed.response.body.items;
   if (!items) return [];
 
   const itemList = Array.isArray(items) ? items : [items];
-  return itemList.map((item) => ({
-    kaptCode: String(item.kaptCode),
-    kaptName: String(item.kaptName),
-    householdCount: extractHouseholdCount(item)
-  }));
+  return itemList
+    .filter((item) => item && item.kaptCode)
+    .map((item) => ({
+      kaptCode: String(item.kaptCode),
+      kaptName: String(item.kaptName)
+    }));
 }
 
-// K-apt 계열 API에서 세대수 필드명이 kaptdaCnt로 통일되어 있지 않을 수 있어
-// 흔히 쓰이는 후보 필드명들을 방어적으로 순서대로 확인한다. 값이 없거나
-// 숫자로 변환할 수 없으면 undefined로 두고 에러를 내지 않는다.
-const HOUSEHOLD_COUNT_FIELD_CANDIDATES = ['kaptdaCnt', 'kaptDaCnt', 'hhldCnt', 'householdCount'];
-
-function extractHouseholdCount(item) {
-  for (const field of HOUSEHOLD_COUNT_FIELD_CANDIDATES) {
-    if (item[field] !== undefined && item[field] !== null && item[field] !== '') {
-      const value = Number(item[field]);
-      if (!Number.isNaN(value)) return value;
-    }
+function parseAptBasisInfoJson(jsonText) {
+  const parsed = safeJsonParse(jsonText);
+  const item = parsed && parsed.response && parsed.response.body && parsed.response.body.item;
+  if (!item || item.kaptdaCnt === undefined || item.kaptdaCnt === null || item.kaptdaCnt === '') {
+    return undefined;
   }
-  return undefined;
+
+  const value = Number(item.kaptdaCnt);
+  return Number.isNaN(value) ? undefined : value;
 }
 
 async function fetchAptListForRegion(lawdCd) {
-  const xml = await aptListApiRepository.fetchAptListXml({ lawdCd });
-  return parseAptListXml(xml);
+  const json = await aptListApiRepository.fetchAptListJson({ sigunguCode: lawdCd });
+  return parseAptListJson(json);
 }
 
-module.exports = { parseAptListXml, fetchAptListForRegion };
+async function fetchHouseholdCount(kaptCode) {
+  const json = await aptListApiRepository.fetchAptBasisInfoJson({ kaptCode });
+  return parseAptBasisInfoJson(json);
+}
+
+module.exports = { parseAptListJson, parseAptBasisInfoJson, fetchAptListForRegion, fetchHouseholdCount };

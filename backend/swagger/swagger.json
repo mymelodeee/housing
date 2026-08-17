@@ -73,6 +73,44 @@
         }
       }
     },
+    "/api/listings/live-search": {
+      "get": {
+        "tags": ["listings"],
+        "summary": "실시간 지역 매물 검색 (배치 캐싱)",
+        "description": "배치 수집기(collect-regional-listings.js)가 대상 지역(화성/평택/용인기흥/서울 강동구/성남시 수정·중원·분당구/용인시 수지구/위례신도시(송파 장지·거여동, 하남 학암·감이동))의 국토부 실거래가를 캐싱한 regional_listing_cache에서 후보를 검색한다(도메인 v0.16). 매매가 필터 기본값은 탐색 범위(7~15억)이며, 세대수 500세대 이상 항목만 반환한다(세대수 미확인(null) 항목은 제외). 실제 매물 호가가 아닌 최근 실거래가를 시세 근사치로 사용한다.",
+        "parameters": [
+          { "name": "minPrice", "in": "query", "description": "최소 매매가(만원). 미지정 시 기본값 70000", "required": false, "schema": { "type": "integer", "default": 70000, "example": 70000 } },
+          { "name": "maxPrice", "in": "query", "description": "최대 매매가(만원). 미지정 시 기본값 150000", "required": false, "schema": { "type": "integer", "default": 150000, "example": 150000 } },
+          { "name": "minArea", "in": "query", "description": "최소 전용면적(m^2). 미지정 시 기본값 0", "required": false, "schema": { "type": "number", "default": 0, "example": 59 } },
+          { "name": "maxArea", "in": "query", "description": "최대 전용면적(m^2). 미지정 시 기본값 999", "required": false, "schema": { "type": "number", "default": 999, "example": 120 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "조건에 맞는 캐시 항목 목록(0건이면 빈 배열)",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/RegionalListingCacheEntry" } } } }
+          }
+        }
+      }
+    },
+    "/api/listings/live-search/select": {
+      "post": {
+        "tags": ["listings"],
+        "summary": "실시간 검색 결과 선택(단지/매물 승격)",
+        "description": "실시간 검색 결과 캐시 항목을 선택하면 해당 항목을 apartment_complexes/listings에 find-or-create(승격)하고 생성/발견된 매물 id를 반환한다. 좌표가 없는 항목은 이 시점에 Geocoding으로 좌표를 확보하며, 실패 시 422를 반환한다. 실거래가가 탐색 범위(7~15억)를 벗어나는 항목도 422를 반환한다.",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["id"], "properties": { "id": { "type": "integer", "description": "regional_listing_cache 항목 id", "example": 1 } } } } }
+        },
+        "responses": {
+          "201": {
+            "description": "승격된 매물 id",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "listingId": { "type": "integer", "example": 12 } } } } }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "422": { "description": "탐색 범위 벗어남 또는 좌표 확인 불가", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
     "/api/listings/{id}": {
       "get": {
         "tags": ["listings"],
@@ -351,6 +389,24 @@
           "message": { "type": "string", "example": "존재하지 않는 리소스입니다" }
         },
         "required": ["message"]
+      },
+      "RegionalListingCacheEntry": {
+        "type": "object",
+        "description": "실시간 지역 매물 검색 캐시 항목(regional_listing_cache). 세대수 500세대 이상 항목만 live-search 응답에 포함된다(도메인 v0.16).",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "lawdCd": { "type": "string", "description": "법정동코드 앞 5자리", "example": "11740" },
+          "kaptCode": { "type": "string", "nullable": true, "example": "A13805002" },
+          "complexName": { "type": "string", "example": "고덕그라시움" },
+          "address": { "type": "string", "nullable": true, "example": "서울 강동구 상일동 500" },
+          "exclusiveArea": { "type": "number", "example": 84.24 },
+          "salePrice": { "type": "integer", "description": "최근 실거래가(만원)", "example": 145000 },
+          "transactionDate": { "type": "string", "format": "date", "example": "2026-07-15" },
+          "householdCount": { "type": "integer", "nullable": true, "example": 4932 },
+          "latitude": { "type": "number", "nullable": true, "example": 37.554 },
+          "longitude": { "type": "number", "nullable": true, "example": 127.154 },
+          "collectedAt": { "type": "string", "format": "date-time", "example": "2026-08-17T00:00:00Z" }
+        }
       },
       "RemodelingStatus": { "type": "string", "enum": ["해당없음", "추진중", "완료"], "example": "해당없음" },
       "ReconstructionStatus": {

@@ -65,6 +65,11 @@ function selectLatestPerComplexAndArea(transactions) {
   return Array.from(latestByKey.values());
 }
 
+function filterTransactionsByDongs(transactions, dongs) {
+  if (!dongs || dongs.length === 0) return transactions;
+  return transactions.filter((transaction) => dongs.includes(transaction.dong));
+}
+
 function matchAptListEntry(aptName, aptList) {
   const target = normalizeName(aptName);
   return aptList.find((entry) => {
@@ -89,7 +94,16 @@ async function collectRegion(region) {
     fetchTransactionsForRegion(region.lawdCd)
   ]);
 
-  const latestEntries = selectLatestPerComplexAndArea(transactions);
+  const latestEntries = selectLatestPerComplexAndArea(filterTransactionsByDongs(transactions, region.dongs));
+
+  const householdCountByKaptCode = new Map();
+  async function resolveHouseholdCount(kaptCode) {
+    if (!householdCountByKaptCode.has(kaptCode)) {
+      const count = await aptListService.fetchHouseholdCount(kaptCode);
+      householdCountByKaptCode.set(kaptCode, count === undefined ? null : count);
+    }
+    return householdCountByKaptCode.get(kaptCode);
+  }
 
   let collectedCount = 0;
 
@@ -112,7 +126,7 @@ async function collectRegion(region) {
       exclusiveArea: transaction.exclusiveArea,
       salePrice: transaction.transactionPrice,
       transactionDate: transaction.transactionDate,
-      householdCount: matchedAptListEntry ? matchedAptListEntry.householdCount : null,
+      householdCount: matchedAptListEntry ? await resolveHouseholdCount(matchedAptListEntry.kaptCode) : null,
       latitude: coordinates ? coordinates.latitude : null,
       longitude: coordinates ? coordinates.longitude : null
     });
@@ -154,6 +168,7 @@ module.exports = {
   buildAddressFromTransaction,
   fetchTransactionsForRegion,
   selectLatestPerComplexAndArea,
+  filterTransactionsByDongs,
   matchAptListEntry,
   resolveCoordinatesForComplex,
   collectRegion,

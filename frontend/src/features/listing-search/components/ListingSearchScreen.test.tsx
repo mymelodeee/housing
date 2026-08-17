@@ -4,6 +4,9 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { ListingSearchScreen } from './ListingSearchScreen'
 import { useListings } from '../hooks/useListings'
+import { useLiveListings } from '../hooks/useLiveListings'
+import { useSelectLiveListing } from '../hooks/useSelectLiveListing'
+import type { RegionalListing } from '../types'
 import { useFavoriteComplexes } from '../../favorites/hooks/useFavoriteComplexes'
 import { useAddFavoriteComplex } from '../../favorites/hooks/useAddFavoriteComplex'
 import { useRemoveFavoriteComplex } from '../../favorites/hooks/useRemoveFavoriteComplex'
@@ -11,9 +14,18 @@ import { useFavoritesSelectionStore } from '../../favorites/store/favoritesSelec
 import { useCreateComparisonSet } from '../../comparison/hooks/useCreateComparisonSet'
 import type { Listing } from '../../../shared/types/listing'
 import type { FavoriteComplex } from '../../favorites/types'
+import { ApiError } from '../../../shared/api/client'
 
 vi.mock('../hooks/useListings', () => ({
   useListings: vi.fn(),
+}))
+
+vi.mock('../hooks/useLiveListings', () => ({
+  useLiveListings: vi.fn(),
+}))
+
+vi.mock('../hooks/useSelectLiveListing', () => ({
+  useSelectLiveListing: vi.fn(),
 }))
 
 vi.mock('../../favorites/hooks/useFavoriteComplexes', () => ({
@@ -44,6 +56,8 @@ vi.mock('../../../shared/map/MapView', () => ({
 }))
 
 const mockedUseListings = vi.mocked(useListings)
+const mockedUseLiveListings = vi.mocked(useLiveListings)
+const mockedUseSelectLiveListing = vi.mocked(useSelectLiveListing)
 const mockedUseFavoriteComplexes = vi.mocked(useFavoriteComplexes)
 const mockedUseAddFavoriteComplex = vi.mocked(useAddFavoriteComplex)
 const mockedUseRemoveFavoriteComplex = vi.mocked(useRemoveFavoriteComplex)
@@ -121,11 +135,39 @@ function makeMutationResult(mutate: ReturnType<typeof vi.fn>) {
   return { mutate } as unknown as ReturnType<typeof useAddFavoriteComplex>
 }
 
+function makeRegionalListing(id: number, overrides: Partial<RegionalListing> = {}): RegionalListing {
+  return {
+    id,
+    lawdCd: '11740',
+    kaptCode: null,
+    complexName: `실시간단지${id}`,
+    address: `서울 강동구 상일동 ${id}`,
+    exclusiveArea: 84.5,
+    salePrice: 100000 + id * 1000,
+    transactionDate: '2026-07-15',
+    householdCount: 1000,
+    latitude: 37.5 + id * 0.01,
+    longitude: 127.1 + id * 0.01,
+    collectedAt: '2026-08-17T00:00:00Z',
+    ...overrides,
+  }
+}
+
 describe('ListingSearchScreen', () => {
   const createComparisonMutate = vi.fn()
+  const selectLiveListingMutate = vi.fn()
 
   beforeEach(() => {
     mockedUseListings.mockReset()
+    mockedUseLiveListings.mockReset()
+    mockedUseSelectLiveListing.mockReset()
+    selectLiveListingMutate.mockReset()
+    mockedUseLiveListings.mockReturnValue(
+      baseQueryResult({ data: [] }) as unknown as ReturnType<typeof useLiveListings>,
+    )
+    mockedUseSelectLiveListing.mockReturnValue({ mutate: selectLiveListingMutate } as unknown as ReturnType<
+      typeof useSelectLiveListing
+    >)
     mockMapView.mockClear()
     mockedUseFavoriteComplexes.mockReset()
     mockedUseAddFavoriteComplex.mockReset()
@@ -350,5 +392,81 @@ describe('ListingSearchScreen', () => {
       expect.anything(),
     )
     expect(screen.getByTestId('comparison-probe')).toBeInTheDocument()
+  })
+
+  it('실시간 탐색 모드로 전환하면 useLiveListings가 enabled로 호출되고 실시간 카드가 렌더링된다', async () => {
+    mockedUseListings.mockReturnValue(baseQueryResult({ data: [] }))
+    mockedUseLiveListings.mockReturnValue(
+      { data: [makeRegionalListing(1)], isLoading: false, isError: false } as unknown as ReturnType<
+        typeof useLiveListings
+      >,
+    )
+    const user = userEvent.setup()
+
+    renderScreen()
+
+    expect(mockedUseLiveListings).toHaveBeenLastCalledWith(70000, 150000, false)
+
+    await user.click(screen.getByRole('button', { name: '실시간 탐색' }))
+
+    expect(mockedUseLiveListings).toHaveBeenLastCalledWith(70000, 150000, true)
+    expect(screen.getByText('실시간단지1')).toBeInTheDocument()
+    expect(screen.getByText(/1000세대/)).toBeInTheDocument()
+  })
+
+  it('실시간 모드에서 결과가 0건이면 "조건에 맞는 매물이 0건입니다"를 표시한다', async () => {
+    mockedUseListings.mockReturnValue(baseQueryResult({ data: [] }))
+    mockedUseLiveListings.mockReturnValue(
+      baseQueryResult({ data: [] }) as unknown as ReturnType<typeof useLiveListings>,
+    )
+    const user = userEvent.setup()
+
+    renderScreen()
+    await user.click(screen.getByRole('button', { name: '실시간 탐색' }))
+
+    expect(screen.getByText('조건에 맞는 매물이 0건입니다')).toBeInTheDocument()
+  })
+
+  it('실시간 카드 클릭 시 select mutate가 호출되고 성공하면 /listings/{listingId}로 이동한다', async () => {
+    mockedUseListings.mockReturnValue(baseQueryResult({ data: [] }))
+    mockedUseLiveListings.mockReturnValue(
+      { data: [makeRegionalListing(5)], isLoading: false, isError: false } as unknown as ReturnType<
+        typeof useLiveListings
+      >,
+    )
+    selectLiveListingMutate.mockImplementation((_id, options) => {
+      options?.onSuccess?.({ listingId: 42 })
+    })
+    const user = userEvent.setup()
+
+    const { container } = renderScreen()
+    await user.click(screen.getByRole('button', { name: '실시간 탐색' }))
+
+    const card = container.querySelector('.listing-card')
+    expect(card).not.toBeNull()
+    await user.click(card as Element)
+
+    expect(selectLiveListingMutate).toHaveBeenCalledWith(5, expect.anything())
+    expect(screen.getByTestId('detail-probe')).toBeInTheDocument()
+  })
+
+  it('실시간 선택이 실패하면 에러 모달이 표시된다', async () => {
+    mockedUseListings.mockReturnValue(baseQueryResult({ data: [] }))
+    mockedUseLiveListings.mockReturnValue(
+      { data: [makeRegionalListing(5)], isLoading: false, isError: false } as unknown as ReturnType<
+        typeof useLiveListings
+      >,
+    )
+    selectLiveListingMutate.mockImplementation((_id, options) => {
+      options?.onError?.(new ApiError(422, '탐색 범위를 벗어납니다'))
+    })
+    const user = userEvent.setup()
+
+    const { container } = renderScreen()
+    await user.click(screen.getByRole('button', { name: '실시간 탐색' }))
+    await user.click(container.querySelector('.listing-card') as Element)
+
+    expect(screen.getByText('실시간 매물 선택 실패')).toBeInTheDocument()
+    expect(screen.getByText('탐색 범위를 벗어납니다')).toBeInTheDocument()
   })
 })

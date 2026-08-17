@@ -1,7 +1,7 @@
 # housing ERD (Entity-Relationship Diagram)
 
-- 버전: v0.7
-- 최종 수정일: 2026-07-10
+- 버전: v0.8
+- 최종 수정일: 2026-08-17
 - 참조 문서: [1-domain-definition.md](./1-domain-definition.md) (v0.10), [2-prd.md](./2-prd.md) (v0.6), [4-project-principle.md](./4-project-principle.md) (v0.5)
 - 버전 관리 규칙: 본 문서를 수정할 때마다 상단 버전(v0.1 → v0.2 …)과 최종 수정일을 함께 갱신한다. 과거 버전 이력은 별도 변경이력 절에 누적 기록한다.
 
@@ -16,6 +16,7 @@
 | v0.5 | 2026-07-05 | 참조 문서 버전 갱신(PRD v0.6, 프로젝트 구조 원칙 v0.5) |
 | v0.6 | 2026-07-06 | 로컬 개발 환경에 실제 설치된 버전 확인 결과를 반영해 대상 DB 버전을 PostgreSQL 17 → 18.4로 정정 |
 | v0.7 | 2026-07-10 | 실데이터 연동 반영(도메인 v0.10): `apartment_complexes`에 `lawd_cd`/`molit_apt_name` 추가(국토부 실거래가 API 실시간 조회 매핑용, 둘 다 nullable). 학군 정보 산출을 위한 `elementary_schools` 테이블 신설(FK 관계 없는 독립 참조 테이블, data.go.kr 정적 데이터셋 임포트 결과). `price_history`는 매핑 정보가 없는 단지의 폴백 데이터로 역할이 한정됨을 명시 |
+| v0.8 | 2026-08-17 | 문서 누락 보완: `database/schema.sql`(테이블 11번)과 마이그레이션 파일에는 이미 존재하던 `regional_listing_cache`(경기남부+서울 실시간(배치 캐싱) 매물 검색용 캐시 테이블, 도메인 v0.14 후속)를 ERD와 테이블별 비고에 추가. FK 관계 없는 독립 테이블이며, 사용자가 검색 결과를 선택하는 시점에 `apartment_complexes`/`listings`로 승격(upsert)되는 구조임을 명시 |
 
 ---
 
@@ -163,6 +164,22 @@ erDiagram
         varchar lookup_period_type "조회 기간 구분(최근 20년 / 최초거래 이후)"
     }
     %% apartment_complexes.lawd_cd/molit_apt_name이 모두 있는 단지는 이 테이블 대신 국토부 API를 매 요청마다 실시간 조회(fetch-through)하며, 조회 기간은 항상 "최근 3년"이다(§3.7). 이 테이블은 매핑 정보가 없는 단지의 폴백 데이터로만 쓰인다.
+
+    regional_listing_cache {
+        integer id PK
+        varchar lawd_cd "법정동코드 앞 5자리(target-regions.js 기준)"
+        varchar kapt_code "국토부 공동주택 단지목록 kaptCode(매칭 실패 시 null)"
+        varchar complex_name "단지명"
+        varchar address "실거래가 API 지번/도로명 주소(null 허용)"
+        numeric exclusive_area "전용면적 m2"
+        integer sale_price "최근 실거래가(만원)"
+        date transaction_date "대표 거래일자"
+        integer household_count "세대수(null 허용)"
+        numeric latitude "위도(null 허용)"
+        numeric longitude "경도(null 허용)"
+        timestamp collected_at "수집 시각"
+    }
+    %% 배치 수집기(collect-regional-listings.js)가 채우는 실시간 지역 매물 검색용 캐시. FK 관계 없는 독립 테이블이며, (lawd_cd, complex_name, exclusive_area) UNIQUE. 사용자가 검색 결과를 선택하면 apartment_complexes/listings로 승격(upsert)된다.
 ```
 
 ---
@@ -181,6 +198,7 @@ erDiagram
 | `comparison_set_listings` | §4.5(추가 설계) | 매물 비교용 N:M 매핑 테이블. 하나의 비교셋에 2~5개 대상이 포함되어야 하는 제약은 서비스 레이어에서 검증한다. `(comparison_set_id, listing_id)` UNIQUE 제약으로 동일 매물의 중복 포함은 DB 레벨에서 방지하며, 프론트엔드는 이 제약 위반 시 "중복입니다" 팝업을 표시한다(도메인 §3.3/§4.5, PRD F3). |
 | `price_history` | §4.7 | 도메인 v0.8에서 `listing_id` → `complex_id`로 재소속(단지별로 다건의 거래 이력이 쌓이는 1:N 구조). `lookup_period_type`은 20년 이상 데이터 보유 여부에 따라 "최근 20년" 또는 "최초거래 이후" 값을 갖는다(도메인 §4.7, §3.7). `apartment_complexes.lawd_cd`/`molit_apt_name`이 모두 있는 단지는 이 테이블을 쓰지 않고 국토부 API를 실시간 조회(fetch-through)하므로, 이 테이블은 매핑 정보가 없는 단지의 폴백 데이터로만 채운다. |
 | `elementary_schools` | §3.7.1(도메인 v0.10 신설) | 전국초중등학교위치표준데이터(data.go.kr, 정적 데이터셋) 임포트 결과. 다른 테이블과 FK 관계 없이 독립적으로 존재하며, 조회 시점에 단지 좌표와의 haversine 거리 계산으로 최근접 학교를 산정하는 데만 쓰인다. 2026-07-10 기준 data.go.kr API 활용신청 승인 대기 중이라 데이터가 비어 있다. |
+| `regional_listing_cache` | 도메인 v0.14 후속(실시간 지역 매물 검색) | 국토교통부 실거래가 API(지역+월 단위)를 배치 수집기(`backend/scripts/collect-regional-listings.js`, `npm run collect-listings`)로 주기 수집해 캐싱하는 테이블. `apartment_complexes`/`listings`와 별개의 독립 테이블(FK 없음)이며, 실제 "매물 호가"가 아닌 "최근 실거래가"를 시세 근사치로 사용한다. `GET /api/listings/live-search`가 이 테이블을 조회하고, 사용자가 결과를 선택(`POST /api/listings/live-search/select`)하는 시점에 해당 행이 `apartment_complexes`/`listings`로 승격(upsert)된다. `(lawd_cd, complex_name, exclusive_area)` UNIQUE로 재수집 시 중복을 방지한다. |
 
 ---
 

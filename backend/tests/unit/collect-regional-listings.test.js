@@ -12,6 +12,7 @@ const {
   buildAddressFromTransaction,
   fetchTransactionsForRegion,
   selectLatestPerComplexAndArea,
+  filterTransactionsByDongs,
   matchAptListEntry,
   resolveCoordinatesForComplex,
   collectRegion
@@ -55,6 +56,24 @@ describe('scripts/collect-regional-listings', () => {
     it('dong 또는 jibun이 없으면 null을 반환한다', () => {
       expect(buildAddressFromTransaction('화성', { dong: null, jibun: '123' })).toBeNull();
       expect(buildAddressFromTransaction('화성', { dong: '청계동', jibun: null })).toBeNull();
+    });
+  });
+
+  describe('filterTransactionsByDongs', () => {
+    const transactions = [
+      { aptName: 'A', dong: '장지동' },
+      { aptName: 'B', dong: '문정동' },
+      { aptName: 'C', dong: '거여동' }
+    ];
+
+    it('dongs가 지정되면 해당 법정동의 거래만 남긴다', () => {
+      const result = filterTransactionsByDongs(transactions, ['장지동', '거여동']);
+      expect(result.map((t) => t.aptName)).toEqual(['A', 'C']);
+    });
+
+    it('dongs가 없거나 빈 배열이면 전체를 그대로 반환한다', () => {
+      expect(filterTransactionsByDongs(transactions, undefined)).toEqual(transactions);
+      expect(filterTransactionsByDongs(transactions, [])).toEqual(transactions);
     });
   });
 
@@ -159,10 +178,11 @@ describe('scripts/collect-regional-listings', () => {
   });
 
   describe('collectRegion', () => {
-    it('단지 목록과 실거래 데이터를 매칭해 캐시에 upsert한다', async () => {
+    it('단지 목록과 실거래 데이터를 매칭하고 기본정보 API로 세대수를 조회해 캐시에 upsert한다', async () => {
       aptListService.fetchAptListForRegion.mockResolvedValue([
-        { kaptCode: 'A1', kaptName: '동탄역 시범 우남퍼스트빌', householdCount: 500 }
+        { kaptCode: 'A1', kaptName: '동탄역 시범 우남퍼스트빌' }
       ]);
+      aptListService.fetchHouseholdCount.mockResolvedValue(500);
       molitApiRepository.fetchAptTradeXml.mockResolvedValue(
         `<response>
           <header><resultCode>00</resultCode></header>
@@ -194,6 +214,33 @@ describe('scripts/collect-regional-listings', () => {
           latitude: 37.1,
           longitude: 127.1
         })
+      );
+      expect(aptListService.fetchHouseholdCount).toHaveBeenCalledWith('A1');
+    });
+
+    it('매칭된 단지가 없으면 세대수 조회 없이 householdCount null로 upsert한다', async () => {
+      aptListService.fetchAptListForRegion.mockResolvedValue([]);
+      molitApiRepository.fetchAptTradeXml.mockResolvedValue(
+        `<response>
+          <header><resultCode>00</resultCode></header>
+          <body><items><item>
+            <aptNm>동탄역 시범 우남퍼스트빌</aptNm>
+            <dealYear>2026</dealYear><dealMonth>6</dealMonth><dealDay>1</dealDay>
+            <dealAmount>95,000</dealAmount><excluUseAr>84.98</excluUseAr>
+            <umdNm>청계동</umdNm><jibun>123</jibun>
+          </item></items></body>
+        </response>`
+      );
+      regionalListingCacheRepository.findCoordinatesByComplexName.mockResolvedValue(null);
+      geocodingService.geocodeAddress.mockResolvedValue({ latitude: 37.1, longitude: 127.1 });
+      regionalListingCacheRepository.upsertEntry.mockResolvedValue({ id: 1 });
+
+      const count = await collectRegion({ regionName: '화성', lawdCd: '41590' });
+
+      expect(count).toBe(1);
+      expect(aptListService.fetchHouseholdCount).not.toHaveBeenCalled();
+      expect(regionalListingCacheRepository.upsertEntry).toHaveBeenCalledWith(
+        expect.objectContaining({ kaptCode: null, householdCount: null })
       );
     });
   });
