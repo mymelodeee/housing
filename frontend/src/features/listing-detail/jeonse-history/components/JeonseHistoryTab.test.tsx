@@ -2,13 +2,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { JeonseHistoryTab } from './JeonseHistoryTab'
 import { useListingJeonseHistory } from '../hooks/useListingJeonseHistory'
+import { useListing } from '../../hooks/useListing'
 import type { JeonseHistoryResponse } from '../types'
 
 vi.mock('../hooks/useListingJeonseHistory', () => ({
   useListingJeonseHistory: vi.fn(),
 }))
+vi.mock('../../hooks/useListing', () => ({
+  useListing: vi.fn(),
+}))
 
 const mockedHook = vi.mocked(useListingJeonseHistory)
+const mockedUseListing = vi.mocked(useListing)
 
 function mockResult(overrides: Partial<ReturnType<typeof useListingJeonseHistory>>) {
   return { data: undefined, isLoading: false, isError: false, ...overrides } as ReturnType<
@@ -37,6 +42,8 @@ const sampleData: JeonseHistoryResponse = {
 describe('JeonseHistoryTab', () => {
   beforeEach(() => {
     mockedHook.mockReset()
+    mockedUseListing.mockReset()
+    mockedUseListing.mockReturnValue({ data: undefined } as ReturnType<typeof useListing>)
   })
 
   it('로딩 중이면 불러오는 중...을 표시한다', () => {
@@ -59,14 +66,15 @@ describe('JeonseHistoryTab', () => {
     expect(screen.getByText('실거래 이력 없음')).toBeInTheDocument()
   })
 
-  it('데이터가 있으면 범례(매매가/전세가/전세가율)와 그래프, 전세 거래 테이블(내림차순)을 렌더링한다', () => {
+  it('데이터가 있으면 범례(매매가/전세가/전세가율)와 그래프, 전세 거래 테이블(내림차순), 요약을 렌더링한다', () => {
     mockedHook.mockReturnValue(mockResult({ data: sampleData }))
-    render(<JeonseHistoryTab listingId="12" />)
+    const { container } = render(<JeonseHistoryTab listingId="12" />)
 
     expect(screen.getByText('매매가')).toBeInTheDocument()
     expect(screen.getAllByText('전세가').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('전세가율(우측)')).toBeInTheDocument()
     expect(screen.getByRole('img', { name: '매매가·전세가·전세가율 변동 그래프' })).toBeInTheDocument()
+    expect(container.querySelector('.jeonse-history-tab__ratio-badge')).toHaveTextContent('전세가율 60%')
 
     const rows = screen.getAllByRole('row').slice(1)
     expect(rows[0]).toHaveTextContent('2026-07-20')

@@ -1,23 +1,34 @@
 {
-  "_comment": "형식 검증용 샘플 파일 — 실제 조사 전. 단지명은 placeholder이며 어떤 값도 실제 정보가 아니다. source_type='기타', reliability='low', value_status='unknown'으로 고정해 실제 데이터로 오인되지 않게 한다.",
+  "_comment": "용인시 수지구(41465)·수원시 영통구(41117) 리모델링 추진 아파트 실제 조사 결과(2026-09-07 기준). 각 fact의 checked_at은 이 조사를 수행한 날짜이며, effective_date는 해당 사실이 실제로 발생한 날짜다. 기사에 정확한 금액·날짜가 없는 항목은 추정하지 않고 value_status='unknown', value='미공개'로 남긴다.",
   "projects": [
     {
       "lawdCd": "41465",
-      "complexName": "샘플단지A",
+      "complexName": "수지초입마을아파트",
       "regionName": "용인시 수지구",
-      "projectName": "샘플단지A 리모델링 사업(샘플)",
+      "projectName": "수지초입마을아파트 리모델링주택조합",
       "lastCheckedAt": "2026-09-07",
-      "note": "형식 검증용 샘플 — 실제 조사 전",
+      "note": "조합장 김도형. 수지 지구에서 처음으로 리모델링 이주 개시를 통보한 단지(2025-12-05 보도). 풍림상가 임차인도 이주 대상에 포함.",
       "sources": [
         {
-          "key": "a1",
-          "sourceUrl": null,
-          "sourceName": "형식 검증용 샘플 출처",
-          "sourceTitle": null,
-          "sourceType": "기타",
-          "sourceDate": null,
+          "key": "chowip-1",
+          "sourceUrl": "https://www.asn24.com/news/articleView.html?idxno=491609",
+          "sourceName": "경인신문",
+          "sourceTitle": "용인특례시 수지구 리모델링 사업 본궤도… 초입마을아파트 대규모 이주 시작",
+          "sourceType": "뉴스",
+          "sourceDate": "2025-12-05",
           "checkedAt": "2026-09-07",
-          "reliability": "low",
+          "reliability": "medium",
+          "isAccessible": true
+        },
+        {
+          "key": "chowip-2",
+          "sourceUrl": "https://news.skbroadband.com/news/articleView.html?idxno=220635",
+          "sourceName": "B tv news",
+          "sourceTitle": "용인 수지 '리모델링 이주' 시작… 올해 2천8백 세대 짐싼다",
+          "sourceType": "뉴스",
+          "sourceDate": "2026-03-12",
+          "checkedAt": "2026-09-07",
+          "reliability": "medium",
           "isAccessible": true
         }
       ],
@@ -25,104 +36,104 @@
         {
           "fieldName": "current_stage",
           "fieldKey": null,
-          "value": "미확인",
+          "value": "이주",
           "valueNumeric": null,
           "unit": null,
-          "valueStatus": "unknown",
-          "effectiveDate": null,
+          "valueStatus": "confirmed",
+          "effectiveDate": "2026-02-02",
           "checkedAt": "2026-09-07",
-          "sourceKey": "a1",
-          "confidence": "low"
+          "sourceKey": "chowip-1",
+          "confidence": "medium"
         },
         {
           "fieldName": "household_count_before",
           "fieldKey": null,
-          "value": "미확인",
-          "valueNumeric": null,
+          "value": "1620",
+          "valueNumeric": 1620,
           "unit": "세대",
-          "valueStatus": "unknown",
-          "effectiveDate": null,
+          "valueStatus": "confirmed",
+          "effectiveDate": "2025-12-05",
           "checkedAt": "2026-09-07",
-          "sourceKey": "a1",
-          "confidence": "low"
+          "sourceKey": "chowip-1",
+          "confidence": "medium"
         },
         {
           "fieldName": "household_count_after",
           "fieldKey": null,
-          "value": "미확인",
+          "value": "미공개(개별 단지 수치 미보도 — 4,300여→4,800여 세대는 풍덕천동 등 복수 단지 합산치)",
           "valueNumeric": null,
           "unit": "세대",
           "valueStatus": "unknown",
           "effectiveDate": null,
           "checkedAt": "2026-09-07",
-          "sourceKey": "a1",
+          "sourceKey": "chowip-2",
           "confidence": "low"
         },
         {
           "fieldName": "contribution_amount",
-          "fieldKey": "샘플평형",
-          "value": "미확인",
+          "fieldKey": null,
+          "value": "미공개",
           "valueNumeric": null,
           "unit": "만원",
           "valueStatus": "unknown",
           "effectiveDate": null,
           "checkedAt": "2026-09-07",
-          "sourceKey": "a1",
+          "sourceKey": null,
           "confidence": "low"
         },
         {
           "fieldName": "loan_status",
           "fieldKey": null,
-          "value": "미확인",
+          "value": "정보 없음(이주비 대출 관련 보도 없음)",
           "valueNumeric": null,
           "unit": null,
           "valueStatus": "unknown",
           "effectiveDate": null,
           "checkedAt": "2026-09-07",
-          "sourceKey": "a1",
+          "sourceKey": null,
           "confidence": "low"
         },
         {
           "fieldName": "move_out_schedule",
           "fieldKey": null,
-          "value": "미확인",
+          "value": "2026-02-02 ~ 2026-06-01 이주",
           "valueNumeric": null,
           "unit": null,
-          "valueStatus": "unknown",
-          "effectiveDate": null,
+          "valueStatus": "confirmed",
+          "effectiveDate": "2026-02-02",
           "checkedAt": "2026-09-07",
-          "sourceKey": "a1",
-          "confidence": "low"
+          "sourceKey": "chowip-1",
+          "confidence": "high"
         }
       ],
       "stageHistory": [
         {
-          "stage": "추진위원회",
-          "effectiveDate": null,
-          "status": "unknown",
-          "sourceKey": "a1",
+          "stage": "이주",
+          "effectiveDate": "2026-02-02",
+          "status": "confirmed",
+          "sourceKey": "chowip-1",
           "checkedAt": "2026-09-07",
-          "note": "형식 검증용 샘플 — 실제 조사 전"
+          "note": "수지 지구 최초 리모델링 이주 개시 통보(조합장 김도형)"
         }
       ]
     },
     {
       "lawdCd": "41117",
-      "complexName": "샘플단지B",
+      "complexName": "신성신안쌍용진흥아파트",
       "regionName": "수원시 영통구",
-      "projectName": "샘플단지B 리모델링 사업(샘플)",
+      "projectName": "신성신안쌍용진흥아파트 리모델링조합(영통5민영)",
       "lastCheckedAt": "2026-09-07",
-      "note": "형식 검증용 샘플 — 실제 조사 전",
+      "note": "수원시 사상 최초로 리모델링 사업계획승인을 받은 단지. 1997년 준공.",
       "sources": [
         {
-          "key": "b1",
-          "sourceUrl": null,
-          "sourceName": "형식 검증용 샘플 출처",
-          "sourceTitle": null,
-          "sourceType": "기타",
-          "sourceDate": null,
+          "key": "sinseong-1",
+          "sourceUrl": "https://www.newsis.com/view/NISX20241024_0002932421",
+          "sourceName": "뉴시스",
+          "sourceTitle": "수원시, 아파트 리모델링 사업계획 첫 승인…지역 부동산 관심",
+          "sourceType": "지자체보도",
+          "sourceDate": "2024-10-24",
           "checkedAt": "2026-09-07",
-          "reliability": "low",
+          "reliability": "medium",
           "isAccessible": true
         }
       ],
@@ -130,36 +141,269 @@
         {
           "fieldName": "current_stage",
           "fieldKey": null,
-          "value": "미확인",
+          "value": "사업계획승인",
           "valueNumeric": null,
           "unit": null,
+          "valueStatus": "confirmed",
+          "effectiveDate": null,
+          "checkedAt": "2026-09-07",
+          "sourceKey": "sinseong-1",
+          "confidence": "medium"
+        },
+        {
+          "fieldName": "household_count_before",
+          "fieldKey": null,
+          "value": "1616",
+          "valueNumeric": 1616,
+          "unit": "세대",
+          "valueStatus": "confirmed",
+          "effectiveDate": null,
+          "checkedAt": "2026-09-07",
+          "sourceKey": "sinseong-1",
+          "confidence": "high"
+        },
+        {
+          "fieldName": "household_count_after",
+          "fieldKey": null,
+          "value": "1858",
+          "valueNumeric": 1858,
+          "unit": "세대",
+          "valueStatus": "confirmed",
+          "effectiveDate": null,
+          "checkedAt": "2026-09-07",
+          "sourceKey": "sinseong-1",
+          "confidence": "high"
+        },
+        {
+          "fieldName": "contribution_amount",
+          "fieldKey": null,
+          "value": "미공개(조합원 분담금 확정 절차 진행 중으로만 보도)",
+          "valueNumeric": null,
+          "unit": "만원",
           "valueStatus": "unknown",
           "effectiveDate": null,
           "checkedAt": "2026-09-07",
-          "sourceKey": "b1",
+          "sourceKey": "sinseong-1",
           "confidence": "low"
         },
         {
           "fieldName": "loan_status",
           "fieldKey": null,
-          "value": "미확인",
+          "value": "정보 없음",
           "valueNumeric": null,
           "unit": null,
           "valueStatus": "unknown",
           "effectiveDate": null,
           "checkedAt": "2026-09-07",
-          "sourceKey": "b1",
+          "sourceKey": null,
+          "confidence": "low"
+        },
+        {
+          "fieldName": "move_out_schedule",
+          "fieldKey": null,
+          "value": "착공 예정 2026년 상반기, 준공 예정 2030년 상반기(정확한 일자 미정)",
+          "valueNumeric": null,
+          "unit": null,
+          "valueStatus": "estimated",
+          "effectiveDate": null,
+          "checkedAt": "2026-09-07",
+          "sourceKey": "sinseong-1",
+          "confidence": "medium"
+        }
+      ],
+      "stageHistory": [
+        {
+          "stage": "사업계획승인",
+          "effectiveDate": null,
+          "status": "confirmed",
+          "sourceKey": "sinseong-1",
+          "checkedAt": "2026-09-07",
+          "note": "수원시 사상 최초 리모델링 사업계획승인(2024년 10월 승인 보도, 정확한 승인일자는 기사에 미기재)"
+        }
+      ]
+    },
+    {
+      "lawdCd": "41117",
+      "complexName": "벽적골주공8단지",
+      "regionName": "수원시 영통구",
+      "projectName": "벽적골주공8단지 리모델링조합",
+      "lastCheckedAt": "2026-09-07",
+      "note": "조합장 강병우. 2025-03-24 기사 기준 사업시행결의서(분담금 통보) 허가동의율 78.7% 달성.",
+      "sources": [
+        {
+          "key": "byeokjeokgol8-1",
+          "sourceUrl": "https://www.housingherald.co.kr/news/articleView.html?idxno=49844",
+          "sourceName": "하우징헤럴드",
+          "sourceTitle": "수원 벽적골8단지 리모델링, 사업계획승인 신청",
+          "sourceType": "뉴스",
+          "sourceDate": "2025-03-24",
+          "checkedAt": "2026-09-07",
+          "reliability": "medium",
+          "isAccessible": true
+        }
+      ],
+      "facts": [
+        {
+          "fieldName": "current_stage",
+          "fieldKey": null,
+          "value": "사업시행계획 및 리모델링 행위허가 신청",
+          "valueNumeric": null,
+          "unit": null,
+          "valueStatus": "proposal",
+          "effectiveDate": "2025-03-21",
+          "checkedAt": "2026-09-07",
+          "sourceKey": "byeokjeokgol8-1",
+          "confidence": "medium"
+        },
+        {
+          "fieldName": "household_count_before",
+          "fieldKey": null,
+          "value": "1548",
+          "valueNumeric": 1548,
+          "unit": "세대",
+          "valueStatus": "estimated",
+          "effectiveDate": null,
+          "checkedAt": "2026-09-07",
+          "sourceKey": "byeokjeokgol8-1",
+          "confidence": "medium"
+        },
+        {
+          "fieldName": "household_count_after",
+          "fieldKey": null,
+          "value": "1687",
+          "valueNumeric": 1687,
+          "unit": "세대",
+          "valueStatus": "estimated",
+          "effectiveDate": null,
+          "checkedAt": "2026-09-07",
+          "sourceKey": "byeokjeokgol8-1",
+          "confidence": "medium"
+        },
+        {
+          "fieldName": "contribution_amount",
+          "fieldKey": null,
+          "value": "미공개(사업시행결의서로 조합원별 분담금 통보, 구체 금액 비공개)",
+          "valueNumeric": null,
+          "unit": "만원",
+          "valueStatus": "unknown",
+          "effectiveDate": null,
+          "checkedAt": "2026-09-07",
+          "sourceKey": "byeokjeokgol8-1",
+          "confidence": "low"
+        },
+        {
+          "fieldName": "loan_status",
+          "fieldKey": null,
+          "value": "정보 없음",
+          "valueNumeric": null,
+          "unit": null,
+          "valueStatus": "unknown",
+          "effectiveDate": null,
+          "checkedAt": "2026-09-07",
+          "sourceKey": null,
+          "confidence": "low"
+        }
+      ],
+      "stageHistory": []
+    },
+    {
+      "lawdCd": "41117",
+      "complexName": "벽적골 두산우성한신아파트",
+      "regionName": "수원시 영통구",
+      "projectName": "벽적골 두산우성한신아파트 리모델링주택조합",
+      "lastCheckedAt": "2026-09-07",
+      "note": "정기총회 찬성률 51.5%로 사업 의결. 일부 주민 반발 및 매도청구소송 진행 중(2026-02-13 보도 기준).",
+      "sources": [
+        {
+          "key": "byeokjeokgol-dusan-1",
+          "sourceUrl": "https://www.kyeongin.com/article/1759121",
+          "sourceName": "경인일보",
+          "sourceTitle": "\"사업 강행\" vs \"결사반대\" 수원 영통 대단지 리모델링 내홍",
+          "sourceType": "뉴스",
+          "sourceDate": "2026-02-13",
+          "checkedAt": "2026-09-07",
+          "reliability": "medium",
+          "isAccessible": true
+        }
+      ],
+      "facts": [
+        {
+          "fieldName": "current_stage",
+          "fieldKey": null,
+          "value": "사업계획승인",
+          "valueNumeric": null,
+          "unit": null,
+          "valueStatus": "confirmed",
+          "effectiveDate": "2024-12-26",
+          "checkedAt": "2026-09-07",
+          "sourceKey": "byeokjeokgol-dusan-1",
+          "confidence": "medium"
+        },
+        {
+          "fieldName": "household_count_before",
+          "fieldKey": null,
+          "value": "1842",
+          "valueNumeric": 1842,
+          "unit": "세대",
+          "valueStatus": "confirmed",
+          "effectiveDate": null,
+          "checkedAt": "2026-09-07",
+          "sourceKey": "byeokjeokgol-dusan-1",
+          "confidence": "medium"
+        },
+        {
+          "fieldName": "household_count_after",
+          "fieldKey": null,
+          "value": "미공개(기사에 변경 후 세대수 미기재)",
+          "valueNumeric": null,
+          "unit": "세대",
+          "valueStatus": "unknown",
+          "effectiveDate": null,
+          "checkedAt": "2026-09-07",
+          "sourceKey": "byeokjeokgol-dusan-1",
+          "confidence": "low"
+        },
+        {
+          "fieldName": "contribution_amount",
+          "fieldKey": null,
+          "value": "미공개",
+          "valueNumeric": null,
+          "unit": "만원",
+          "valueStatus": "unknown",
+          "effectiveDate": null,
+          "checkedAt": "2026-09-07",
+          "sourceKey": null,
+          "confidence": "low"
+        },
+        {
+          "fieldName": "loan_status",
+          "fieldKey": null,
+          "value": "정보 없음",
+          "valueNumeric": null,
+          "unit": null,
+          "valueStatus": "unknown",
+          "effectiveDate": null,
+          "checkedAt": "2026-09-07",
+          "sourceKey": null,
           "confidence": "low"
         }
       ],
       "stageHistory": [
         {
-          "stage": "추진위원회",
-          "effectiveDate": null,
-          "status": "unknown",
-          "sourceKey": "b1",
+          "stage": "조합설립인가",
+          "effectiveDate": "2021-12-29",
+          "status": "confirmed",
+          "sourceKey": "byeokjeokgol-dusan-1",
           "checkedAt": "2026-09-07",
-          "note": "형식 검증용 샘플 — 실제 조사 전"
+          "note": null
+        },
+        {
+          "stage": "사업계획승인",
+          "effectiveDate": "2024-12-26",
+          "status": "confirmed",
+          "sourceKey": "byeokjeokgol-dusan-1",
+          "checkedAt": "2026-09-07",
+          "note": "정기총회 찬성률 51.5%로 의결. 일부 주민 반발 및 매도청구소송 진행 중(2026-02-13 보도 기준)"
         }
       ]
     }

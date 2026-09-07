@@ -1,9 +1,17 @@
 jest.mock('../../src/services/apartment-complexes.service');
+jest.mock('../../src/services/complex-detail.service');
 
 const apartmentComplexesService = require('../../src/services/apartment-complexes.service');
+const complexDetailService = require('../../src/services/complex-detail.service');
 const {
   listComplexes,
   getComplex,
+  getPriceHistory,
+  getJeonseHistory,
+  getAssignedSchools,
+  getRemodeling,
+  getRegulation,
+  getLoanSimulation,
 } = require('../../src/controllers/complexes.controller');
 
 const createRes = () => ({
@@ -70,6 +78,74 @@ describe('controllers/complexes.controller', () => {
       await listComplexes(req, res, next);
 
       expect(res.json).toHaveBeenCalledWith([]);
+    });
+  });
+
+  describe('getPriceHistory', () => {
+    it('서비스가 null이면 404, 값이 있으면 res.json으로 반환한다', async () => {
+      complexDetailService.getPriceHistory.mockResolvedValue(null);
+      const next1 = jest.fn();
+      await getPriceHistory({ params: { id: '999' } }, createRes(), next1);
+      expect(next1.mock.calls[0][0].status).toBe(404);
+
+      const result = { complexId: 1, entries: [] };
+      complexDetailService.getPriceHistory.mockResolvedValue(result);
+      const res2 = createRes();
+      await getPriceHistory({ params: { id: '1' } }, res2, jest.fn());
+      expect(complexDetailService.getPriceHistory).toHaveBeenCalledWith(1);
+      expect(res2.json).toHaveBeenCalledWith(result);
+    });
+  });
+
+  describe('getJeonseHistory', () => {
+    it('서비스 결과를 그대로 반환한다', async () => {
+      const result = { complexId: 1, saleEntries: [], jeonseEntries: [], ratioEntries: [] };
+      complexDetailService.getJeonseHistory.mockResolvedValue(result);
+      const res = createRes();
+      await getJeonseHistory({ params: { id: '1' } }, res, jest.fn());
+      expect(res.json).toHaveBeenCalledWith(result);
+    });
+  });
+
+  describe('getAssignedSchools', () => {
+    it('서비스 결과를 그대로 반환한다', async () => {
+      const result = { complexId: 1, elementarySchool: null, middleSchool: null };
+      complexDetailService.getAssignedSchools.mockResolvedValue(result);
+      const res = createRes();
+      await getAssignedSchools({ params: { id: '1' } }, res, jest.fn());
+      expect(res.json).toHaveBeenCalledWith(result);
+    });
+  });
+
+  describe('getRemodeling', () => {
+    it('서비스 결과를 그대로 반환한다', async () => {
+      const result = { complexId: 1, hasProject: false };
+      complexDetailService.getRemodeling.mockResolvedValue(result);
+      const res = createRes();
+      await getRemodeling({ params: { id: '1' } }, res, jest.fn());
+      expect(res.json).toHaveBeenCalledWith(result);
+    });
+  });
+
+  describe('getRegulation', () => {
+    it('query의 salePrice를 Number로 변환해 서비스에 전달한다', async () => {
+      complexDetailService.getRegulation.mockResolvedValue({ complexId: 1 });
+      await getRegulation({ params: { id: '1' }, query: { salePrice: '95000' } }, createRes(), jest.fn());
+      expect(complexDetailService.getRegulation).toHaveBeenCalledWith(1, { salePrice: 95000 });
+    });
+
+    it('salePrice가 없으면 undefined로 전달한다', async () => {
+      complexDetailService.getRegulation.mockResolvedValue({ complexId: 1 });
+      await getRegulation({ params: { id: '1' }, query: {} }, createRes(), jest.fn());
+      expect(complexDetailService.getRegulation).toHaveBeenCalledWith(1, { salePrice: undefined });
+    });
+  });
+
+  describe('getLoanSimulation', () => {
+    it('query의 salePrice를 Number로 변환해 서비스에 전달한다', async () => {
+      complexDetailService.getLoanSimulation.mockResolvedValue({ complexId: 1 });
+      await getLoanSimulation({ params: { id: '1' }, query: { salePrice: '95000' } }, createRes(), jest.fn());
+      expect(complexDetailService.getLoanSimulation).toHaveBeenCalledWith(1, { salePrice: 95000 });
     });
   });
 });

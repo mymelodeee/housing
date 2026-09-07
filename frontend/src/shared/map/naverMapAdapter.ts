@@ -1,6 +1,6 @@
 import type { MapAdapter, MapPoint } from './mapAdapter'
 
-const DEFAULT_CENTER = { lat: 37.5665, lng: 126.978 }
+const DEFAULT_CENTER = { lat: 37.2002, lng: 127.095 }
 const DEFAULT_ZOOM = 12
 
 export class NaverMapAdapter implements MapAdapter {

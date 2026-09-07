@@ -21,22 +21,6 @@ describe('repositories/remodeling.repository', () => {
   });
 
   describe('조회', () => {
-    it('findProjectByLawdCdAndName은 공백/괄호/하이픈을 제거해 단지명을 비교한다', async () => {
-      mockRows([{ id: 1 }]);
-
-      const result = await repository.findProjectByLawdCdAndName({ lawdCd: '41465', complexName: '샘플 단지A' });
-
-      expect(lastSql()).toContain('regexp_replace');
-      expect(lastParams()).toEqual(['41465', '샘플 단지A']);
-      expect(result).toEqual({ id: 1 });
-    });
-
-    it('findProjectByLawdCdAndName은 결과가 없으면 null을 반환한다', async () => {
-      mockRows([]);
-
-      expect(await repository.findProjectByLawdCdAndName({ lawdCd: '41465', complexName: '없음' })).toBeNull();
-    });
-
     it('findProjectByComplexId는 complex_id로 조회하고 없으면 null이다', async () => {
       mockRows([]);
 
@@ -215,15 +199,6 @@ describe('repositories/remodeling.repository', () => {
       expect(lastSql()).not.toContain('DELETE');
     });
 
-    it('linkProjectToComplex는 사업을 단지에 연결한다', async () => {
-      mockRows([{ id: 100, complex_id: 5 }]);
-
-      const result = await repository.linkProjectToComplex(100, 5);
-
-      expect(lastParams()).toEqual([100, 5]);
-      expect(result).toEqual({ id: 100, complex_id: 5 });
-    });
-
     it('갱신 대상이 없으면 null을 반환한다', async () => {
       mockRows([]);
 
@@ -234,8 +209,6 @@ describe('repositories/remodeling.repository', () => {
       expect(await repository.markFactConflicted(999)).toBeNull();
       mockRows([]);
       expect(await repository.markSourceInaccessible(999, '2026-09-07')).toBeNull();
-      mockRows([]);
-      expect(await repository.linkProjectToComplex(999, 5)).toBeNull();
     });
   });
 });

@@ -1,11 +1,14 @@
 # 검색 아키텍처 분석 및 리팩터 계획
 
-- 버전: v0.1
+- 버전: v0.2
 - 작성일: 2026-09-07
+- 최종 수정일: 2026-09-08
 - 참조: [1-domain-definition.md](./1-domain-definition.md), [6-erd.md](./6-erd.md), [7-execution-plan.md](./7-execution-plan.md), `database/schema.sql`, `backend/src/config/target-regions.js`
 - 근거 기준: 본 문서의 모든 판단은 실제 코드(파일·줄번호)와 개발 DB(`housing`) 실측 쿼리 결과에 근거하며, 추측으로 작성한 항목은 없다.
 
 ## 요약
+
+**현재 상태 안내(2026-09-08)**: §1~14는 최초 조사 및 당시 계획을 기록한다. 이후 구현된 단지 상세 전환은 §15, 로컬 작업 재개 후 실거래 명칭 전환과 검증 상태는 §16을 기준으로 확인한다.
 
 등록 매물 목록에 서비스 대상이 아닌 지역(평택)이 노출된다는 신고를 계기로, 지역 정책·도메인 모델·보안·UI 구조를 코드와 개발 DB 기준으로 전수 검증했다. 핵심 원인은 **지역 scope를 강제하는 코드가 backend query 어디에도 없다**는 구조적 결함이며, 부수적으로 `listing`이라는 이름이 실제로는 국토부 실거래 데이터를 가리키는 **개념 충돌**도 확인됐다. 보안 감사에서는 실제 유출은 없었으나 미사용 secret 노출 위험 1건과 `.env.example` 불완전 1건을 확인했다.
 
@@ -159,7 +162,7 @@ return { listingId: listing.id };
 
 | 위치 | 형태 | 참조하는 코드 |
 |---|---|---|
-| `backend/src/config/target-regions.js` | `{ regionName, lawdCd, dongs? }[]` | 배치 수집기, `findRegionNameByLawdCd` |
+| `backend/src/config/target-regions.js` | `{ regionName, lawdCd, city, dongs? }[]` | 배치 수집기, `findRegionNameByLawdCd`, 등록 매물/실시간 탐색 시 단위 지역 필터 |
 | `apartment_complexes.lawd_cd` | varchar(5), nullable | MOLIT fetch-through 매핑 |
 | `apartment_complexes.address` | 자유 문자열 | 표시용, 좌표 실패 시 지오코딩 쿼리 |
 | `regional_listing_cache.lawd_cd` | varchar(5), NOT NULL | 실시간 캐시 |
@@ -171,10 +174,17 @@ return { listingId: listing.id };
 `lawdCd`를 canonical identifier로, `regionName`은 표시용으로 확정하고 `target-regions.js`에 3개 helper를 추가했다:
 ```js
 getTargetRegionCodes()  // 중복 제거된 lawdCd 배열
-getTargetRegion(lawdCd) // { regionName, lawdCd, dongs? } | null
+getTargetRegion(lawdCd) // { regionName, lawdCd, city, dongs? } | null
 isTargetRegion(lawdCd)  // boolean
 ```
 새 모듈을 만들지 않고 기존 `target-regions.js`를 그대로 source of truth로 확장했다(오버엔지니어링 방지).
+
+**2026-09-07 추가**: 등록 매물/실시간 탐색 화면에 시 단위 지역 dropdown을 추가하면서 각 `TARGET_REGIONS` 항목에 `city` 필드(예: `'화성시'`, `'서울특별시'`)를 추가하고, helper 2개를 더했다:
+```js
+getCities()             // TARGET_REGIONS 선언 순서대로 중복 없는 city 목록
+getLawdCdsByCity(city)  // 해당 city에 속한 lawdCd 배열(존재하지 않으면 [])
+```
+`GET /api/listings/regions/cities`가 `getCities()`를 그대로 노출하고, `GET /api/listings`/`GET /api/listings/live-search`는 `city` query parameter를 받아 `getLawdCdsByCity(city)` 결과를 `targetLawdCds`로 사용한다(city 미지정 시 기존처럼 `getTargetRegionCodes()` 전체). frontend는 이 목록을 하드코딩하지 않고 `useRegionCities` 훅으로 조회해 공용 `RegionSelect` 컴포넌트를 채운다.
 
 ### 4.3 legacy `lawd_cd IS NULL` 처리
 
@@ -383,3 +393,59 @@ interface MapAdapter {
 4. **`priceRange` 등 `apartment_complexes` 집계 API는 영향 없음**: `/api/complexes`, 비교셋, 즐겨찾기는 지역 필터를 적용하지 않았다(승인된 범위 밖). 사용자가 과거에 즐겨찾기/비교셋에 추가해 둔 비대상 지역 단지는 계속 보인다 — 이는 의도된 것으로, 목록 노출과 사용자가 명시적으로 선택한 데이터는 다른 정책을 가져야 한다는 판단이다.
 5. **rename 미실행에 따른 개념 혼란 지속**: §3의 `Listing`/실거래 혼용은 이번 작업으로 해소되지 않는다. 신규 기능(예: 리모델링의 `priceLink`)이 계속 이 혼동 위에 쌓일 수 있어, §7.2 마이그레이션 계획의 착수 시점을 조기에 정하는 것을 권장한다.
 6. **UI/지도 재설계 미실행**: 사용자가 신고했던 "평택 노출"은 해소되지만, 카드 정보 계층 불일치와 지도-목록 비동기화는 그대로 남는다. 다음 개선 착수 시 §10~11을 그대로 인수인계 자료로 사용 가능하다.
+
+---
+
+## 15. Phase 0(complex-anchor 전환) 완료 현황 및 알려진 데이터 갭
+
+Phase 0(§14 rename과는 별개로, `listings` domain 정리를 위해 신설한 `apartment_complexes` 기준 `/api/complexes/:id/*` 상세 API + `ComplexDetailScreen`)의 회귀 조사와 대출/자금 탭 UX 수정을 완료했다(2026-09-07). 결론과 남은 항목을 기록한다.
+
+### 15.1 발견했던 regression과 root cause
+
+- **현상**: 재배포 없이 오래 떠 있던 backend 프로세스가 `molit-price-history.service.js`의 요청 스로틀링(`REQUEST_BATCH_SIZE=1`, 300ms 간격) 적용 이전 코드로 실행되고 있었다. 그 결과 국토부 실거래 API에 36개월치를 스로틀 없이 몰아쳐 요청해 초당 요청 제한에 걸렸고, 실패한 월은 조용히 빈 배열로 처리되어(`parseAptTradeXml`) 매매/전세/전세가율이 전부 "실거래 이력 없음"으로 보이는 정상 응답처럼 위장됐다.
+- **결론**: `complex-detail.service.js`/`/api/complexes/:id/*` 자체의 결함이 아니었다. 같은 상황에서 기존 `/api/listings/:id/*` 경로도 동일하게 빈 배열을 반환해 신구 경로 동작이 일치함을 확인했다. backend 재기동 후 즉시 정상 데이터로 복구됨.
+- **재발 방지 규칙**: §4(테스트/품질 원칙)에 "코드 변경 후 실행 중인 프로세스가 최신 코드인지 확인" 규칙을 추가했다(아래 참조).
+
+### 15.2 대출/자금 탭 UX 수정 (Phase 0 마지막 항목)
+
+기존에는 `/api/complexes/:id/regulation`·`/loan-simulation`이 `salePrice` query 미지정 시 무조건 "매매가 입력 필요"를 반환해, 매매가·전세가 탭에는 실거래가 바로 보이는데도 대출/자금 탭만 사용자의 수동 입력을 강제하는 회귀가 있었다(과거 `/api/listings/:id/*`는 저장된 `listings.sale_price`를 자동으로 사용했음).
+
+`backend/src/services/complex-detail.service.js`에 `resolveEffectiveSalePrice(complexId, salePrice)`를 추가해 해결했다:
+- `salePrice`가 주어지면 그대로 사용(`salePriceSource: 'user'`).
+- 없으면 기존 `getPriceHistory(complexId)`(신규 로직 중복 구현 없이 재사용)로 조회한 항목 중 가장 최근 거래를 기준가격으로 자동 사용(`salePriceSource: 'transaction'`, `referenceTransactionDate`에 계약일 기록).
+- 유효한 실거래도 없으면 그때만 기존과 동일하게 수동 입력을 요구(`profileMessage: '매매가 입력 필요'` / `salePriceRequired: true`).
+- 응답 필드 `effectiveSalePrice`/`salePriceSource`/`referenceTransactionDate`를 `ComplexRegulationInfo`/`ComplexLoanSimulationResult`(swagger 신규 스키마, 기존 `RegulationInfo`/`LoanSimulationResult`와는 분리해 `/api/listings/:id/*` 응답 스펙을 건드리지 않음)에 추가.
+- 프론트 `ComplexLoanTab.tsx`는 이 값을 "기준가격 {가격} · {거래일} 실거래가 기준(국토교통부)" 형태로 표시해 "현재 매물 호가"로 오인되지 않게 했다. 대출 계산 로직(`loan-limit.service.js`/`loan-scenario.service.js`) 자체는 변경하지 않았다.
+
+### 15.3 알려진 데이터 갭 (Phase 0 regression 아님 — 별도 확장 필요)
+
+브라우저 검증 중 다음 두 가지 데이터 공백을 확인했다. 둘 다 `complex-detail.service.js` 신설 이전부터 있던 pre-existing 갭이며, 신구 경로에서 동일하게 나타나 이번 Phase 0 회귀가 아니다. 별도 작업으로 남겨두고 지금 단계에서는 확장하지 않는다.
+
+- **`elementary_schools` 시드 0건**: 개발 DB에 학교 데이터가 전혀 적재되어 있지 않아 모든 단지의 학군 탭이 "정보 없음"을 반환한다. `seed-elementary-schools.js` 실행이 필요하다.
+- **`remodeling_projects`와 `apartment_complexes` 연결 부족**: 현재 등록된 리모델링 프로젝트 4건(`lawd_cd` 41465/41117)이 모두 `complex_id IS NULL` 상태이며, 이름이 현재 `apartment_complexes`에 등록된 어떤 단지와도 일치하지 않아 `findProjectByLawdCdAndName`이 매칭시키지 못한다. 실제 리모델링 진행 단지를 `apartment_complexes`에 등록하거나 기존 프로젝트의 `complex_name`/`lawd_cd`를 갱신해야 연결된다.
+
+## 16. 로컬 작업 인계 및 실거래 명칭 전환 (2026-09-08)
+
+GitHub나 마지막 커밋이 아닌 로컬 modified/staged/untracked 파일을 확인해 작업을 이어받았다. 기존 스테이징과 신규 파일을 보존했다.
+
+### 기존 구현 확인
+
+- 단지 상세 API 6종과 `ComplexDetailScreen`의 6개 탭, 최근 실거래가를 대출 기준가격으로 사용하는 기능이 구현되어 있었다.
+- 시 단위 지역 선택, 백엔드 지역 필터, 월평균 가격 차트·거래 공백 표시·월별 상세 패널이 구현되어 있었다.
+- 리모델링 조사 JSON과 관련 로컬 문서는 그대로 유지했다. §15.3의 별도 데이터 확장 작업은 이번 복구 범위에 포함하지 않았다.
+
+### 중단 지점과 이어서 처리한 내용
+
+- 백엔드와 프론트 훅 파일은 새 이름으로 변경됐지만 검색 화면·카드·그룹 유틸·테스트가 이전 이름을 참조해 TypeScript 오류 14건이 발생했다.
+- 남은 참조와 카드·그룹·유틸 이름을 `RecentTransaction`으로 통일하고 UI 명칭을 `실거래 탐색`으로 변경했다. 기존 지역 선택·즐겨찾기·비교·단지 이동 동작을 유지했다.
+- README의 수집 명령을 `npm run collect-transactions`로 맞췄다.
+- 작성되어 있던 `1788200000000_rename-regional-listing-cache-to-transaction-cache` 마이그레이션을 개발 DB와 테스트 DB에 적용했다. 테이블·제약·인덱스 이름만 변경하며 행을 삭제하지 않는다.
+- 검색은 `/api/listings/market-search`, 단지 선택은 `/api/listings/market-search/select-complex`를 사용한다. `/market-search/select`의 기존 매물 승격 경로는 남아 있고, `/live-search` 별칭은 현재 코드에 없다.
+
+### 검증 및 남은 확인
+
+- 관련 백엔드 단위 테스트 113개, 통합 테스트 40개, 프론트 테스트 119개 통과. 프론트 타입 검사와 빌드 통과. ESLint 오류 0건이며 기존 `LocalityAxisList.tsx`의 Fast Refresh 경고 2건이 남는다.
+- 전체 회귀 검사: 프론트 71개 파일·310개 테스트 통과, 라인 커버리지 91.42%. 백엔드 450개 통과·3개 실패, 라인 커버리지 90.84%. 실패 3개는 기존 `tests/integration/remodeling.test.js`의 날짜 의존 기대값이다. 수동 적재된 fixture의 확인일이 하루 지나 `daysSinceChecked`가 기대한 0/200 대신 1/201로 반환된다. 해당 테스트·fixture·업무 로직은 수정하지 않았다.
+- 별도 실행한 최신 백엔드에서 수원시 실거래 97건이 모두 `41117`로 반환되고, 알 수 없는 시는 빈 배열을 반환함을 확인했다. 기존 단지 선택 API는 201과 올바른 `complexId`를 반환하며 `listings` 행 수를 변경하지 않았다.
+- 브라우저 검증은 미완료다. 내장 브라우저 연결이 불가능했고 대체 Playwright 도구는 `approval policy: never`로 호출이 차단됐다.
+- 기존 3000/5173 포트의 프로세스 ID는 확인했으나 실행 경로·작업 디렉터리 조회가 권한 제한으로 불가능했다. 해당 프로세스는 종료하지 않았다. 기존 서버가 이전 모듈을 메모리에 유지하고 있다면 사용자가 소유한 터미널에서 최신 코드로 재시작해야 한다.

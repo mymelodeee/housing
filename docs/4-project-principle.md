@@ -1,7 +1,7 @@
 # housing 프로젝트 구조 설계 원칙
 
-- 버전: v0.9
-- 최종 수정일: 2026-07-10
+- 버전: v0.10
+- 최종 수정일: 2026-09-07
 - 참조 문서: [1-domain-definition.md](./1-domain-definition.md) (v0.8), [2-prd.md](./2-prd.md) (v0.6), [3-user-scenario.md](./3-user-scenario.md) (v0.5), [9-style-guide.md](./9-style-guide.md) (v0.1)
 - 버전 관리 규칙: 본 문서를 수정할 때마다 상단 버전(v0.1 → v0.2 …)과 최종 수정일을 함께 갱신한다. 과거 버전 이력은 별도 변경이력 절에 누적 기록한다.
 
@@ -18,6 +18,7 @@
 | v0.7 | 2026-07-06 | 백엔드 구현(BE-0~BE-8 등) 진행 중 발견한 공백 수정: §5 `.env` 관리 규칙이 "백엔드 루트"만 언급하고 프론트엔드 `.env`/API base URL 규칙이 전혀 없었음 → 프론트엔드는 `VITE_API_BASE_URL`(Vite `VITE_` 접두사 규칙)로 API 서버 주소를 주입하고 `shared/api/client.ts`에 하드코딩하지 않는다는 원칙과, 백엔드 `CORS_ORIGIN`과 프론트엔드 개발 서버 origin이 일치해야 한다는 상호 연동 규칙을 §5에 추가 |
 | v0.8 | 2026-07-08 | FE-2(네이버지도 연동) 진행에 맞춰 §5에 `VITE_NAVER_MAP_CLIENT_ID` 환경변수 규칙과 네이버 클라우드 플랫폼(NCP) 키 발급 사전 준비 절차 추가. 참조 문서에 `docs/9-style-guide.md`(신규) 추가 |
 | v0.9 | 2026-07-10 | 백엔드 API와 문서 정합성 점검 결과 반영: §7 백엔드 디렉토리 구조를 실제 구현과 일치하도록 정정(계획 단계의 `loan-simulation.routes/controller.js`, `shuttle-commute.service.js`, `price-history.repository.js`는 실제로 존재하지 않으며 각각 `listings.*`/`apartment-complexes.repository.js`로 통합 구현됨; 실제 존재하는 서비스 파일 목록 보완; `swagger/` 디렉토리와 `tests/fixtures/` 추가) |
+| v0.10 | 2026-09-07 | complex-anchor(Phase 0) regression 조사 중 발견한 사례를 반영해 §4 커밋 전 체크리스트에 "브라우저 integration 검증 전 backend 프로세스 신선도 확인" 규칙 추가(`docs/search-architecture-refactor-plan.md` §15.1 참조) |
 
 ---
 
@@ -142,6 +143,7 @@ db (pg Pool 설정, 커넥션 관리)
   3. 관련 단위/통합 테스트 통과, 커버리지 80% 이상 유지
   4. 변경한 기능의 PRD 기능 ID(F1~F7)와 도메인 규칙(§5 등) 대조 확인
   5. `.env` 등 자격증명 파일이 스테이징에 포함되지 않았는지 확인
+- **브라우저 integration 검증 전 backend 프로세스 신선도 확인**: backend 코드(특히 middleware, rate-limit/스로틀링, route, service)를 변경한 뒤 브라우저로 실제 동작을 확인할 때는, 떠 있는 backend dev 프로세스가 방금 수정한 코드로 실행 중인지 먼저 확인한다. `--watch`(`npm run dev`) 없이 오래 떠 있던 프로세스는 최신 코드를 반영하지 않아 "고쳤는데도 재현되는" 거짓 회귀를 만들 수 있다(사례: §15.1). 의심되면 기존 프로세스를 종료하고 `npm run dev`로 재기동한 뒤 검증한다. frontend도 동일하게 최신 코드로 서빙 중인지 확인한다.
 
 ---
 

@@ -59,7 +59,7 @@ describe('LocalityAxisList', () => {
 
   it('전부 정보 없음/해당없음 케이스를 오류 없이 렌더링한다', () => {
     const data: LocalityDisplayData = {
-      completionYear: 2020,
+      completionYear: null,
       remodelingStatus: '해당없음',
       reconstructionStatus: '해당없음',
       nearbyRedevelopmentInfo: null,
@@ -76,9 +76,8 @@ describe('LocalityAxisList', () => {
 
     expect(() => render(<LocalityAxisList data={data} />)).not.toThrow()
 
-    expect(screen.getByText('2020년')).toBeInTheDocument()
     expect(screen.getAllByText('해당없음')).toHaveLength(2)
-    expect(screen.getAllByText('정보 없음')).toHaveLength(8)
+    expect(screen.getAllByText('정보 없음')).toHaveLength(9)
   })
 
   it('부분 혼합 케이스에서 필드별로 올바르게 렌더링한다', () => {

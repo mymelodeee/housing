@@ -59,7 +59,7 @@ CREATE TABLE apartment_complexes (
     address varchar(255) NOT NULL,
 
     -- 준공년도: 연식은 저장하지 않고 조회 시점에 계산되는 표시값이므로 준공년도만 저장(도메인 §2, §4.1).
-    completion_year integer NOT NULL CHECK (completion_year BETWEEN 1970 AND EXTRACT(YEAR FROM CURRENT_DATE)),
+    completion_year integer CHECK (completion_year BETWEEN 1970 AND EXTRACT(YEAR FROM CURRENT_DATE)),
 
     -- 리모델링 추진현황: 기본값 "해당없음"(도메인 §4.1).
     remodeling_status varchar(20) NOT NULL DEFAULT '해당없음'
@@ -226,13 +226,16 @@ CREATE INDEX idx_elementary_schools_lat_lng ON elementary_schools (latitude, lon
 CREATE INDEX idx_elementary_schools_school_level ON elementary_schools (school_level);
 
 -- -----------------------------------------------------------------------------
--- 11. regional_listing_cache (경기남부+서울 실시간(배치 캐싱) 매물 검색 기능, 도메인 v0.14 후속)
--- 국토교통부 실거래가 API(지역+월 단위)를 배치 수집기(collect-regional-listings.js)로
--- 주기적으로 수집해 캐싱하는 테이블. apartment_complexes/listings와 별개이며, 실제
+-- 11. regional_transaction_cache (경기남부+서울 실거래 탐색 기능, 도메인 v0.14 후속)
+-- 국토교통부 실거래가 API(지역+월 단위)를 배치 수집기(collect-regional-transactions.js)로
+-- 주기적으로 수집해 캐싱하는 테이블. apartment_complexes와 별개이며, 실제
 -- "매물 호가"가 아닌 "최근 실거래가"를 시세 근사치로 사용한다는 한계가 있다.
--- 사용자가 검색 결과를 선택하면 그 순간 apartment_complexes/listings에 upsert된다.
+-- 사용자가 검색 결과를 선택하면 그 순간 apartment_complexes에 find-or-create된다
+-- (2026-09-07 Phase 0: listings row 승격 없이 단지 상세로 바로 진입하도록 변경).
+-- 원래 이름은 regional_listing_cache였으나, "매물"이 아닌 과거 실거래를 담고 있다는
+-- 점을 이름에도 반영하기 위해 rename했다(docs/search-architecture-refactor-plan.md §15).
 -- -----------------------------------------------------------------------------
-CREATE TABLE regional_listing_cache (
+CREATE TABLE regional_transaction_cache (
     id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     lawd_cd varchar(5) NOT NULL, -- 법정동코드 앞5자리(target-regions.js 기준)
     kapt_code varchar(20), -- 국토부 공동주택 단지 목록제공 서비스 kaptCode, 매칭 실패 시 null 허용
@@ -247,10 +250,10 @@ CREATE TABLE regional_listing_cache (
     collected_at timestamp NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX idx_regional_listing_cache_unique_entry
-    ON regional_listing_cache (lawd_cd, complex_name, exclusive_area);
-CREATE INDEX idx_regional_listing_cache_sale_price ON regional_listing_cache (sale_price);
-CREATE INDEX idx_regional_listing_cache_exclusive_area ON regional_listing_cache (exclusive_area);
+CREATE UNIQUE INDEX idx_regional_transaction_cache_unique_entry
+    ON regional_transaction_cache (lawd_cd, complex_name, exclusive_area);
+CREATE INDEX idx_regional_transaction_cache_sale_price ON regional_transaction_cache (sale_price);
+CREATE INDEX idx_regional_transaction_cache_exclusive_area ON regional_transaction_cache (exclusive_area);
 
 -- -----------------------------------------------------------------------------
 -- 12. remodeling_projects (리모델링 추진 단지의 사업 식별/연결)

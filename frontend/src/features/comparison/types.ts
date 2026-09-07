@@ -9,7 +9,7 @@ export type PriceRangeValue =
 export interface ComparisonComplexItem {
   complexId: number
   complexName: string
-  completionYear: number
+  completionYear: number | null
   remodelingStatus: RemodelingStatus
   reconstructionStatus: ReconstructionStatus
   nearbyRedevelopmentInfo: string | null
@@ -24,7 +24,7 @@ export interface ComparisonListingItem {
   salePrice: number
   exclusiveArea: number
   complexName: string
-  completionYear: number
+  completionYear: number | null
   remodelingStatus: RemodelingStatus
   reconstructionStatus: ReconstructionStatus
   nearbyRedevelopmentInfo: string | null

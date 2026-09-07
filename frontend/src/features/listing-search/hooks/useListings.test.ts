@@ -46,8 +46,12 @@ describe('useListings', () => {
     mockedApiClient.mockReset()
   })
 
-  it('queryKey는 minPrice, maxPrice를 포함한 형태이다', () => {
-    expect(listingsQueryKey(70000, 150000)).toEqual(['listings', { minPrice: 70000, maxPrice: 150000 }])
+  it('queryKey는 minPrice, maxPrice, city를 포함한 형태이다', () => {
+    expect(listingsQueryKey(70000, 150000)).toEqual(['listings', { minPrice: 70000, maxPrice: 150000, city: '' }])
+    expect(listingsQueryKey(70000, 150000, '수원시')).toEqual([
+      'listings',
+      { minPrice: 70000, maxPrice: 150000, city: '수원시' },
+    ])
   })
 
   it('/api/listings 를 minPrice, maxPrice 쿼리 파라미터와 함께 호출하고 결과를 반환한다', async () => {
@@ -91,5 +95,21 @@ describe('useListings', () => {
 
     expect(queryClient.getQueryData(listingsQueryKey(70000, 150000))).toEqual([sampleListing])
     expect(queryClient.getQueryData(listingsQueryKey(80000, 120000))).toEqual([])
+  })
+
+  it('city가 지정되면 city 쿼리 파라미터가 추가되고, 미지정 시에는 추가되지 않는다', async () => {
+    mockedApiClient.mockResolvedValueOnce([sampleListing])
+    mockedApiClient.mockResolvedValueOnce([])
+    const { Wrapper } = createWrapper()
+
+    const { result: withCity } = renderHook(() => useListings(70000, 150000, '수원시'), { wrapper: Wrapper })
+    await waitFor(() => expect(withCity.current.isSuccess).toBe(true))
+    expect(mockedApiClient).toHaveBeenCalledWith(
+      `/api/listings?minPrice=70000&maxPrice=150000&city=${encodeURIComponent('수원시')}`,
+    )
+
+    const { result: withoutCity } = renderHook(() => useListings(70000, 150000), { wrapper: Wrapper })
+    await waitFor(() => expect(withoutCity.current.isSuccess).toBe(true))
+    expect(mockedApiClient).toHaveBeenCalledWith('/api/listings?minPrice=70000&maxPrice=150000')
   })
 })

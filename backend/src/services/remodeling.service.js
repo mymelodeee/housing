@@ -5,7 +5,7 @@ const PRICE_LINK_NOTE = '실거래가는 매매가 변동 이력 탭 기준';
 const NO_PROJECT_MESSAGE = '리모델링 추진 정보 없음';
 
 // pg는 DATE 컬럼을 로컬 자정 기준 Date 객체로 파싱하므로, JSON 직렬화 시 UTC ISO 문자열로
-// 변환되어 UTC+9 환경에서 날짜가 하루 밀려 보인다(regional-listings.service.js와 동일 이슈).
+// 변환되어 UTC+9 환경에서 날짜가 하루 밀려 보인다(regional-transactions.service.js와 동일 이슈).
 // 로컬 getter 기준 YYYY-MM-DD 문자열로 변환해 반환한다.
 function formatLocalDate(value) {
   if (value === null || value === undefined) return null;

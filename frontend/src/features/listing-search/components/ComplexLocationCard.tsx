@@ -6,11 +6,12 @@ interface ComplexLocationCardProps {
   complex: ListingComplex
   favoriteSlot?: ReactNode
   compareSlot?: ReactNode
+  onClick?: () => void
 }
 
-export function ComplexLocationCard({ complex, favoriteSlot, compareSlot }: ComplexLocationCardProps) {
+export function ComplexLocationCard({ complex, favoriteSlot, compareSlot, onClick }: ComplexLocationCardProps) {
   return (
-    <div className="complex-location-card">
+    <div className="complex-location-card" data-clickable={Boolean(onClick)} onClick={onClick}>
       <div className="complex-location-card__header">
         <span className="complex-location-card__complex-name">{complex.complexName}</span>
         <div className="complex-location-card__actions">

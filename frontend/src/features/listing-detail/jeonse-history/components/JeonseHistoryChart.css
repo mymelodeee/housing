@@ -31,6 +31,17 @@
   background: var(--color-chart-ratio-line);
 }
 
+.jeonse-history-chart__canvas {
+  position: relative;
+  width: 100%;
+}
+
+.jeonse-history-chart__canvas svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
 .jeonse-history-chart__gridline {
   stroke: var(--color-border);
   stroke-width: 1;
@@ -67,6 +78,24 @@
   stroke-linecap: round;
 }
 
+.jeonse-history-chart__avg-ratio-line {
+  stroke: var(--color-chart-ratio-line);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+  opacity: 0.6;
+}
+
+.jeonse-history-chart__asking-line {
+  stroke: var(--color-accent-blue);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+}
+
+.jeonse-history-chart__asking-label {
+  font-size: 10px;
+  fill: var(--color-accent-blue);
+}
+
 .jeonse-history-chart__sale-point {
   fill: var(--color-chart-price-line);
   stroke: var(--color-surface);
@@ -88,8 +117,55 @@
   cursor: pointer;
 }
 
-.jeonse-history-chart__tooltip {
+.jeonse-history-chart__sale-point--carried {
+  fill: var(--color-surface);
+  stroke: var(--color-chart-price-line);
+  stroke-width: 1.5;
+}
+
+.jeonse-history-chart__jeonse-point--carried {
+  fill: var(--color-surface);
+  stroke: var(--color-chart-jeonse-line);
+  stroke-width: 1.5;
+}
+
+.jeonse-history-chart__hover-tooltip {
+  position: absolute;
+  transform: translate(-50%, -130%);
+  white-space: nowrap;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-1) var(--space-2);
   font-size: var(--font-size-xs);
+  pointer-events: none;
+}
+
+.jeonse-history-chart__avg-ratio-note {
+  margin: var(--space-2) 0 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-chart-ratio-line);
+  text-align: right;
+}
+
+.jeonse-history-chart__detail {
+  margin-top: var(--space-2);
+  background: var(--color-surface-muted);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  font-size: var(--font-size-sm);
+}
+
+.jeonse-history-chart__detail strong {
+  display: block;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-base);
+  margin-bottom: var(--space-1);
+}
+
+.jeonse-history-chart__detail p {
+  margin: 0;
   color: var(--color-text-secondary);
-  margin-top: var(--space-1);
 }

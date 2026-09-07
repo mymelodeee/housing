@@ -13,7 +13,7 @@ export interface LocalityAttributes {
 }
 
 export interface LocalityDisplayData {
-  completionYear: number
+  completionYear: number | null
   remodelingStatus: RemodelingStatus
   reconstructionStatus: ReconstructionStatus
   nearbyRedevelopmentInfo: string | null

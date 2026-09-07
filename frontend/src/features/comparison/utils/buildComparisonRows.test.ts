@@ -60,6 +60,14 @@ describe('calcHousingAge', () => {
   })
 })
 
+describe('buildComplexComparisonRows', () => {
+  it('준공연도가 없으면 연식을 정보 없음으로 표시한다', () => {
+    const rows = buildComplexComparisonRows([makeComplexItem({ completionYear: null })])
+
+    expect(rows.find((row) => row.label === '연식')?.values).toEqual(['정보 없음'])
+  })
+})
+
 describe('formatPriceRange', () => {
   it("'매물 없음' 입력이면 '매물 없음'을 반환한다", () => {
     expect(formatPriceRange('매물 없음')).toBe('매물 없음')

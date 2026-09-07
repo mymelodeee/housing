@@ -3,6 +3,7 @@ jest.mock('../../src/services/listings.service');
 const listingsService = require('../../src/services/listings.service');
 const {
   listListings,
+  getCities,
   getListing,
   getListingLocality,
   getListingRegulation,
@@ -63,6 +64,33 @@ describe('controllers/listings.controller', () => {
         minLng: undefined,
         maxLng: undefined,
       });
+    });
+
+    it('city 값이 있으면 그대로 service에 전달된다', async () => {
+      listingsService.listListings.mockResolvedValue([]);
+      const req = { query: { city: '수원시' } };
+      const res = createRes();
+      const next = jest.fn();
+
+      await listListings(req, res, next);
+
+      expect(listingsService.listListings).toHaveBeenCalledWith(
+        expect.objectContaining({ city: '수원시' })
+      );
+    });
+  });
+
+  describe('getCities', () => {
+    it('service의 시 목록을 { cities } 형태로 반환한다', async () => {
+      listingsService.getCities.mockReturnValue(['화성시', '수원시']);
+      const req = { query: {} };
+      const res = createRes();
+      const next = jest.fn();
+
+      await getCities(req, res, next);
+
+      expect(res.json).toHaveBeenCalledWith({ cities: ['화성시', '수원시'] });
+      expect(next).not.toHaveBeenCalled();
     });
   });
 

@@ -5,6 +5,13 @@
   padding: var(--space-4);
 }
 
+.listing-search-screen__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: flex-end;
+}
+
 .listing-search-screen__mode-toggle {
   display: flex;
   gap: var(--space-2);
@@ -54,7 +61,9 @@
 }
 
 .listing-search-screen__map {
-  min-height: 480px;
+  align-self: start;
+  height: 480px;
+  background: var(--color-bg);
 }
 
 .listing-search-screen__list {

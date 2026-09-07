@@ -23,8 +23,10 @@ const loanLimitService = require('../../src/services/loan-limit.service');
 const loanScenarioService = require('../../src/services/loan-scenario.service');
 const jeonseHistoryService = require('../../src/services/jeonse-history.service');
 const elementarySchoolService = require('../../src/services/elementary-school.service');
+const { getLawdCdsByCity, getTargetRegionCodes } = require('../../src/config/target-regions');
 const {
   listListings,
+  getCities,
   getListingDetail,
   getListingLocality,
   getPriceHistory,
@@ -93,6 +95,26 @@ describe('services/listings.service', () => {
       });
     });
 
+    it('city가 지정되면 해당 city의 lawdCd 목록만 targetLawdCds로 repository에 전달된다', async () => {
+      listingsRepository.findByPriceRange.mockResolvedValue([]);
+
+      await listListings({ city: '화성시' });
+
+      expect(listingsRepository.findByPriceRange).toHaveBeenCalledWith(
+        expect.objectContaining({ targetLawdCds: getLawdCdsByCity('화성시') })
+      );
+    });
+
+    it('city가 없으면 전체 대상 지역 lawdCd가 targetLawdCds로 전달된다', async () => {
+      listingsRepository.findByPriceRange.mockResolvedValue([]);
+
+      await listListings({});
+
+      expect(listingsRepository.findByPriceRange).toHaveBeenCalledWith(
+        expect.objectContaining({ targetLawdCds: getTargetRegionCodes() })
+      );
+    });
+
     it('좌표 4개가 모두 지정되면 그대로 repository에 전달된다', async () => {
       listingsRepository.findByPriceRange.mockResolvedValue([]);
 
@@ -148,6 +170,12 @@ describe('services/listings.service', () => {
       expect(result[0].complex.nearestShuttleStopDistance).toBeNull();
       expect(result[0].complex.shuttleCommuteMinutes).toBeNull();
       expect(result[0].complex.complexName).toBe('평택 소사벌 한라비발디');
+    });
+  });
+
+  describe('getCities', () => {
+    it('config의 시 목록을 그대로 반환한다', () => {
+      expect(getCities()).toEqual(expect.arrayContaining(['화성시', '수원시']));
     });
   });
 

@@ -65,6 +65,28 @@ describe('GET /api/listings', () => {
     expect(res.body.some((item) => item.complex.id === pyeongtaekId)).toBe(false);
   });
 
+  it('city=화성시 조회 시 동탄 매물 3건만 반환한다', async () => {
+    const res = await request(app).get('/api/listings').query({ city: '화성시' });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(3);
+    res.body.forEach((item) => expect(item.complex.id).toBe(dongtanId));
+  });
+
+  it('city=성남시 조회 시 해당 city에는 매물 fixture가 없어 빈 배열을 반환한다', async () => {
+    const res = await request(app).get('/api/listings').query({ city: '성남시' });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
+  });
+
+  it('GET /api/listings/regions/cities 조회 시 200과 화성시를 포함한 시 목록을 반환한다', async () => {
+    const res = await request(app).get('/api/listings/regions/cities');
+
+    expect(res.status).toBe(200);
+    expect(res.body.cities).toEqual(expect.arrayContaining(['화성시', '수원시', '성남시']));
+  });
+
   it('minPrice=106000&maxPrice=150000 조회 시 salePrice 110000인 매물 1건만 반환한다', async () => {
     const res = await request(app).get('/api/listings').query({ minPrice: 106000, maxPrice: 150000 });
 

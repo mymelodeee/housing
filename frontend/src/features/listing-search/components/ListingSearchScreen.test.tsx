@@ -1,12 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Routes, Route } from 'react-router-dom'
+import { MemoryRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom'
 import { ListingSearchScreen } from './ListingSearchScreen'
 import { useListings } from '../hooks/useListings'
-import { useLiveListings } from '../hooks/useLiveListings'
-import { useSelectLiveListing } from '../hooks/useSelectLiveListing'
-import type { RegionalListing } from '../types'
+import { useRecentTransactions } from '../hooks/useRecentTransactions'
+import { useSelectRecentTransactionComplex } from '../hooks/useSelectRecentTransactionComplex'
+import { useRegionCities } from '../hooks/useRegionCities'
+import type { RegionalTransaction } from '../types'
 import { useFavoriteComplexes } from '../../favorites/hooks/useFavoriteComplexes'
 import { useAddFavoriteComplex } from '../../favorites/hooks/useAddFavoriteComplex'
 import { useRemoveFavoriteComplex } from '../../favorites/hooks/useRemoveFavoriteComplex'
@@ -20,12 +21,16 @@ vi.mock('../hooks/useListings', () => ({
   useListings: vi.fn(),
 }))
 
-vi.mock('../hooks/useLiveListings', () => ({
-  useLiveListings: vi.fn(),
+vi.mock('../hooks/useRecentTransactions', () => ({
+  useRecentTransactions: vi.fn(),
 }))
 
-vi.mock('../hooks/useSelectLiveListing', () => ({
-  useSelectLiveListing: vi.fn(),
+vi.mock('../hooks/useSelectRecentTransactionComplex', () => ({
+  useSelectRecentTransactionComplex: vi.fn(),
+}))
+
+vi.mock('../hooks/useRegionCities', () => ({
+  useRegionCities: vi.fn(),
 }))
 
 vi.mock('../../favorites/hooks/useFavoriteComplexes', () => ({
@@ -56,8 +61,9 @@ vi.mock('../../../shared/map/MapView', () => ({
 }))
 
 const mockedUseListings = vi.mocked(useListings)
-const mockedUseLiveListings = vi.mocked(useLiveListings)
-const mockedUseSelectLiveListing = vi.mocked(useSelectLiveListing)
+const mockedUseRecentTransactions = vi.mocked(useRecentTransactions)
+const mockedUseSelectRecentTransactionComplex = vi.mocked(useSelectRecentTransactionComplex)
+const mockedUseRegionCities = vi.mocked(useRegionCities)
 const mockedUseFavoriteComplexes = vi.mocked(useFavoriteComplexes)
 const mockedUseAddFavoriteComplex = vi.mocked(useAddFavoriteComplex)
 const mockedUseRemoveFavoriteComplex = vi.mocked(useRemoveFavoriteComplex)
@@ -88,12 +94,28 @@ function makeListing(id: number, overrides: Partial<Listing> = {}): Listing {
   }
 }
 
-function renderScreen() {
+function LocationProbe() {
+  const location = useLocation()
+  return <output data-testid="location-probe">{location.search}</output>
+}
+
+function ComplexDetailProbe() {
+  const navigate = useNavigate()
+  return (
+    <button data-testid="complex-detail-probe" onClick={() => navigate(-1)}>
+      목록으로 돌아가기
+    </button>
+  )
+}
+
+function renderScreen(initialEntry = '/') {
   return render(
-    <MemoryRouter initialEntries={['/']}>
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <LocationProbe />
       <Routes>
         <Route path="/" element={<ListingSearchScreen />} />
         <Route path="/listings/:id" element={<div data-testid="detail-probe" />} />
+        <Route path="/complexes/:id" element={<ComplexDetailProbe />} />
         <Route path="/comparison-sets/:id" element={<div data-testid="comparison-probe" />} />
       </Routes>
     </MemoryRouter>,
@@ -135,7 +157,7 @@ function makeMutationResult(mutate: ReturnType<typeof vi.fn>) {
   return { mutate } as unknown as ReturnType<typeof useAddFavoriteComplex>
 }
 
-function makeRegionalListing(id: number, overrides: Partial<RegionalListing> = {}): RegionalListing {
+function makeRegionalTransaction(id: number, overrides: Partial<RegionalTransaction> = {}): RegionalTransaction {
   return {
     id,
     lawdCd: '11740',
@@ -155,19 +177,25 @@ function makeRegionalListing(id: number, overrides: Partial<RegionalListing> = {
 
 describe('ListingSearchScreen', () => {
   const createComparisonMutate = vi.fn()
-  const selectLiveListingMutate = vi.fn()
+  const selectComplexMutate = vi.fn()
 
   beforeEach(() => {
     mockedUseListings.mockReset()
-    mockedUseLiveListings.mockReset()
-    mockedUseSelectLiveListing.mockReset()
-    selectLiveListingMutate.mockReset()
-    mockedUseLiveListings.mockReturnValue(
-      baseQueryResult({ data: [] }) as unknown as ReturnType<typeof useLiveListings>,
+    mockedUseRecentTransactions.mockReset()
+    mockedUseSelectRecentTransactionComplex.mockReset()
+    selectComplexMutate.mockReset()
+    mockedUseRecentTransactions.mockReturnValue(
+      baseQueryResult({ data: [] }) as unknown as ReturnType<typeof useRecentTransactions>,
     )
-    mockedUseSelectLiveListing.mockReturnValue({ mutate: selectLiveListingMutate } as unknown as ReturnType<
-      typeof useSelectLiveListing
+    mockedUseSelectRecentTransactionComplex.mockReturnValue({ mutate: selectComplexMutate } as unknown as ReturnType<
+      typeof useSelectRecentTransactionComplex
     >)
+    mockedUseRegionCities.mockReset()
+    mockedUseRegionCities.mockReturnValue({
+      data: { cities: ['화성시', '수원시', '용인시'] },
+      isLoading: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useRegionCities>)
     mockMapView.mockClear()
     mockedUseFavoriteComplexes.mockReset()
     mockedUseAddFavoriteComplex.mockReset()
@@ -266,7 +294,46 @@ describe('ListingSearchScreen', () => {
 
     const calls = mockedUseListings.mock.calls
     const lastCall = calls[calls.length - 1]
-    expect(lastCall).toEqual([80000, 150000])
+    expect(lastCall).toEqual([80000, 150000, ''])
+  })
+
+  it('지역 dropdown에서 시를 선택하면 useListings/useRecentTransactions가 선택한 city로 호출된다', async () => {
+    mockedUseListings.mockReturnValue(baseQueryResult({ data: [] }))
+    const user = userEvent.setup()
+
+    renderScreen()
+
+    await user.selectOptions(screen.getByRole('combobox', { name: '지역' }), '수원시')
+
+    expect(mockedUseListings).toHaveBeenLastCalledWith(70000, 150000, '수원시')
+    expect(mockedUseRecentTransactions).toHaveBeenLastCalledWith(70000, 150000, false, '수원시')
+    expect(screen.getByTestId('location-probe')).toHaveTextContent('?city=%EC%88%98%EC%9B%90%EC%8B%9C')
+  })
+
+  it('URL query에서 지역·가격·검색 모드를 복원한다', () => {
+    mockedUseListings.mockReturnValue(baseQueryResult({ data: [] }))
+
+    renderScreen('/?city=%EC%9A%A9%EC%9D%B8%EC%8B%9C&minPrice=80000&maxPrice=120000&mode=transactions')
+
+    expect(screen.getByRole('combobox', { name: '지역' })).toHaveValue('용인시')
+    expect(screen.getByLabelText('최소 매매가(만원)')).toHaveValue(80000)
+    expect(screen.getByLabelText('최대 매매가(만원)')).toHaveValue(120000)
+    expect(screen.getByRole('button', { name: '실거래 탐색' })).toHaveAttribute('data-active', 'true')
+    expect(mockedUseRecentTransactions).toHaveBeenLastCalledWith(80000, 120000, true, '용인시')
+  })
+
+  it('단지 상세에서 뒤로가면 URL query와 필터 상태가 유지된다', async () => {
+    mockedUseListings.mockReturnValue(baseQueryResult({ data: [makeListing(1)] }))
+    const user = userEvent.setup()
+
+    const { container } = renderScreen('/?city=%ED%99%94%EC%84%B1%EC%8B%9C&minPrice=80000&mode=transactions')
+    await user.click(screen.getByRole('button', { name: '등록 매물' }))
+    await user.click(container.querySelector('.complex-location-card') as Element)
+    await user.click(screen.getByRole('button', { name: '목록으로 돌아가기' }))
+
+    expect(screen.getByRole('combobox', { name: '지역' })).toHaveValue('화성시')
+    expect(screen.getByLabelText('최소 매매가(만원)')).toHaveValue(80000)
+    expect(mockedUseListings).toHaveBeenLastCalledWith(80000, 150000, '화성시')
   })
 
   it('모바일 토글 버튼 클릭 시 지도/목록 패널의 data-mobile-visible 속성이 전환된다', async () => {
@@ -292,7 +359,7 @@ describe('ListingSearchScreen', () => {
     expect(mapPanel).toHaveAttribute('data-mobile-visible', 'false')
   })
 
-  it('등록 매물 탭의 단지 위치 카드는 클릭해도 상세 페이지로 이동하지 않는다', async () => {
+  it('등록 매물 탭의 단지 위치 카드를 클릭하면 단지 상세 페이지로 이동한다', async () => {
     const listings = [makeListing(1)]
     mockedUseListings.mockReturnValue(baseQueryResult({ data: listings }))
     const user = userEvent.setup()
@@ -303,7 +370,7 @@ describe('ListingSearchScreen', () => {
     expect(card).not.toBeNull()
     await user.click(card as Element)
 
-    expect(screen.queryByTestId('detail-probe')).not.toBeInTheDocument()
+    expect(screen.getByTestId('complex-detail-probe')).toBeInTheDocument()
   })
 
   it('즐겨찾기가 아닌 단지의 별 아이콘을 클릭하면 useAddFavoriteComplex의 mutate가 호출되고 상세 이동은 발생하지 않는다', async () => {
@@ -342,7 +409,7 @@ describe('ListingSearchScreen', () => {
     expect(removeMutate).toHaveBeenCalledWith(1, expect.objectContaining({ onError: expect.any(Function) }))
   })
 
-  it('등록 매물 탭에서 MapView의 onMarkerClick을 호출해도 상세 페이지로 이동하지 않는다', () => {
+  it('등록 매물 탭에서 MapView의 onMarkerClick을 호출하면 단지 상세 페이지로 이동한다', () => {
     const listings = [makeListing(1)]
     mockedUseListings.mockReturnValue(baseQueryResult({ data: listings }))
 
@@ -355,7 +422,7 @@ describe('ListingSearchScreen', () => {
       lastCallProps.onMarkerClick(1)
     })
 
-    expect(screen.queryByTestId('detail-probe')).not.toBeInTheDocument()
+    expect(screen.getByTestId('complex-detail-probe')).toBeInTheDocument()
   })
 
   it('비교셋에 추가 아이콘을 클릭하면 선택되고 하단 비교하기 바가 표시된다', async () => {
@@ -411,49 +478,49 @@ describe('ListingSearchScreen', () => {
     expect(screen.getByTestId('comparison-probe')).toBeInTheDocument()
   })
 
-  it('실시간 탐색 모드로 전환하면 useLiveListings가 enabled로 호출되고 실시간 카드가 렌더링된다', async () => {
+  it('실거래 탐색 모드로 전환하면 useRecentTransactions가 enabled로 호출되고 실시간 카드가 렌더링된다', async () => {
     mockedUseListings.mockReturnValue(baseQueryResult({ data: [] }))
-    mockedUseLiveListings.mockReturnValue(
-      { data: [makeRegionalListing(1)], isLoading: false, isError: false } as unknown as ReturnType<
-        typeof useLiveListings
+    mockedUseRecentTransactions.mockReturnValue(
+      { data: [makeRegionalTransaction(1)], isLoading: false, isError: false } as unknown as ReturnType<
+        typeof useRecentTransactions
       >,
     )
     const user = userEvent.setup()
 
     renderScreen()
 
-    expect(mockedUseLiveListings).toHaveBeenLastCalledWith(70000, 150000, false)
+    expect(mockedUseRecentTransactions).toHaveBeenLastCalledWith(70000, 150000, false, '')
 
-    await user.click(screen.getByRole('button', { name: '실시간 탐색' }))
+    await user.click(screen.getByRole('button', { name: '실거래 탐색' }))
 
-    expect(mockedUseLiveListings).toHaveBeenLastCalledWith(70000, 150000, true)
+    expect(mockedUseRecentTransactions).toHaveBeenLastCalledWith(70000, 150000, true, '')
     expect(screen.getByText('실시간단지1')).toBeInTheDocument()
     expect(screen.getByText(/1000세대/)).toBeInTheDocument()
   })
 
   it('같은 단지의 실시간 매물은 하나의 그룹으로 묶이고, 펼치기 전에는 개별 매물 카드가 보이지 않는다', async () => {
     mockedUseListings.mockReturnValue(baseQueryResult({ data: [] }))
-    mockedUseLiveListings.mockReturnValue(
+    mockedUseRecentTransactions.mockReturnValue(
       {
         data: [
-          makeRegionalListing(1, { complexName: '같은단지', salePrice: 90000 }),
-          makeRegionalListing(2, { complexName: '같은단지', salePrice: 110000 }),
-          makeRegionalListing(3, { complexName: '다른단지' }),
+          makeRegionalTransaction(1, { complexName: '같은단지', salePrice: 90000 }),
+          makeRegionalTransaction(2, { complexName: '같은단지', salePrice: 110000 }),
+          makeRegionalTransaction(3, { complexName: '다른단지' }),
         ],
         isLoading: false,
         isError: false,
-      } as unknown as ReturnType<typeof useLiveListings>,
+      } as unknown as ReturnType<typeof useRecentTransactions>,
     )
     const user = userEvent.setup()
 
     const { container } = renderScreen()
-    await user.click(screen.getByRole('button', { name: '실시간 탐색' }))
+    await user.click(screen.getByRole('button', { name: '실거래 탐색' }))
 
     expect(screen.getAllByText('같은단지')).toHaveLength(1)
     expect(screen.getByText('2건')).toBeInTheDocument()
     expect(container.querySelectorAll('.listing-card')).toHaveLength(0)
 
-    const headers = container.querySelectorAll('.live-listing-group__header')
+    const headers = container.querySelectorAll('.recent-transaction-group__header')
     await user.click(headers[0])
 
     expect(container.querySelectorAll('.listing-card')).toHaveLength(2)
@@ -461,59 +528,59 @@ describe('ListingSearchScreen', () => {
 
   it('실시간 모드에서 결과가 0건이면 "조건에 맞는 매물이 0건입니다"를 표시한다', async () => {
     mockedUseListings.mockReturnValue(baseQueryResult({ data: [] }))
-    mockedUseLiveListings.mockReturnValue(
-      baseQueryResult({ data: [] }) as unknown as ReturnType<typeof useLiveListings>,
+    mockedUseRecentTransactions.mockReturnValue(
+      baseQueryResult({ data: [] }) as unknown as ReturnType<typeof useRecentTransactions>,
     )
     const user = userEvent.setup()
 
     renderScreen()
-    await user.click(screen.getByRole('button', { name: '실시간 탐색' }))
+    await user.click(screen.getByRole('button', { name: '실거래 탐색' }))
 
     expect(screen.getByText('조건에 맞는 매물이 0건입니다')).toBeInTheDocument()
   })
 
-  it('실시간 카드 클릭 시 select mutate가 호출되고 성공하면 /listings/{listingId}로 이동한다', async () => {
+  it('실시간 카드 클릭 시 select mutate가 호출되고 성공하면 /complexes/{complexId}로 이동한다', async () => {
     mockedUseListings.mockReturnValue(baseQueryResult({ data: [] }))
-    mockedUseLiveListings.mockReturnValue(
-      { data: [makeRegionalListing(5)], isLoading: false, isError: false } as unknown as ReturnType<
-        typeof useLiveListings
+    mockedUseRecentTransactions.mockReturnValue(
+      { data: [makeRegionalTransaction(5)], isLoading: false, isError: false } as unknown as ReturnType<
+        typeof useRecentTransactions
       >,
     )
-    selectLiveListingMutate.mockImplementation((_id, options) => {
-      options?.onSuccess?.({ listingId: 42 })
+    selectComplexMutate.mockImplementation((_id, options) => {
+      options?.onSuccess?.({ complexId: 42 })
     })
     const user = userEvent.setup()
 
     const { container } = renderScreen()
-    await user.click(screen.getByRole('button', { name: '실시간 탐색' }))
-    await user.click(container.querySelector('.live-listing-group__header') as Element)
+    await user.click(screen.getByRole('button', { name: '실거래 탐색' }))
+    await user.click(container.querySelector('.recent-transaction-group__header') as Element)
 
     const card = container.querySelector('.listing-card')
     expect(card).not.toBeNull()
     await user.click(card as Element)
 
-    expect(selectLiveListingMutate).toHaveBeenCalledWith(5, expect.anything())
-    expect(screen.getByTestId('detail-probe')).toBeInTheDocument()
+    expect(selectComplexMutate).toHaveBeenCalledWith(5, expect.anything())
+    expect(screen.getByTestId('complex-detail-probe')).toBeInTheDocument()
   })
 
   it('실시간 선택이 실패하면 에러 모달이 표시된다', async () => {
     mockedUseListings.mockReturnValue(baseQueryResult({ data: [] }))
-    mockedUseLiveListings.mockReturnValue(
-      { data: [makeRegionalListing(5)], isLoading: false, isError: false } as unknown as ReturnType<
-        typeof useLiveListings
+    mockedUseRecentTransactions.mockReturnValue(
+      { data: [makeRegionalTransaction(5)], isLoading: false, isError: false } as unknown as ReturnType<
+        typeof useRecentTransactions
       >,
     )
-    selectLiveListingMutate.mockImplementation((_id, options) => {
+    selectComplexMutate.mockImplementation((_id, options) => {
       options?.onError?.(new ApiError(422, '탐색 범위를 벗어납니다'))
     })
     const user = userEvent.setup()
 
     const { container } = renderScreen()
-    await user.click(screen.getByRole('button', { name: '실시간 탐색' }))
-    await user.click(container.querySelector('.live-listing-group__header') as Element)
+    await user.click(screen.getByRole('button', { name: '실거래 탐색' }))
+    await user.click(container.querySelector('.recent-transaction-group__header') as Element)
     await user.click(container.querySelector('.listing-card') as Element)
 
-    expect(screen.getByText('실시간 매물 선택 실패')).toBeInTheDocument()
+    expect(screen.getByText('실거래 선택 실패')).toBeInTheDocument()
     expect(screen.getByText('탐색 범위를 벗어납니다')).toBeInTheDocument()
   })
 })

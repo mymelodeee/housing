@@ -8,6 +8,10 @@
   gap: var(--space-1);
 }
 
+.complex-location-card[data-clickable='true'] {
+  cursor: pointer;
+}
+
 .complex-location-card__header {
   display: flex;
   align-items: center;

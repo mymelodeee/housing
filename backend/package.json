@@ -8,7 +8,7 @@
     "dev": "node --watch src/index.js",
     "test": "jest --coverage",
     "migrate": "node-pg-migrate --migrations-dir src/db/migrations --database-url-var POSTGRES_CONNECTION_STRING --envPath .env",
-    "collect-listings": "node scripts/collect-regional-listings.js",
+    "collect-transactions": "node scripts/collect-regional-transactions.js",
     "remodeling:list": "node scripts/refresh-remodeling-data.js --list",
     "remodeling:apply": "node scripts/refresh-remodeling-data.js --apply"
   },

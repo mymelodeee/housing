@@ -9,17 +9,6 @@ const FACT_SELECT = `
   LEFT JOIN remodeling_sources s ON s.id = f.source_id
 `;
 
-// 단지명 표기가 출처마다 달라(공백/괄호/하이픈) 매칭이 어긋나므로 정규화 후 비교한다.
-async function findProjectByLawdCdAndName({ lawdCd, complexName }) {
-  const { rows } = await pool.query(
-    `SELECT * FROM remodeling_projects
-     WHERE lawd_cd = $1
-       AND regexp_replace(complex_name, '[[:space:]()-]', '', 'g') = regexp_replace($2, '[[:space:]()-]', '', 'g')`,
-    [lawdCd, complexName]
-  );
-  return rows[0] || null;
-}
-
 async function findProjectByComplexId(complexId) {
   const { rows } = await pool.query('SELECT * FROM remodeling_projects WHERE complex_id = $1', [complexId]);
   return rows[0] || null;
@@ -224,14 +213,6 @@ async function markSourceInaccessible(id, checkedAt) {
   return rows[0] || null;
 }
 
-async function linkProjectToComplex(projectId, complexId) {
-  const { rows } = await pool.query(
-    'UPDATE remodeling_projects SET complex_id = $2, updated_at = now() WHERE id = $1 RETURNING *',
-    [projectId, complexId]
-  );
-  return rows[0] || null;
-}
-
 async function findUnlinkedProjects() {
   const { rows } = await pool.query(
     'SELECT * FROM remodeling_projects WHERE complex_id IS NULL ORDER BY id'
@@ -240,7 +221,6 @@ async function findUnlinkedProjects() {
 }
 
 module.exports = {
-  findProjectByLawdCdAndName,
   findProjectByComplexId,
   findCurrentFacts,
   findFactHistory,
@@ -257,6 +237,5 @@ module.exports = {
   touchFactCheckedAt,
   markFactConflicted,
   markSourceInaccessible,
-  linkProjectToComplex,
   findUnlinkedProjects
 };

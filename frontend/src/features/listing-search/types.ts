@@ -1,4 +1,4 @@
-export interface RegionalListing {
+export interface RegionalTransaction {
   id: number
   lawdCd: string
   kaptCode: string | null

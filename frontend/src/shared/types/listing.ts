@@ -15,7 +15,7 @@ export interface ListingComplex {
   id: number
   complexName: string
   address: string
-  completionYear: number
+  completionYear: number | null
   remodelingStatus: RemodelingStatus
   reconstructionStatus: ReconstructionStatus
   isRegulatedArea: boolean
@@ -31,7 +31,7 @@ export interface ApartmentComplexSummary {
   id: number
   complexName: string
   address: string
-  completionYear: number
+  completionYear: number | null
   remodelingStatus: RemodelingStatus
   reconstructionStatus: ReconstructionStatus
   isRegulatedArea: boolean

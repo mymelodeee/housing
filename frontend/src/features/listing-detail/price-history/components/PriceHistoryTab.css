@@ -1,3 +1,39 @@
+.price-history-tab__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.price-history-tab__summary-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.price-history-tab__summary-value {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.price-history-tab__diff-pill {
+  border-radius: var(--radius-full);
+  border: 1px solid currentColor;
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.price-history-tab__diff-pill--up {
+  color: var(--color-danger);
+}
+
+.price-history-tab__diff-pill--down {
+  color: var(--color-info);
+}
+
 .price-history-tab__notice {
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);

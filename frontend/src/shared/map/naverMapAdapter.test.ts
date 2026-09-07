@@ -51,7 +51,11 @@ describe('NaverMapAdapter', () => {
     adapter.init(container)
 
     expect(mapMock).toHaveBeenCalledTimes(1)
-    expect(mapMock).toHaveBeenCalledWith(container, expect.any(Object))
+    expect(mapMock).toHaveBeenCalledWith(container, {
+      center: { lat: 37.2002, lng: 127.095 },
+      zoom: 12,
+      zoomControl: true,
+    })
   })
 
   it('setMarkers는 포인트마다 Marker를 생성하고 클릭 리스너를 등록한다', () => {

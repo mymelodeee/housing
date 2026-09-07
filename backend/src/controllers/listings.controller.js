@@ -6,16 +6,25 @@ function parseNumberOrUndefined(value) {
 
 async function listListings(req, res, next) {
   try {
-    const { minPrice, maxPrice, minLat, maxLat, minLng, maxLng } = req.query;
+    const { minPrice, maxPrice, minLat, maxLat, minLng, maxLng, city } = req.query;
     const result = await listingsService.listListings({
       minPrice: parseNumberOrUndefined(minPrice),
       maxPrice: parseNumberOrUndefined(maxPrice),
       minLat: parseNumberOrUndefined(minLat),
       maxLat: parseNumberOrUndefined(maxLat),
       minLng: parseNumberOrUndefined(minLng),
-      maxLng: parseNumberOrUndefined(maxLng)
+      maxLng: parseNumberOrUndefined(maxLng),
+      city: city || undefined
     });
     res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function getCities(req, res, next) {
+  try {
+    res.json({ cities: listingsService.getCities() });
   } catch (err) {
     next(err);
   }
@@ -151,6 +160,7 @@ async function getListingLoanSimulation(req, res, next) {
 
 module.exports = {
   listListings,
+  getCities,
   getListing,
   getListingLocality,
   getPriceHistory,

@@ -52,6 +52,84 @@
         }
       }
     },
+    "/api/complexes/{id}/price-history": {
+      "get": {
+        "tags": ["price-history"],
+        "summary": "단지 상세 - 매매가 변동 이력 (complex-anchor, 신규)",
+        "description": "단지 단위로 국토교통부 아파트 실거래가 공개시스템(오픈API) 기반 매매가 변동 이력을 조회한다. `/api/listings/{id}/price-history`와 동일한 로직이나 매물(listing) 없이 단지 id만으로 조회한다 — 실제 판매중 매물 API가 없어 `listings`를 anchor로 쓰지 않기로 한 결정에 따른 신규 경로다.",
+        "parameters": [ { "$ref": "#/components/parameters/ComplexIdPath" } ],
+        "responses": {
+          "200": { "description": "매매가 변동 이력", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PriceHistoryResponse" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/complexes/{id}/jeonse-history": {
+      "get": {
+        "tags": ["price-history"],
+        "summary": "단지 상세 - 전세가 변동 이력 (complex-anchor, 신규)",
+        "description": "단지 단위로 매매/전세 이력과 전세가율을 조회한다(`/api/listings/{id}/jeonse-history`와 동일 로직, 단지 id 기준).",
+        "parameters": [ { "$ref": "#/components/parameters/ComplexIdPath" } ],
+        "responses": {
+          "200": { "description": "전세가 변동 이력", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/JeonseHistoryResponse" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/complexes/{id}/assigned-schools": {
+      "get": {
+        "tags": ["locality"],
+        "summary": "단지 상세 - 배정학교 (complex-anchor, 신규)",
+        "description": "단지 좌표 기준 최근접 초/중학교를 조회한다(`/api/listings/{id}/assigned-schools`와 동일 로직, 단지 id 기준).",
+        "parameters": [ { "$ref": "#/components/parameters/ComplexIdPath" } ],
+        "responses": {
+          "200": { "description": "배정학교 정보", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AssignedSchoolsResponse" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/complexes/{id}/remodeling": {
+      "get": {
+        "tags": ["remodeling"],
+        "summary": "단지 상세 - 리모델링 추진 정보 (complex-anchor, 신규)",
+        "description": "단지의 리모델링 추진 현황을 조회한다(`/api/listings/{id}/remodeling`과 동일 로직, 단지 id 기준).",
+        "parameters": [ { "$ref": "#/components/parameters/ComplexIdPath" } ],
+        "responses": {
+          "200": { "description": "리모델링 추진 정보", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RemodelingResponse" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/complexes/{id}/regulation": {
+      "get": {
+        "tags": ["regulation"],
+        "summary": "단지 상세 - 규제/대출 분석 (complex-anchor, 신규)",
+        "description": "단지의 규제 현황과, query로 전달한 `salePrice` 기준(또는 미지정 시 해당 단지의 최신 유효 매매 실거래가를 자동 기준가격으로 사용) 최대 대출가능금액을 계산한다. `listings` 테이블에 의존하지 않는다 — 유효한 실거래도 없고 salePrice도 없을 때만 `profileMessage: \"매매가 입력 필요\"`를 반환한다.",
+        "parameters": [
+          { "$ref": "#/components/parameters/ComplexIdPath" },
+          { "name": "salePrice", "in": "query", "description": "분석 대상 매매가(만원). 미지정 시 최신 실거래가를 자동으로 사용한다.", "required": false, "schema": { "type": "integer", "example": 95000 } }
+        ],
+        "responses": {
+          "200": { "description": "규제/대출 분석 결과", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ComplexRegulationInfo" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/complexes/{id}/loan-simulation": {
+      "get": {
+        "tags": ["loan-simulation"],
+        "summary": "단지 상세 - 대출 시뮬레이션 (complex-anchor, 신규)",
+        "description": "query로 전달한 `salePrice` 기준으로 대출 시뮬레이션 시나리오를 계산한다. `salePrice` 미지정 시 해당 단지의 최신 유효 매매 실거래가(로컬 price_history 또는 국토부 실거래)를 기준가격으로 자동 사용하고, 유효한 실거래도 없을 때만 `salePriceRequired: true`와 함께 `scenarios: null`을 반환한다.",
+        "parameters": [
+          { "$ref": "#/components/parameters/ComplexIdPath" },
+          { "name": "salePrice", "in": "query", "description": "분석 대상 매매가(만원). 미지정 시 최신 실거래가를 자동으로 사용한다.", "required": false, "schema": { "type": "integer", "example": 95000 } }
+        ],
+        "responses": {
+          "200": { "description": "대출 시뮬레이션 결과", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ComplexLoanSimulationResult" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
     "/api/listings": {
       "get": {
         "tags": ["listings"],
@@ -63,7 +141,8 @@
           { "name": "minLat", "in": "query", "description": "지도 bbox 필터 최소 위도. minLat/maxLat/minLng/maxLng 4개를 모두 지정해야 적용된다(하나라도 누락 시 bbox 필터 미적용).", "required": false, "schema": { "type": "number", "format": "double", "example": 37.15 } },
           { "name": "maxLat", "in": "query", "description": "지도 bbox 필터 최대 위도", "required": false, "schema": { "type": "number", "format": "double", "example": 37.25 } },
           { "name": "minLng", "in": "query", "description": "지도 bbox 필터 최소 경도", "required": false, "schema": { "type": "number", "format": "double", "example": 127.05 } },
-          { "name": "maxLng", "in": "query", "description": "지도 bbox 필터 최대 경도", "required": false, "schema": { "type": "number", "format": "double", "example": 127.15 } }
+          { "name": "maxLng", "in": "query", "description": "지도 bbox 필터 최대 경도", "required": false, "schema": { "type": "number", "format": "double", "example": 127.15 } },
+          { "name": "city", "in": "query", "description": "시 단위 지역 필터. GET /api/listings/regions/cities로 조회 가능한 값 중 하나를 지정하면 해당 city에 속한 lawdCd의 단지 매물만 반환한다(config/target-regions.js가 canonical source). 미지정 시 서비스 대상 전체 지역을 반환한다.", "required": false, "schema": { "type": "string", "example": "수원시" } }
         ],
         "responses": {
           "200": {
@@ -73,33 +152,47 @@
         }
       }
     },
-    "/api/listings/live-search": {
+    "/api/listings/regions/cities": {
       "get": {
         "tags": ["listings"],
-        "summary": "실시간 지역 매물 검색 (배치 캐싱)",
-        "description": "배치 수집기(collect-regional-listings.js)가 대상 지역(화성/평택/용인기흥/서울 강동구/성남시 수정·중원·분당구/용인시 수지구/위례신도시(송파 장지·거여동, 하남 학암·감이동))의 국토부 실거래가를 캐싱한 regional_listing_cache에서 후보를 검색한다(도메인 v0.16). 매매가 필터 기본값은 탐색 범위(7~15억)이며, 세대수 500세대 이상 항목만 반환한다(세대수 미확인(null) 항목은 제외). 실제 매물 호가가 아닌 최근 실거래가를 시세 근사치로 사용한다.",
-        "parameters": [
-          { "name": "minPrice", "in": "query", "description": "최소 매매가(만원). 미지정 시 기본값 70000", "required": false, "schema": { "type": "integer", "default": 70000, "example": 70000 } },
-          { "name": "maxPrice", "in": "query", "description": "최대 매매가(만원). 미지정 시 기본값 150000", "required": false, "schema": { "type": "integer", "default": 150000, "example": 150000 } },
-          { "name": "minArea", "in": "query", "description": "최소 전용면적(m^2). 미지정 시 기본값 0", "required": false, "schema": { "type": "number", "default": 0, "example": 59 } },
-          { "name": "maxArea", "in": "query", "description": "최대 전용면적(m^2). 미지정 시 기본값 999", "required": false, "schema": { "type": "number", "default": 999, "example": 120 } }
-        ],
+        "summary": "시 단위 지역 선택 목록 조회",
+        "description": "등록 매물/실시간 탐색 화면의 지역 선택 dropdown에 쓰이는 시 단위 지역 목록을 반환한다. config/target-regions.js의 TARGET_REGIONS가 canonical source이며, 각 지역의 city 값을 선언 순서대로 중복 없이 반환한다.",
         "responses": {
           "200": {
-            "description": "조건에 맞는 캐시 항목 목록(0건이면 빈 배열)",
-            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/RegionalListingCacheEntry" } } } }
+            "description": "시 단위 지역 목록",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "cities": { "type": "array", "items": { "type": "string" }, "example": ["화성시", "수원시", "서울특별시", "성남시", "용인시", "하남시"] } } } } }
           }
         }
       }
     },
-    "/api/listings/live-search/select": {
+    "/api/listings/market-search": {
+      "get": {
+        "tags": ["listings"],
+        "summary": "실거래 탐색 (배치 캐싱, 구 명칭: 실시간 지역 매물 검색)",
+        "description": "배치 수집기(collect-regional-transactions.js)가 대상 지역(화성/평택/용인기흥/서울 강동구/성남시 수정·중원·분당구/용인시 수지구/위례신도시(송파 장지·거여동, 하남 학암·감이동))의 국토부 실거래가를 캐싱한 regional_transaction_cache에서 후보를 검색한다(도메인 v0.16). 매매가 필터 기본값은 탐색 범위(7~15억)이며, 세대수 500세대 이상 항목만 반환한다(세대수 미확인(null) 항목은 제외). 실제 매물 호가가 아닌 최근 실거래가를 시세 근사치로 사용한다. 구 경로 `/api/listings/live-search`는 제거됐다(docs/search-architecture-refactor-plan.md §15).",
+        "parameters": [
+          { "name": "minPrice", "in": "query", "description": "최소 매매가(만원). 미지정 시 기본값 70000", "required": false, "schema": { "type": "integer", "default": 70000, "example": 70000 } },
+          { "name": "maxPrice", "in": "query", "description": "최대 매매가(만원). 미지정 시 기본값 150000", "required": false, "schema": { "type": "integer", "default": 150000, "example": 150000 } },
+          { "name": "minArea", "in": "query", "description": "최소 전용면적(m^2). 미지정 시 기본값 0", "required": false, "schema": { "type": "number", "default": 0, "example": 59 } },
+          { "name": "maxArea", "in": "query", "description": "최대 전용면적(m^2). 미지정 시 기본값 999", "required": false, "schema": { "type": "number", "default": 999, "example": 120 } },
+          { "name": "city", "in": "query", "description": "시 단위 지역 필터. GET /api/listings/regions/cities로 조회 가능한 값 중 하나를 지정하면 해당 city에 속한 lawdCd의 캐시 항목만 반환한다. 미지정 시 서비스 대상 전체 지역을 반환한다.", "required": false, "schema": { "type": "string", "example": "용인시" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "조건에 맞는 캐시 항목 목록(0건이면 빈 배열)",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/RegionalTransactionCacheEntry" } } } }
+          }
+        }
+      }
+    },
+    "/api/listings/market-search/select": {
       "post": {
         "tags": ["listings"],
-        "summary": "실시간 검색 결과 선택(단지/매물 승격)",
-        "description": "실시간 검색 결과 캐시 항목을 선택하면 해당 항목을 apartment_complexes/listings에 find-or-create(승격)하고 생성/발견된 매물 id를 반환한다. 좌표가 없는 항목은 이 시점에 Geocoding으로 좌표를 확보하며, 실패 시 422를 반환한다. 실거래가가 탐색 범위(7~15억)를 벗어나는 항목도 422를 반환한다.",
+        "summary": "실거래 탐색 결과 선택(단지/매물 승격, 구 경로 — Phase 7에서 제거 예정)",
+        "description": "실거래 탐색 결과 캐시 항목을 선택하면 해당 항목을 apartment_complexes/listings에 find-or-create(승격)하고 생성/발견된 매물 id를 반환한다. 좌표가 없는 항목은 이 시점에 Geocoding으로 좌표를 확보하며, 실패 시 422를 반환한다. 실거래가가 탐색 범위(7~15억)를 벗어나는 항목도 422를 반환한다. 현재 프론트엔드는 이 경로 대신 아래 select-complex를 사용한다(§14 domain 정리) — `listings` 제거(Phase 7) 시 이 경로도 함께 제거된다.",
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "type": "object", "required": ["id"], "properties": { "id": { "type": "integer", "description": "regional_listing_cache 항목 id", "example": 1 } } } } }
+          "content": { "application/json": { "schema": { "type": "object", "required": ["id"], "properties": { "id": { "type": "integer", "description": "regional_transaction_cache 항목 id", "example": 1 } } } } }
         },
         "responses": {
           "201": {
@@ -108,6 +201,25 @@
           },
           "404": { "$ref": "#/components/responses/NotFound" },
           "422": { "description": "탐색 범위 벗어남 또는 좌표 확인 불가", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/api/listings/market-search/select-complex": {
+      "post": {
+        "tags": ["listings"],
+        "summary": "실거래 탐색 결과에서 단지 상세로 이동(단지만 find-or-create)",
+        "description": "실거래 탐색 결과 캐시 항목을 선택해 단지 상세(`/api/complexes/{id}`)로 이동할 때 쓴다. `listings` row는 만들지 않고 `apartment_complexes`만 find-or-create한다 — 실제 판매중 매물 API가 없어 `listings`를 anchor로 쓰지 않기로 한 결정(§14)에 따른 경로다. sale_price 탐색 범위 체크가 없다.",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["id"], "properties": { "id": { "type": "integer", "description": "regional_transaction_cache 항목 id", "example": 1 } } } } }
+        },
+        "responses": {
+          "201": {
+            "description": "find-or-create된 단지 id",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "complexId": { "type": "integer", "example": 7 } } } } }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "422": { "description": "좌표 확인 불가", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
         }
       }
     },
@@ -573,9 +685,9 @@
         },
         "required": ["message"]
       },
-      "RegionalListingCacheEntry": {
+      "RegionalTransactionCacheEntry": {
         "type": "object",
-        "description": "실시간 지역 매물 검색 캐시 항목(regional_listing_cache). 세대수 500세대 이상 항목만 live-search 응답에 포함된다(도메인 v0.16).",
+        "description": "실거래 탐색 캐시 항목(regional_transaction_cache). 세대수 500세대 이상 항목만 market-search 응답에 포함된다(도메인 v0.16).",
         "properties": {
           "id": { "type": "integer", "example": 1 },
           "lawdCd": { "type": "string", "description": "법정동코드 앞 5자리", "example": "11740" },
@@ -713,7 +825,7 @@
           "id": { "type": "integer", "example": 1 },
           "complexName": { "type": "string", "example": "동탄역 시범 우남퍼스트빌" },
           "address": { "type": "string", "example": "경기도 화성시 동탄역로 123" },
-          "completionYear": { "type": "integer", "minimum": 1970, "example": 2021 },
+          "completionYear": { "type": ["integer", "null"], "minimum": 1970, "example": 2021 },
           "remodelingStatus": { "$ref": "#/components/schemas/RemodelingStatus" },
           "reconstructionStatus": { "$ref": "#/components/schemas/ReconstructionStatus" },
           "isRegulatedArea": { "type": "boolean", "default": false, "example": true },
@@ -803,7 +915,7 @@
         "properties": {
           "complexId": { "type": "integer", "example": 1 },
           "complexName": { "type": "string", "example": "동탄역 시범 우남퍼스트빌" },
-          "completionYear": { "type": "integer", "example": 2021 },
+          "completionYear": { "type": ["integer", "null"], "example": 2021 },
           "remodelingStatus": { "$ref": "#/components/schemas/RemodelingStatus" },
           "reconstructionStatus": { "$ref": "#/components/schemas/ReconstructionStatus" },
           "nearbyRedevelopmentInfo": { "type": "string", "nullable": true, "example": "정보 없음" },
@@ -821,7 +933,7 @@
           "salePrice": { "type": "integer", "example": 95000 },
           "exclusiveArea": { "type": "number", "example": 84.98 },
           "complexName": { "type": "string", "example": "동탄역 시범 우남퍼스트빌" },
-          "completionYear": { "type": "integer", "example": 2021 },
+          "completionYear": { "type": ["integer", "null"], "example": 2021 },
           "remodelingStatus": { "$ref": "#/components/schemas/RemodelingStatus" },
           "reconstructionStatus": { "$ref": "#/components/schemas/ReconstructionStatus" },
           "nearbyRedevelopmentInfo": { "type": "string", "nullable": true, "example": "정보 없음" },
@@ -874,13 +986,54 @@
           "regionalLoanCapAmount": { "type": "integer", "nullable": true, "description": "규제지역 내 주택구입 목적 주담대 상한(만원), 고정 60000(도메인 §5.1.4)", "example": 60000 }
         }
       },
+      "SalePriceSource": {
+        "type": "string",
+        "nullable": true,
+        "enum": ["user", "transaction", null],
+        "description": "기준가격의 출처. \"user\"는 query의 salePrice 직접 입력값, \"transaction\"은 해당 단지의 최신 유효 매매 실거래가(로컬 price_history 또는 국토부 실거래) 자동 적용, null은 둘 다 없음.",
+        "example": "transaction"
+      },
+      "ComplexRegulationInfo": {
+        "type": "object",
+        "description": "단지 기준 규제/대출 분석 결과(complex-anchor, §14). salePrice 미지정 시 최신 유효 매매 실거래가를 기준가격으로 자동 사용한다 — 이는 국토부에 신고된 과거 확정 거래이며 현재 판매중인 매물 호가가 아니다.",
+        "properties": {
+          "complexId": { "type": "integer", "example": 1 },
+          "isRegulatedArea": { "type": "boolean", "example": true },
+          "isLandTransactionPermissionZone": { "$ref": "#/components/schemas/LandTransactionPermissionZoneStatus" },
+          "regulationConfirmationNeeded": { "type": "boolean", "example": false },
+          "ltvPercent": { "type": "integer", "nullable": true, "example": 40 },
+          "maxLoanAmount": { "type": "integer", "nullable": true, "example": 40800 },
+          "profileMessage": { "type": "string", "nullable": true, "example": "내 정보 입력 필요" },
+          "effectiveSalePrice": { "type": "integer", "nullable": true, "description": "실제 계산에 사용된 기준가격(만원)", "example": 95000 },
+          "salePriceSource": { "$ref": "#/components/schemas/SalePriceSource" },
+          "referenceTransactionDate": { "type": "string", "nullable": true, "description": "기준가격이 salePriceSource=transaction일 때 그 거래의 계약일(YYYY-MM-DD)", "example": "2026-08-25" },
+          "gapInvestmentAllowed": { "type": "boolean", "example": false },
+          "occupancyRequirementMonths": { "type": "integer", "nullable": true, "example": 24 },
+          "regionalLoanCapAmount": { "type": "integer", "nullable": true, "example": 60000 }
+        }
+      },
+      "ComplexLoanSimulationResult": {
+        "type": "object",
+        "description": "단지 기준 대출 시뮬레이션 결과(complex-anchor, §14). salePrice 미지정 시 최신 유효 매매 실거래가를 기준가격으로 자동 사용한다.",
+        "properties": {
+          "complexId": { "type": "integer", "example": 1 },
+          "profileIncomplete": { "type": "boolean", "example": false },
+          "scenarios": { "type": "array", "items": { "$ref": "#/components/schemas/LoanScenarioResult" }, "nullable": true },
+          "recommendedScenario": { "type": "string", "enum": ["단독", "부부합산"], "nullable": true, "example": "부부합산" },
+          "policyMortgageNotice": { "type": "string" },
+          "salePriceRequired": { "type": "boolean", "description": "유효한 매매 실거래가 없고 salePrice도 미지정일 때만 true", "example": true },
+          "effectiveSalePrice": { "type": "integer", "nullable": true, "example": 95000 },
+          "salePriceSource": { "$ref": "#/components/schemas/SalePriceSource" },
+          "referenceTransactionDate": { "type": "string", "nullable": true, "example": "2026-08-25" }
+        }
+      },
       "LocalityInfo": {
         "type": "object",
         "description": "매물이 속한 단지 기준 입지 정보(도메인 §3.5, PRD F5)",
         "properties": {
           "listingId": { "type": "integer", "example": 10 },
           "complexId": { "type": "integer", "example": 1 },
-          "completionYear": { "type": "integer", "example": 2021 },
+          "completionYear": { "type": ["integer", "null"], "example": 2021 },
           "remodelingStatus": { "$ref": "#/components/schemas/RemodelingStatus" },
           "reconstructionStatus": { "$ref": "#/components/schemas/ReconstructionStatus" },
           "nearbyRedevelopmentInfo": { "type": "string", "nullable": true, "example": "정보 없음" },

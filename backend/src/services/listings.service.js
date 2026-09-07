@@ -1,5 +1,5 @@
 const listingsRepository = require('../repositories/listings.repository');
-const { getTargetRegionCodes } = require('../config/target-regions');
+const { getTargetRegionCodes, getLawdCdsByCity, getCities } = require('../config/target-regions');
 const apartmentComplexesService = require('./apartment-complexes.service');
 const priceHistoryService = require('./price-history.service');
 const molitPriceHistoryService = require('./molit-price-history.service');
@@ -44,12 +44,12 @@ function mapListingRow(row) {
   };
 }
 
-async function listListings({ minPrice, maxPrice, minLat, maxLat, minLng, maxLng } = {}) {
+async function listListings({ minPrice, maxPrice, minLat, maxLat, minLng, maxLng, city } = {}) {
   const rows = await listingsRepository.findByPriceRange({
     minPrice: minPrice === undefined ? DEFAULT_MIN_PRICE : minPrice,
     maxPrice: maxPrice === undefined ? DEFAULT_MAX_PRICE : maxPrice,
     minLat, maxLat, minLng, maxLng,
-    targetLawdCds: getTargetRegionCodes()
+    targetLawdCds: city ? getLawdCdsByCity(city) : getTargetRegionCodes()
   });
   return rows.map(mapListingRow);
 }
@@ -180,20 +180,7 @@ async function getAssignedSchools(id) {
 }
 
 async function resolveRemodelingProject(listingRow) {
-  const byComplexId = await remodelingRepository.findProjectByComplexId(listingRow.complex_id);
-  if (byComplexId) return byComplexId;
-
-  if (!listingRow.lawd_cd) return null;
-
-  const project = await remodelingRepository.findProjectByLawdCdAndName({
-    lawdCd: listingRow.lawd_cd,
-    complexName: listingRow.molit_apt_name || listingRow.complex_name
-  });
-  if (project) {
-    // 지연 연결된 사업을 이 시점에 단지와 묶어 다음 조회부터 단지 ID로 바로 찾게 한다.
-    await remodelingRepository.linkProjectToComplex(project.id, listingRow.complex_id);
-  }
-  return project;
+  return remodelingRepository.findProjectByComplexId(listingRow.complex_id);
 }
 
 async function getRemodeling(id) {
@@ -321,6 +308,7 @@ async function getListingLoanSimulation(id) {
 
 module.exports = {
   listListings,
+  getCities,
   getListingDetail,
   getListingLocality,
   getPriceHistory,

@@ -9,6 +9,11 @@
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
   text-decoration: none;
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
 }
 
 .listing-detail-screen__header {

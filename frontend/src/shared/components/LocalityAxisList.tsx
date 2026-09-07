@@ -22,7 +22,7 @@ export function LocalityAxisList({ data }: LocalityAxisListProps) {
     <dl className="locality-axis-list">
       <div className="locality-axis-list__item">
         <dt>연식</dt>
-        <dd>{data.completionYear}년</dd>
+        <dd>{data.completionYear === null ? '정보 없음' : `${data.completionYear}년`}</dd>
       </div>
       <div className="locality-axis-list__item">
         <dt>리모델링 이력</dt>
