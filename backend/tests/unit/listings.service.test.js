@@ -73,6 +73,7 @@ describe('services/listings.service', () => {
         maxLat: undefined,
         minLng: undefined,
         maxLng: undefined,
+        targetLawdCds: expect.any(Array),
       });
     });
 
@@ -88,6 +89,7 @@ describe('services/listings.service', () => {
         maxLat: undefined,
         minLng: undefined,
         maxLng: undefined,
+        targetLawdCds: expect.any(Array),
       });
     });
 
@@ -110,6 +112,7 @@ describe('services/listings.service', () => {
         maxLat: 37.3,
         minLng: 127.0,
         maxLng: 127.2,
+        targetLawdCds: expect.any(Array),
       });
     });
 

@@ -1,7 +1,7 @@
 # housing ERD (Entity-Relationship Diagram)
 
-- 버전: v0.9
-- 최종 수정일: 2026-08-17
+- 버전: v0.10
+- 최종 수정일: 2026-09-07
 - 참조 문서: [1-domain-definition.md](./1-domain-definition.md) (v0.10), [2-prd.md](./2-prd.md) (v0.6), [4-project-principle.md](./4-project-principle.md) (v0.5)
 - 버전 관리 규칙: 본 문서를 수정할 때마다 상단 버전(v0.1 → v0.2 …)과 최종 수정일을 함께 갱신한다. 과거 버전 이력은 별도 변경이력 절에 누적 기록한다.
 
@@ -18,6 +18,7 @@
 | v0.7 | 2026-07-10 | 실데이터 연동 반영(도메인 v0.10): `apartment_complexes`에 `lawd_cd`/`molit_apt_name` 추가(국토부 실거래가 API 실시간 조회 매핑용, 둘 다 nullable). 학군 정보 산출을 위한 `elementary_schools` 테이블 신설(FK 관계 없는 독립 참조 테이블, data.go.kr 정적 데이터셋 임포트 결과). `price_history`는 매핑 정보가 없는 단지의 폴백 데이터로 역할이 한정됨을 명시 |
 | v0.8 | 2026-08-17 | 문서 누락 보완: `database/schema.sql`(테이블 11번)과 마이그레이션 파일에는 이미 존재하던 `regional_listing_cache`(경기남부+서울 실시간(배치 캐싱) 매물 검색용 캐시 테이블, 도메인 v0.14 후속)를 ERD와 테이블별 비고에 추가. FK 관계 없는 독립 테이블이며, 사용자가 검색 결과를 선택하는 시점에 `apartment_complexes`/`listings`로 승격(upsert)되는 구조임을 명시 |
 | v0.9 | 2026-08-17 | 배정학교 탭 신설 반영(도메인 v0.19): `elementary_schools`에 `school_level varchar(20) NOT NULL DEFAULT '초등학교'` 컬럼 및 인덱스 추가('초등학교'/'중학교'). 시드 스크립트가 초·중학교를 함께 적재하며, 테이블명은 기존 코드 호환을 위해 `elementary_schools`를 유지한다(초등 전용이 아니게 되었음을 비고에 명시) |
+| v0.10 | 2026-09-07 | 매물 상세 "리모델링" 탭 신설(`docs/remodeling/implementation-plan.md` 반영)에 따라 `remodeling_projects`/`remodeling_sources`/`remodeling_facts`/`remodeling_project_history` 4개 테이블을 신규 추가. 리모델링은 단일 공식 API가 없어(PRD §9 리스크) 수동 리서치 값마다 출처·기준일·마지막 검증일·상태·신뢰도를 추적해야 하므로, 값의 단일 진실원천을 `remodeling_facts`에 두고 `remodeling_projects`는 `apartment_complexes`에 지연 연결(`complex_id` nullable FK, `lawd_cd`+단지명 매칭)되는 구조로 설계했다. 기존 `apartment_complexes.remodeling_status`/`remodeling_completion_year` 컬럼은 변경하지 않는다(신규 4개 테이블과 별개로 유지) |
 
 ---
 
@@ -70,6 +71,12 @@ erDiagram
     comparison_sets ||--o{ comparison_set_listings : "포함 매물 매핑(2~5개, 앱 레벨 검증)"
     listings ||--o{ comparison_set_listings : "비교셋에 포함됨(매물)"
     apartment_complexes ||--o{ price_history : "매매가 변동 이력"
+    apartment_complexes ||--o| remodeling_projects : "지연 연결(complex_id nullable, lawd_cd+단지명 매칭)"
+    remodeling_projects ||--o{ remodeling_sources : "출처"
+    remodeling_projects ||--o{ remodeling_facts : "값(현재+이력)"
+    remodeling_projects ||--o{ remodeling_project_history : "단계 이력"
+    remodeling_sources ||--o{ remodeling_facts : "근거 출처"
+    remodeling_sources ||--o{ remodeling_project_history : "근거 출처"
 
     user_profiles {
         integer id PK "고정값 1 (단일 사용자 프로필, 여러 행 생성 안 함)"
@@ -182,6 +189,68 @@ erDiagram
         timestamp collected_at "수집 시각"
     }
     %% 배치 수집기(collect-regional-listings.js)가 채우는 실시간 지역 매물 검색용 캐시. FK 관계 없는 독립 테이블이며, (lawd_cd, complex_name, exclusive_area) UNIQUE. 사용자가 검색 결과를 선택하면 apartment_complexes/listings로 승격(upsert)된다.
+
+    remodeling_projects {
+        integer id PK
+        integer complex_id FK "apartment_complexes.id 참조(null 허용, 지연 연결), ON DELETE SET NULL"
+        varchar lawd_cd "법정동코드 앞5자리"
+        varchar complex_name "단지명"
+        varchar region_name "지역명(null 허용)"
+        varchar project_name "사업명(null 허용)"
+        boolean is_active "사업 진행중 여부"
+        date last_checked_at "마지막 검증일"
+        text note "비고(null 허용)"
+        timestamp created_at
+        timestamp updated_at
+    }
+    %% UNIQUE (lawd_cd, complex_name), INDEX(complex_id), INDEX(last_checked_at). 리모델링 "프로젝트"의 상위 단위이며, 값 자체는 저장하지 않고 remodeling_facts/remodeling_project_history가 단일 진실원천이다(docs/remodeling/implementation-plan.md §3).
+
+    remodeling_sources {
+        integer id PK
+        integer project_id FK "remodeling_projects.id 참조, ON DELETE CASCADE"
+        text source_url "null 허용"
+        varchar source_name "null 허용"
+        varchar source_title "500자, null 허용"
+        varchar source_type "고시/공고/조합공지/지자체보도/뉴스/커뮤니티/기타"
+        date source_date "null 허용"
+        date checked_at "마지막 검증일"
+        varchar reliability "high/medium/low"
+        boolean is_accessible "기본값 true, 접근 불가여도 행 유지"
+        timestamp created_at
+    }
+    %% INDEX(project_id). 삭제/접근불가 출처도 행을 지우지 않고 is_accessible=false + checked_at만 갱신한다(재조사 규칙 8, implementation-plan.md §6).
+
+    remodeling_facts {
+        integer id PK
+        integer project_id FK "remodeling_projects.id 참조, ON DELETE CASCADE"
+        varchar field_name "current_stage/household_count_before/household_count_after/contribution_amount/loan_status/move_out_schedule"
+        varchar field_key "평형·타입 구분자, 단일값이면 null"
+        text value "값"
+        numeric value_numeric "null 허용"
+        varchar unit "20자, null 허용"
+        varchar value_status "confirmed/estimated/proposal/unknown"
+        date effective_date "값의 기준일(as_of), null 허용"
+        date checked_at "마지막 검증일(발생일이 아님, §3.3 참조)"
+        integer source_id FK "remodeling_sources.id 참조, ON DELETE SET NULL"
+        varchar confidence "high/medium/low, 기본값 medium"
+        boolean is_current "현재값 여부"
+        boolean is_conflicted "출처 충돌 여부"
+        timestamp superseded_at "값 변경으로 대체된 시각(null 허용)"
+        timestamp created_at
+    }
+    %% 부분 UNIQUE INDEX (project_id, field_name, COALESCE(field_key,'')) WHERE is_current — 필드+구분자당 "현재값"은 항상 1건. 이전 값은 is_current=false 행으로 남아 변경 이력을 자동 구성한다.
+
+    remodeling_project_history {
+        integer id PK
+        integer project_id FK "remodeling_projects.id 참조, ON DELETE CASCADE"
+        varchar stage "추진위원회/조합설립인가/안전진단/건축심의/사업계획승인/이주/착공/준공/중단"
+        date effective_date "null 허용"
+        varchar status "confirmed/estimated/proposal/unknown"
+        integer source_id FK "remodeling_sources.id 참조, ON DELETE SET NULL"
+        date checked_at "마지막 검증일"
+        text note "null 허용"
+    }
+    %% UNIQUE (project_id, stage) — 동일 단계 중복 방지.
 ```
 
 ---
@@ -201,6 +270,10 @@ erDiagram
 | `price_history` | §4.7 | 도메인 v0.8에서 `listing_id` → `complex_id`로 재소속(단지별로 다건의 거래 이력이 쌓이는 1:N 구조). `lookup_period_type`은 20년 이상 데이터 보유 여부에 따라 "최근 20년" 또는 "최초거래 이후" 값을 갖는다(도메인 §4.7, §3.7). `apartment_complexes.lawd_cd`/`molit_apt_name`이 모두 있는 단지는 이 테이블을 쓰지 않고 국토부 API를 실시간 조회(fetch-through)하므로, 이 테이블은 매핑 정보가 없는 단지의 폴백 데이터로만 채운다. |
 | `elementary_schools` | §3.7.1(도메인 v0.10 신설), 배정학교 탭(도메인 v0.19) | 전국초중등학교위치표준데이터(data.go.kr, 정적 데이터셋) 임포트 결과. 다른 테이블과 FK 관계 없이 독립적으로 존재하며, 조회 시점에 단지 좌표와의 haversine 거리 계산으로 최근접 학교를 산정하는 데 쓰인다(학군 입지 축은 700m 반경 초등학교, 배정학교 탭은 3km 반경 초·중학교). 도메인 v0.19부터 `school_level`('초등학교'/'중학교')로 중학교도 함께 적재하므로 테이블명과 달리 초등 전용이 아니다(기존 코드 호환을 위해 테이블명 유지). 2026-08-17 기준 data.go.kr API 활용신청 미승인이라 데이터가 비어 있다(승인 후 시드 스크립트 재실행 필요). |
 | `regional_listing_cache` | 도메인 v0.14 후속(실시간 지역 매물 검색) | 국토교통부 실거래가 API(지역+월 단위)를 배치 수집기(`backend/scripts/collect-regional-listings.js`, `npm run collect-listings`)로 주기 수집해 캐싱하는 테이블. `apartment_complexes`/`listings`와 별개의 독립 테이블(FK 없음)이며, 실제 "매물 호가"가 아닌 "최근 실거래가"를 시세 근사치로 사용한다. `GET /api/listings/live-search`가 이 테이블을 조회하고, 사용자가 결과를 선택(`POST /api/listings/live-search/select`)하는 시점에 해당 행이 `apartment_complexes`/`listings`로 승격(upsert)된다. `(lawd_cd, complex_name, exclusive_area)` UNIQUE로 재수집 시 중복을 방지한다. |
+| `remodeling_projects` | 매물 상세 "리모델링" 탭 신설(`docs/remodeling/implementation-plan.md`) | 리모델링 사업 단위. `complex_id`는 nullable FK(`ON DELETE SET NULL`)로, `apartment_complexes`에 즉시 연결되지 않고 `lawd_cd`+`complex_name` 매칭으로 지연 연결된다(실시간 탐색 승격 이전에도 리서치 데이터를 먼저 적재할 수 있게 하기 위함). 값 자체는 저장하지 않고 `remodeling_facts`/`remodeling_project_history`가 단일 진실원천이다. `(lawd_cd, complex_name)` UNIQUE. |
+| `remodeling_sources` | 상동 | 리모델링 정보의 출처(고시/공고/조합공지/지자체보도/뉴스/커뮤니티/기타)를 관리한다. 삭제/접근불가 상태가 되어도 행을 지우지 않고 `is_accessible=false`로만 표시해 이력을 보존한다(재조사 규칙 8). `reliability`(high/medium/low)로 신뢰도를 관리한다. |
+| `remodeling_facts` | 상동 | 사업 단계·세대수·분담금·대출 상태 등 리모델링 "값"의 단일 진실원천. `field_name`+`field_key`(평형 등 구분자, 단일값이면 null) 조합당 `is_current=true`인 현재값이 부분 UNIQUE 인덱스로 정확히 1건만 존재하도록 강제하며, 값이 바뀌면 기존 행을 `is_current=false`+`superseded_at`으로 남기고 새 행을 추가해 변경 이력을 자동 구성한다. `checked_at`은 "그 정보를 마지막으로 검증한 날짜"이며 `effective_date`(그 값의 기준일)와 의미가 다르다(예: 사업계획승인 `effective_date=2025-11-18`, `checked_at=2026-09-07`). |
+| `remodeling_project_history` | 상동 | 사업 단계(추진위원회~준공/중단) 진행 이력. `(project_id, stage)` UNIQUE로 동일 단계 중복 기록을 방지한다. `remodeling_facts`의 `current_stage`가 "현재" 단계를, 이 테이블이 단계별 진행 "이력"을 각각 담당한다. |
 
 ---
 

@@ -11,6 +11,7 @@ router.get('/:id/locality', listingsController.getListingLocality);
 router.get('/:id/price-history', listingsController.getPriceHistory);
 router.get('/:id/jeonse-history', listingsController.getJeonseHistory);
 router.get('/:id/assigned-schools', listingsController.getAssignedSchools);
+router.get('/:id/remodeling', listingsController.getRemodeling);
 router.get('/:id/regulation', listingsController.getListingRegulation);
 router.get('/:id/loan-simulation', listingsController.getListingLoanSimulation);
 

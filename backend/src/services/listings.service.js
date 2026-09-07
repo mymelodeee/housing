@@ -1,4 +1,5 @@
 const listingsRepository = require('../repositories/listings.repository');
+const { getTargetRegionCodes } = require('../config/target-regions');
 const apartmentComplexesService = require('./apartment-complexes.service');
 const priceHistoryService = require('./price-history.service');
 const molitPriceHistoryService = require('./molit-price-history.service');
@@ -9,6 +10,8 @@ const regulationService = require('./regulation.service');
 const loanLimitService = require('./loan-limit.service');
 const userProfileService = require('./user-profile.service');
 const loanScenarioService = require('./loan-scenario.service');
+const remodelingService = require('./remodeling.service');
+const remodelingRepository = require('../repositories/remodeling.repository');
 
 const DEFAULT_MIN_PRICE = 70000;
 const DEFAULT_MAX_PRICE = 150000;
@@ -45,7 +48,8 @@ async function listListings({ minPrice, maxPrice, minLat, maxLat, minLng, maxLng
   const rows = await listingsRepository.findByPriceRange({
     minPrice: minPrice === undefined ? DEFAULT_MIN_PRICE : minPrice,
     maxPrice: maxPrice === undefined ? DEFAULT_MAX_PRICE : maxPrice,
-    minLat, maxLat, minLng, maxLng
+    minLat, maxLat, minLng, maxLng,
+    targetLawdCds: getTargetRegionCodes()
   });
   return rows.map(mapListingRow);
 }
@@ -175,6 +179,52 @@ async function getAssignedSchools(id) {
   };
 }
 
+async function resolveRemodelingProject(listingRow) {
+  const byComplexId = await remodelingRepository.findProjectByComplexId(listingRow.complex_id);
+  if (byComplexId) return byComplexId;
+
+  if (!listingRow.lawd_cd) return null;
+
+  const project = await remodelingRepository.findProjectByLawdCdAndName({
+    lawdCd: listingRow.lawd_cd,
+    complexName: listingRow.molit_apt_name || listingRow.complex_name
+  });
+  if (project) {
+    // 지연 연결된 사업을 이 시점에 단지와 묶어 다음 조회부터 단지 ID로 바로 찾게 한다.
+    await remodelingRepository.linkProjectToComplex(project.id, listingRow.complex_id);
+  }
+  return project;
+}
+
+async function getRemodeling(id) {
+  const listingRow = await listingsRepository.findByIdWithComplex(id);
+  if (!listingRow) return null;
+
+  const project = await resolveRemodelingProject(listingRow);
+  if (!project) {
+    return remodelingService.buildNoProjectResponse({
+      listingId: listingRow.id,
+      complexId: listingRow.complex_id
+    });
+  }
+
+  // 실거래가는 새로 구현하지 않고 기존 매매가 변동 이력 결과를 재사용한다.
+  let priceEntries = [];
+  try {
+    const priceHistory = await getPriceHistory(id);
+    priceEntries = (priceHistory && priceHistory.entries) || [];
+  } catch (err) {
+    priceEntries = [];
+  }
+
+  return remodelingService.getProjectView({
+    listingId: listingRow.id,
+    complexId: listingRow.complex_id,
+    project,
+    priceEntries
+  });
+}
+
 async function getListingRegulation(id) {
   const listingRow = await listingsRepository.findByIdWithComplex(id);
   if (!listingRow) return null;
@@ -276,6 +326,7 @@ module.exports = {
   getPriceHistory,
   getJeonseHistory,
   getAssignedSchools,
+  getRemodeling,
   getListingRegulation,
   getListingLoanSimulation
 };

@@ -23,7 +23,7 @@ describe('ListingDetailTabs', () => {
     vi.restoreAllMocks()
   })
 
-  it('6개의 탭 버튼이 올바른 한글 라벨로 렌더링된다', () => {
+  it('7개의 탭 버튼이 올바른 한글 라벨로 렌더링된다', () => {
     renderTabs()
 
     expect(screen.getByRole('tab', { name: '규제/대출' })).toBeInTheDocument()
@@ -31,11 +31,12 @@ describe('ListingDetailTabs', () => {
     expect(screen.getByRole('tab', { name: '대출 시뮬레이션' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: '매매가 변동 이력' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: '전세가 변동 이력' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: '리모델링' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: '배정학교' })).toBeInTheDocument()
     expect(apiClient).toHaveBeenCalled()
   })
 
-  it('전세가 변동 이력 탭이 매매가 변동 이력 바로 다음, 배정학교 탭이 그 다음 순서로 배치된다', () => {
+  it('전세가 변동 이력 탭 다음에 리모델링, 그 다음 배정학교 탭 순서로 배치된다', () => {
     renderTabs()
 
     const labels = screen.getAllByRole('tab').map((tab) => tab.textContent)
@@ -45,6 +46,7 @@ describe('ListingDetailTabs', () => {
       '대출 시뮬레이션',
       '매매가 변동 이력',
       '전세가 변동 이력',
+      '리모델링',
       '배정학교',
     ])
   })

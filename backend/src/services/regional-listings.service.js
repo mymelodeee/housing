@@ -2,7 +2,7 @@ const regionalListingCacheRepository = require('../repositories/regional-listing
 const apartmentComplexesRepository = require('../repositories/apartment-complexes.repository');
 const listingsRepository = require('../repositories/listings.repository');
 const geocodingService = require('./geocoding.service');
-const { TARGET_REGIONS } = require('../config/target-regions');
+const { getTargetRegion, getTargetRegionCodes } = require('../config/target-regions');
 
 const DEFAULT_MIN_PRICE = 70000;
 const DEFAULT_MAX_PRICE = 150000;
@@ -46,13 +46,14 @@ async function searchLiveListings({ minPrice, maxPrice, minArea, maxArea } = {})
     maxPrice: maxPrice === undefined ? DEFAULT_MAX_PRICE : maxPrice,
     minArea: minArea === undefined ? DEFAULT_MIN_AREA : minArea,
     maxArea: maxArea === undefined ? DEFAULT_MAX_AREA : maxArea,
-    minHouseholdCount: MIN_HOUSEHOLD_COUNT
+    minHouseholdCount: MIN_HOUSEHOLD_COUNT,
+    targetLawdCds: getTargetRegionCodes()
   });
   return rows.map(mapCacheRow);
 }
 
 function findRegionNameByLawdCd(lawdCd) {
-  const region = TARGET_REGIONS.find((r) => r.lawdCd === lawdCd);
+  const region = getTargetRegion(lawdCd);
   return region ? region.regionName : null;
 }
 

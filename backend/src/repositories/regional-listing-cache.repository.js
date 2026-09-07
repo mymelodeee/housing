@@ -32,13 +32,14 @@ async function upsertEntry({
   return rows[0];
 }
 
-async function findByFilters({ minPrice, maxPrice, minArea, maxArea, minHouseholdCount }) {
+async function findByFilters({ minPrice, maxPrice, minArea, maxArea, minHouseholdCount, targetLawdCds }) {
   const { rows } = await pool.query(
     `SELECT * FROM regional_listing_cache
      WHERE sale_price BETWEEN $1 AND $2 AND exclusive_area BETWEEN $3 AND $4
        AND ($5::integer IS NULL OR household_count >= $5)
+       AND lawd_cd = ANY($6::varchar[])
      ORDER BY id`,
-    [minPrice, maxPrice, minArea, maxArea, minHouseholdCount === undefined ? null : minHouseholdCount]
+    [minPrice, maxPrice, minArea, maxArea, minHouseholdCount === undefined ? null : minHouseholdCount, targetLawdCds]
   );
   return rows;
 }

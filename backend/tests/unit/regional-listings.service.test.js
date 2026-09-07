@@ -43,7 +43,8 @@ describe('services/regional-listings.service', () => {
         maxPrice: 150000,
         minArea: 0,
         maxArea: 999,
-        minHouseholdCount: 500
+        minHouseholdCount: 500,
+        targetLawdCds: expect.any(Array)
       });
     });
 
@@ -57,7 +58,8 @@ describe('services/regional-listings.service', () => {
         maxPrice: 100000,
         minArea: 80,
         maxArea: 90,
-        minHouseholdCount: 500
+        minHouseholdCount: 500,
+        targetLawdCds: expect.any(Array)
       });
       expect(result).toEqual([
         {

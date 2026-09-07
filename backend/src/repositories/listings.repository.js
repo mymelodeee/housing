@@ -12,7 +12,7 @@ async function aggregatePriceRangeByComplexId(complexId) {
   return rows[0];
 }
 
-async function findByPriceRange({ minPrice, maxPrice, minLat, maxLat, minLng, maxLng }) {
+async function findByPriceRange({ minPrice, maxPrice, minLat, maxLat, minLng, maxLng, targetLawdCds }) {
   const baseSelect = `
     SELECT
       l.id, l.complex_id, l.sale_price, l.exclusive_area,
@@ -24,16 +24,18 @@ async function findByPriceRange({ minPrice, maxPrice, minLat, maxLat, minLng, ma
     FROM listings l
     JOIN apartment_complexes c ON c.id = l.complex_id
     WHERE l.sale_price BETWEEN $1 AND $2
+      AND ($3::varchar[] IS NULL OR c.lawd_cd = ANY($3::varchar[]))
   `;
   const hasBounds = [minLat, maxLat, minLng, maxLng].every((v) => v !== undefined);
+  const lawdCds = targetLawdCds === undefined ? null : targetLawdCds;
   if (hasBounds) {
     const { rows } = await pool.query(
-      `${baseSelect} AND c.latitude BETWEEN $3 AND $4 AND c.longitude BETWEEN $5 AND $6 ORDER BY l.id`,
-      [minPrice, maxPrice, minLat, maxLat, minLng, maxLng]
+      `${baseSelect} AND c.latitude BETWEEN $4 AND $5 AND c.longitude BETWEEN $6 AND $7 ORDER BY l.id`,
+      [minPrice, maxPrice, lawdCds, minLat, maxLat, minLng, maxLng]
     );
     return rows;
   }
-  const { rows } = await pool.query(`${baseSelect} ORDER BY l.id`, [minPrice, maxPrice]);
+  const { rows } = await pool.query(`${baseSelect} ORDER BY l.id`, [minPrice, maxPrice, lawdCds]);
   return rows;
 }
 

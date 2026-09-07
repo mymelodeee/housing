@@ -1,7 +1,7 @@
 # housing 실행계획 (Execution Plan)
 
-- 버전: v0.32
-- 최종 수정일: 2026-08-17
+- 버전: v0.35
+- 최종 수정일: 2026-09-07
 - 참조 문서: [1-domain-definition.md](./1-domain-definition.md) (v0.14), [2-prd.md](./2-prd.md) (v0.6), [3-user-scenario.md](./3-user-scenario.md) (v0.5), [4-project-principle.md](./4-project-principle.md) (v0.7), [5-arch-diagram.md](./5-arch-diagram.md) (v0.5), [6-erd.md](./6-erd.md) (v0.7), `database/schema.sql`, `backend/swagger/swagger.json`
 - 버전 관리 규칙: 본 문서를 수정할 때마다 상단 버전(v0.1 → v0.2 …)과 최종 수정일을 함께 갱신한다. 과거 버전 이력은 별도 변경이력 절에 누적 기록한다.
 - Task 번호 규칙: `DB-N`(데이터베이스), `BE-N`(백엔드), `FE-N`(프론트엔드). `.claude/skills/backend-resolver`, `.claude/skills/frontend-resolver`가 각각 이 문서의 `BE-N`, `FE-N` 번호를 인자로 받아 해당 Task를 수행한다.
@@ -42,6 +42,9 @@
 | v0.30 | 2026-08-17 | **대상 지역 조정(도메인 v0.18 반영)**: `target-regions.js`에서 평택(41220)·화성 만세구(41591)·효행구(41593) 제거, 수원시 영통구(41117) 추가 — 11개 항목(화성은 병점·동탄구만). 제외 지역 캐시 데이터 삭제 후 재수집: 11개 지역 2,871건, 노출 대상(500세대+7~15억) 619건(영통 97건). 브라우저(chrome-devtools) 기반 사용자 시나리오 테스트 수행: F1(등록/실시간 탐색·0건 아님·셔틀 정보 없음 표시), 실시간 카드 619건 렌더링·선택 승격→상세 이동, F4(규제/대출)·F5(입지, 유흥시설 실시간 조회)·F6(대출 시뮬레이션 단독/부부합산·추천)·F7(승격 단지의 국토부 실거래 이력 fetch-through·그래프), F2(단지 즐겨찾기 추가/목록)·F3(비교셋 생성→비교 표) 전부 통과, 콘솔 에러 0건. 시나리오 테스트 중 발견한 결함 1건 수정: live-search 응답의 `transactionDate`가 pg DATE→Date 객체의 UTC ISO 직렬화로 "2026-06-29T15:00:00.000Z"처럼 노출되고 KST 기준 하루 밀리던 문제 — `mapCacheRow`에 로컬 getter 기반 YYYY-MM-DD 변환(`formatLocalDate`) 추가(BE-7과 동일 계열 이슈). 백엔드 33개 스위트·305개, 프론트엔드 56개 파일·245개 테스트 전부 통과 |
 | v0.31 | 2026-08-17 | **매물 상세 탭 확장 4건 수행 완료(도메인 v0.19, ERD v0.9 반영)**: ① 대상 지역에서 용인 기흥구 제외(수지구만 유지, 캐시 삭제) — 10개 지역, live-search 노출 619건(기흥분 제외 후 재확인). ② 전세가 변동 이력: `fetchAptRentXml`(RTMSDataSvcAptRent, 활용신청 승인 실측 확인)·`jeonse-history.service.js`(순수 전세 필터, 월평균 전세가율)·`GET /api/listings/:id/jeonse-history` 신설, FE `JeonseHistoryTab`(매매/전세 2색 라인 + 전세가율 이중 축(좌: 금액, 우: %), dataviz 팔레트 검증기 라이트/다크 통과, 범례+전세 테이블). 구현 중 공공데이터포털 초당 요청 제한을 실측(72회 동시 호출 시 초과 에러)해 `settleInBatches`(20건/500ms)로 스로틀하고 매매/전세를 순차 조회하도록 수정 — 실데이터 검증(매매 264·전세 443건, 전세가율 34개월). ③ 매매가 변동 이력 탭: y축 거래가 눈금 4단계 추가, 테이블 거래일자 내림차순 정렬, 같은 날짜 다건 거래의 React key 중복 경고 수정. ④ 배정학교 탭: `elementary_schools.school_level` 마이그레이션(housing+housing_test), 시드 스크립트 초·중학교 확장, `GET /api/listings/:id/assigned-schools`(3km 최근접, 학구도 근사 안내), FE `SchoolsTab`. 학교위치 API 미승인이라 현재 "정보 없음" 표시(승인 후 시드 필요). ⑤ 학업성취도 조사(서브에이전트): 2017년 표집평가 전환 후 학교별 비공개로 표기 불가 — 대안은 학교알리미 공시 지표(도메인 v0.19 참조), 사용자 결정 대기. `.claude/agents/datago-api-prober.md`(공공데이터포털 API 실측 검증 전문 서브에이전트) 신설. 검증: 백엔드 34개 스위트·319개+, 프론트 60개 파일·259개 테스트 통과, 브라우저에서 6개 탭 전부 실데이터/폴백 렌더링·콘솔 에러 0건 확인 |
 | v0.32 | 2026-08-17 | **전세가 변동 이력 탭 데이터 누락 결함 수정(사용자 신고)**: v0.31에서 채택한 배치(20건/500ms) 스로틀링이 여전히 공공데이터포털 초당 요청 제한에 걸려(실측: 배치 내 20건 동시 호출은 물론 수 초 간격의 단발 호출 2건도 종종 실패) 매매 이력(`saleEntries`)이 통째로 빈 배열로 누락되고, 이로 인해 전세가율(`ratioEntries`, 매매·전세 양쪽 데이터가 있는 월만 계산)도 함께 비어 그래프에 매매가 라인·전세가율 라인이 표시되지 않는 결함을 재현·수정. `settleInBatches` 기본값을 완전 순차 실행(배치 크기 1)+300ms 간격으로 변경해 재발을 방지(테스트 환경은 `NODE_ENV=test`에서 지연을 0으로 처리해 실행 시간 영향 없음). 격리된 재현으로 매매 264건·전세가율 34개월 정상 확인(단, 응답 시간이 배치 방식 대비 느려짐 — sale+jeonse 순차 72회 호출로 탭 최초 로딩에 최대 약 40초 소요, 트레이드오프로 기록). 함께 신고된 "매매가 변동 이력 테이블이 날짜 내림차순이 아니다"는 재현 시도 결과 코드(`b.transactionDate.localeCompare(a.transactionDate)`)와 실제 렌더링(2026-07-03→2023-09-08 순서) 모두 정상이었음 — 이전 수정이 반영되기 전 브라우저 캐시를 보고 있었을 가능성이 높음(하드 리프레시로 해소). 백엔드 34개 스위트·319개 테스트 전부 통과 |
+| v0.33 | 2026-08-17 | **매매가·전세가 그래프 x축 날짜 추가, 실시간 탐색 목록 단지별 그룹화(사용자 요청)**: ① `PriceHistoryChart`/`JeonseHistoryChart`에 x축(연/월, `YYYY-MM`) 눈금·라벨을 추가(최대 6개, 겹치는 월은 중복 제거). `PriceHistoryChart`는 기존 인덱스 기반 x좌표를 유지한 채 각 눈금 위치의 실제 거래월을 라벨로 사용하고, `JeonseHistoryChart`는 기존 시간축 기반 `toX`를 그대로 재사용해 눈금을 계산. 기존 툴팁 테스트가 새 x축 라벨과 텍스트가 겹쳐 실패하던 것을 툴팁 DOM 요소로 범위를 좁혀 수정. ② 실시간 탐색 목록을 단지(법정동코드+단지명 기준)별로 그룹화해 아코디언으로 표시 — 기본은 접힌 상태로 단지명·주소·거래건수 배지·매매가 범위·세대수만 보이고, 헤더 클릭 시 펼쳐져 개별 거래 카드(`LiveListingCard`)가 모두 나타남. 지도 핀은 요청대로 기존과 동일하게 개별 매물 단위 그대로 유지(그룹화는 목록에만 적용). 신규 `groupLiveListingsByComplex` 유틸과 `LiveListingComplexGroup` 컴포넌트 추가, 기존 `ListingSearchScreen` 테스트의 실시간 카드 클릭 시나리오를 "헤더 클릭으로 펼친 뒤 카드 클릭" 흐름으로 수정. 검증: 프론트엔드 62개 파일·272개 테스트, `tsc`·ESLint 통과, 브라우저에서 두 차트의 x축 라벨과 강동구 20+개 단지 그룹 아코디언(개별 펼침·지도 미변경·매물 선택→상세 이동) 실측 확인, 콘솔 에러 0건 |
+| v0.34 | 2026-09-07 | **등록 매물 탭을 단지 위치 표시로 전환(사용자 신고)**: "등록 매물" 탭에 표시되던 매매가는 `listings` 테이블에 수기로 입력된 값으로, 국토교통부 실거래가 API는 완료된 거래만 공개하고 "현재 매물로 올라온 건"을 조회할 수 있는 공개 API가 존재하지 않아 실데이터로 대체 불가함을 확인. 사용자 결정에 따라 이 탭은 가격 카드 대신 아파트 단지 위치만 표시하도록 변경(클릭 시 상세 페이지 이동 없음) — `useListings`로 받아온 매물 목록에서 단지(`complex.id`) 기준 중복 제거 후 `ComplexLocationCard`(단지명·주소·준공년도만 표시, 매매가/전용면적 미표시)로 렌더링하고, 지도 마커도 매물 단위가 아닌 단지 단위로 중복 제거. 즐겨찾기·비교셋 토글은 기존과 동일하게 단지 단위로 계속 동작. 신규 `dedupeComplexesFromListings` 유틸과 `ComplexLocationCard` 컴포넌트 추가, `ListingCard` 클릭·마커 클릭 시 `/listings/:id`로 이동하던 기존 테스트 2건을 "이동하지 않음"으로 교체하고 단지 중복 제거 테스트 추가. 백엔드 변경 없음(프론트엔드에서 이미 응답에 포함된 단지 좌표를 재사용). 검증: 프론트엔드 62개 파일·275개 테스트, `tsc`·ESLint 통과, 브라우저에서 등록 매물 탭 카드에 가격이 사라지고 단지별로 1건씩만 표시되는 것과 클릭 시 이동 없음을 실측 확인, 콘솔 에러 0건 |
+| v0.35 | 2026-09-07 | **리모델링 트랙 신설(계획 단계)**: 매물 상세에 "리모델링" 탭을 추가하기 위한 구현 계획을 `docs/remodeling/implementation-plan.md`로 신규 작성하고, ERD(v0.10)에 `remodeling_projects`/`remodeling_sources`/`remodeling_facts`/`remodeling_project_history` 4개 테이블을 반영했다. 리모델링은 단일 공식 API가 없어(PRD §9 리스크) 수동 리서치 값마다 출처·기준일·마지막 검증일·상태·신뢰도를 추적하는 데이터 계층이 필요하며, 기존 실거래가(MOLIT fetch-through)와 지도 기능은 재사용하고 단지 연결은 `lawd_cd`+단지명 매칭 후 `complex_id` 지연 연결(nullable FK)로 설계했다. 본 버전은 문서화 단계이며 아래 §7 "리모델링 트랙"의 모든 항목은 아직 미착수(전부 `[ ]`)다 |
 
 ---
 
@@ -626,3 +629,194 @@ flowchart LR
 ## 6. 범위 밖(Out of Scope) 명시
 
 본 문서는 Task 분해와 완료조건/의존성까지만 다룬다. API 요청/응답 전체 스키마, 상세 컴포넌트 설계, 실제 코드 구현은 각 Task 수행 시점에 `backend-resolver`/`frontend-resolver` 스킬을 통해 진행하며, API 명세는 `swagger/swagger.json`에서 별도 관리한다. 배포/CI/CD 파이프라인 구성은 이번 실행계획에 포함하지 않는다.
+
+---
+
+## 7. 리모델링 트랙
+
+상세 설계는 `docs/remodeling/implementation-plan.md`(v0.1)를 참조한다. 본 절은 그 문서의 "8. 구현 순서"를 Task 형태로 풀어쓴 것이며, 아직 착수하지 않아 전부 미체크(`[ ]`) 상태다.
+
+### REMODEL-1. 문서 작성
+
+**목적**: 리모델링 데이터 모델·API·프론트엔드·외부 조사(재조사) 전략을 확정해 `docs/remodeling/implementation-plan.md`로 문서화하고, ERD·실행계획에 반영한다.
+
+**완료 조건**
+- [ ] `docs/remodeling/implementation-plan.md`가 9개 절(배경/목적, 현재 구조 분석, 재사용 코드, 데이터 모델, Backend API, Frontend, 외부 조사, 수정 예정 파일 목록, 구현 순서, 위험/불확실성) + 검증 방법을 모두 포함한다.
+- [ ] `docs/6-erd.md`에 리모델링 4개 테이블과 관계가 반영되어 있다.
+- [ ] `docs/7-execution-plan.md`에 본 트랙이 반영되어 있다.
+
+**의존성**: 없음.
+
+**규모**: 작음
+
+---
+
+### REMODEL-2. 마이그레이션 + schema.sql 동기화
+
+**목적**: `remodeling_projects`/`remodeling_sources`/`remodeling_facts`/`remodeling_project_history` 4개 테이블을 생성한다.
+
+**완료 조건**
+- [ ] `backend/src/db/migrations/1788000000000_create-remodeling-tables.js`가 4개 테이블을 FK 의존 순서(`remodeling_projects` → `remodeling_sources` → `remodeling_facts`/`remodeling_project_history`)로 생성한다.
+- [ ] `remodeling_projects.complex_id`가 `apartment_complexes.id` 참조 nullable FK이며 `ON DELETE SET NULL`이다(지연 연결).
+- [ ] `remodeling_projects (lawd_cd, complex_name)` UNIQUE, `INDEX(complex_id)`, `INDEX(last_checked_at)`이 존재한다.
+- [ ] `remodeling_facts`에 `(project_id, field_name, COALESCE(field_key,''))` 부분 UNIQUE 인덱스(`WHERE is_current`)가 존재한다.
+- [ ] `remodeling_project_history (project_id, stage)` UNIQUE가 존재한다.
+- [ ] 모든 CHECK 제약(`source_type`/`reliability`/`value_status`/`confidence`/`stage`/`status` enum)이 `docs/remodeling/implementation-plan.md` §3과 동일하게 생성된다.
+- [ ] `npx node-pg-migrate up`/`down` 모두 에러 없이 동작한다.
+- [ ] `database/schema.sql`에 동일한 4개 테이블 섹션이 기존 주석 스타일(번호 매김, 한글 설명)로 동기화되어 있다.
+
+**의존성**: REMODEL-1, DB-3(apartment_complexes 테이블 존재).
+
+**규모**: 중간
+
+---
+
+### REMODEL-3. config + repository
+
+**목적**: stale 판정 설정값과 리모델링 조회/저장 SQL을 격리한다.
+
+**완료 조건**
+- [ ] `backend/src/config/remodeling.js`가 `STALE_AFTER_DAYS`를 `process.env.REMODELING_STALE_AFTER_DAYS`로 오버라이드 가능한 형태로 export한다(기본값 30).
+- [ ] `backend/src/repositories/remodeling.repository.js`가 프로젝트/출처/facts/단계이력 조회·삽입·갱신 함수를 제공하며, SQL 문자열이 이 파일에만 존재한다.
+- [ ] `lawd_cd`+`complex_name` 매칭 조회 함수가 존재한다(단지 연결용).
+
+**의존성**: REMODEL-2.
+
+**규모**: 작음~중간
+
+---
+
+### REMODEL-4. remodeling.service.js + 단위테스트
+
+**목적**: 리모델링 조회 응답을 조립하고 `daysSinceChecked`/`isStale` 파생값을 계산하는 순수 로직을 구현한다.
+
+**완료 조건**
+- [ ] `daysSinceChecked = 오늘 - checked_at`, `isStale = daysSinceChecked > staleAfterDays` 계산이 정확하다.
+- [ ] 프로젝트가 없는 매물 조회 시 `hasProject:false`를 반환한다.
+- [ ] `priceLink`는 기존 `listings.service.getPriceHistory` 결과의 최신 항목을 재사용해 구성하며, 신규 조회 로직을 만들지 않는다.
+- [ ] 단위 테스트 커버리지 80% 이상.
+
+**의존성**: REMODEL-3.
+
+**규모**: 중간
+
+---
+
+### REMODEL-5. remodeling-maintenance.service.js(재조사 규칙 4~8) + 단위테스트
+
+**목적**: `docs/remodeling/implementation-plan.md` §6의 재조사 규칙 4~8(touch/supersede/conflict/ignore/is_accessible)을 순수 로직으로 구현한다.
+
+**완료 조건**
+- [ ] 값이 동일하면 `checked_at`만 갱신(touch)하고 새 행을 만들지 않는다.
+- [ ] 값이 변경되면 기존 행 `is_current=false`+`superseded_at` 설정 후 새 행을 INSERT한다(supersede).
+- [ ] 동급 신뢰도에서 값이 상충하면 자동 반영하지 않고 `is_conflicted=true`로 표시한다.
+- [ ] 기존 `confirmed` 값을 `estimated`/`proposal`/`unknown`으로 덮어쓰지 않는다(ignore + conflict 표시).
+- [ ] 접근 불가 출처는 삭제하지 않고 `is_accessible=false`+`checked_at`만 갱신한다.
+- [ ] 규칙 4~8 각각에 대응하는 단위 테스트가 존재하고 커버리지 80% 이상이다.
+
+**의존성**: REMODEL-3.
+
+**규모**: 중간~큼
+
+---
+
+### REMODEL-6. 조회 API + 통합테스트 + swagger
+
+**목적**: `GET /api/listings/:id/remodeling`을 완성한다.
+
+**완료 조건**
+- [ ] `listings.routes.js`/`listings.controller.js`/`listings.service.js`에 리모델링 조회가 추가된다(숫자 파싱 + 404 포함).
+- [ ] 응답에 `currentStage`/`households`/`contributions`/`loanStatus`/`stageHistory`/`priceLink`/`staleAfterDays`가 `docs/remodeling/implementation-plan.md` §4.1 예시와 동일한 구조로 포함된다.
+- [ ] 각 값에 `status`/`effectiveDate`/`checkedAt`/`daysSinceChecked`/`isStale`/`isConflicted`/`source{name,url,sourceDate,reliability}`가 포함된다.
+- [ ] 프로젝트가 없는 매물은 `hasProject:false`를 반환한다.
+- [ ] `backend/swagger/swagger.json`에 엔드포인트와 응답 스키마가 추가된다.
+- [ ] 통합 테스트 커버리지 80% 이상.
+
+**의존성**: REMODEL-4, BE-1(listings 조회 재사용).
+
+**규모**: 중간
+
+---
+
+### REMODEL-7. stale API + 통합테스트
+
+**목적**: `GET /api/admin/remodeling/stale?staleAfterDays=30`을 완성한다.
+
+**완료 조건**
+- [ ] `remodeling-admin.controller.js`/`remodeling-admin.routes.js`가 신규 작성되고 `app.js`에 마운트된다.
+- [ ] 쿼리 파라미터 `staleAfterDays` 미지정 시 기본값 30이 적용된다.
+- [ ] 응답에 stale한 facts/stageHistory/sources 목록이 각각 `daysSinceChecked`와 함께 포함된다.
+- [ ] `backend/swagger/swagger.json`에 엔드포인트가 추가된다.
+- [ ] 통합 테스트 커버리지 80% 이상.
+
+**의존성**: REMODEL-5.
+
+**규모**: 작음~중간
+
+---
+
+### REMODEL-8. seed json + refresh 스크립트
+
+**목적**: 형식 검증용 placeholder 샘플 데이터와 재조사 반영 스크립트를 작성한다.
+
+**완료 조건**
+- [ ] `backend/data/remodeling-seed.json`이 project → sources → facts → stageHistory 중첩 구조로 placeholder 샘플을 포함한다.
+- [ ] `backend/scripts/refresh-remodeling-data.js --list [--days 30]`이 stale 목록을 JSON으로 출력한다.
+- [ ] `backend/scripts/refresh-remodeling-data.js --apply <file.json>`이 재조사 규칙(REMODEL-5)대로 반영하고 변경 전/후 changelog를 출력한다.
+- [ ] `backend/package.json`에 `remodeling:list`/`remodeling:apply` 스크립트가 추가된다.
+
+**의존성**: REMODEL-5.
+
+**규모**: 중간
+
+---
+
+### REMODEL-9. FE types→hook→RemodelingTab→탭 등록→테스트
+
+**목적**: 매물 상세에 "리모델링" 탭을 추가한다.
+
+**완료 조건**
+- [ ] `frontend/src/features/listing-detail/remodeling/types.ts`가 REMODEL-6 응답 스키마와 일치하는 타입을 정의한다.
+- [ ] `frontend/src/features/listing-detail/remodeling/hooks/useListingRemodeling.ts`가 `shared/api/client.ts`를 통해서만 API를 호출한다.
+- [ ] `frontend/src/features/listing-detail/remodeling/components/RemodelingTab.tsx`가 사업 단계·단계 이력 타임라인·세대수(기존→변경)·분담금(평형별, 확정/추정 배지)·대출 상태·실거래가+분담금 총부담 추정(숫자만, 신규 차트 없음)을 표시한다.
+- [ ] 화면에 "정보 기준일 / 마지막 확인일 / 출처"가 노출되고, `daysSinceChecked`/`reliability` 등 내부 상태값은 노출되지 않는다.
+- [ ] `ListingDetailTabs.tsx`의 `TABS` 배열에 리모델링 탭이 추가되고 `TabErrorBoundary`로 격리된다.
+- [ ] 기존 `ListingDetailTabs` 관련 테스트가 신규 탭 추가를 반영해 통과한다.
+- [ ] 컴포넌트/훅 테스트 커버리지 80% 이상.
+
+**의존성**: REMODEL-6.
+
+**규모**: 중간~큼
+
+---
+
+### REMODEL-10. 백엔드/프론트 테스트 + 육안 확인
+
+**목적**: 전체 회귀 테스트와 실제 화면 확인을 통해 구현을 검증한다.
+
+**완료 조건**
+- [ ] `backend`/`frontend` 각각 `npm test` 전체 통과, 커버리지 80% 이상 유지.
+- [ ] `npm run migrate`로 4개 테이블 생성 확인.
+- [ ] `--apply`로 placeholder 샘플 적재 후 curl로 두 엔드포인트 응답 확인.
+- [ ] 동일 값 재적용 시 `checked_at`만 갱신되고, 값 변경 시 `is_current=false`+새 행 생성됨을 SQL로 직접 검증.
+- [ ] 브라우저에서 매물 상세 "리모델링" 탭이 정상 렌더링되고 콘솔 에러가 없음을 확인.
+
+**의존성**: REMODEL-6, REMODEL-7, REMODEL-9.
+
+**규모**: 중간
+
+---
+
+### REMODEL-11. (승인 후 별도) 수지구·영통구 실제 조사 → --apply
+
+**목적**: 용인시 수지구(41465)·수원시 영통구(41117)의 실제 리모델링 추진 단지를 조사해 반영한다.
+
+**완료 조건**
+- [ ] 정비사업 정보몽땅·지자체 고시/공고 등 §6 우선순위에 따른 출처로 실제 단지 목록과 사업 단계를 조사한다.
+- [ ] 조사 결과를 `remodeling-seed.json` 형식(또는 별도 조사 결과 파일)으로 정리해 `--apply`로 반영한다.
+- [ ] `lawd_cd`+단지명 매칭으로 기존 `apartment_complexes`와 연결 가능한 건은 `complex_id`를 채운다(지연 연결 backfill).
+- [ ] 반영 후 REMODEL-6 API 응답으로 실데이터가 정상 노출됨을 확인한다.
+
+**의존성**: REMODEL-8, REMODEL-10, 사용자 승인.
+
+**규모**: 큼(수동 리서치 포함)

@@ -20,13 +20,14 @@ INSERT INTO apartment_complexes (
     remodeling_status, reconstruction_status, is_regulated_area,
     is_land_transaction_permission_zone,
     nearest_shuttle_stop_name, nearest_shuttle_stop_distance, shuttle_commute_minutes,
-    locality_attributes
+    locality_attributes, lawd_cd
 ) VALUES (
     '동탄역 시범 우남퍼스트빌', 37.199600, 127.098200, '경기도 화성시 동탄역로 123', 1998,
     '해당없음', '해당없음', true,
     true,
     '동탄역 셔틀정류장', 350, 42,
-    '{"교통": "지하철 SRT 동탄역 도보 10분", "학군": "정보 없음"}'::jsonb
+    '{"교통": "지하철 SRT 동탄역 도보 10분", "학군": "정보 없음"}'::jsonb,
+    '41597' -- 화성시 동탄구(TARGET_REGIONS 대상 지역)
 );
 
 INSERT INTO listings (complex_id, sale_price, exclusive_area) VALUES
@@ -53,13 +54,14 @@ INSERT INTO apartment_complexes (
     remodeling_status, reconstruction_status, is_regulated_area,
     is_land_transaction_permission_zone,
     nearest_shuttle_stop_name, nearest_shuttle_stop_distance, shuttle_commute_minutes,
-    locality_attributes
+    locality_attributes, lawd_cd
 ) VALUES (
     '평택 소사벌 한라비발디', 36.987700, 127.055600, '경기도 평택시 소사벌로 45', 2021,
     '해당없음', '해당없음', false,
     NULL, -- 토허구역 미고시(확인필요 케이스)
     NULL, NULL, NULL, -- 셔틀 배차 정보 미확보(시나리오 1-3, 정보 없음 표시)
-    '{"교통": "정보 없음"}'::jsonb
+    '{"교통": "정보 없음"}'::jsonb,
+    '41220' -- 평택시(TARGET_REGIONS 비대상 지역 — 등록 매물 목록 노출 제외 검증용)
 );
 
 INSERT INTO listings (complex_id, sale_price, exclusive_area) VALUES
@@ -79,12 +81,71 @@ INSERT INTO apartment_complexes (
     remodeling_status, reconstruction_status, is_regulated_area,
     is_land_transaction_permission_zone,
     nearest_shuttle_stop_name, nearest_shuttle_stop_distance, shuttle_commute_minutes,
-    locality_attributes
+    locality_attributes, lawd_cd
 ) VALUES (
     '위례신도시 롯데캐슬', 37.469700, 127.150300, '경기도 성남시 위례동로 78', 2016,
     '해당없음', '해당없음', true,
     true,
     '위례중앙역 셔틀정류장', 500, 38,
-    '{"교통": "지하철 위례중앙역 도보 8분"}'::jsonb
+    '{"교통": "지하철 위례중앙역 도보 8분"}'::jsonb,
+    '41131' -- 성남시 수정구(위례신도시 포함, TARGET_REGIONS 대상 지역)
 );
 -- 매물/실거래 이력 의도적으로 미삽입(BE-8 "매물 없음", 시나리오 7-3 "실거래 이력 없음" 검증용)
+
+-- -----------------------------------------------------------------------------
+-- 리모델링 추진 정보 픽스처
+--  - 단지1(동탄): 리모델링 사업 있음. 현재값 + 단계 이력 + 출처 보유.
+--    분담금 84A는 checked_at을 200일 전으로 두어 재조사 대상(stale) 검증에 쓴다.
+--  - 단지2(평택): 사업 미등록(hasProject:false 응답 검증용)
+-- checked_at은 CURRENT_DATE 기준 상대값으로 넣어 시간이 지나도 stale 판정이 유지된다.
+-- -----------------------------------------------------------------------------
+INSERT INTO remodeling_projects (
+    complex_id, lawd_cd, complex_name, region_name, project_name, last_checked_at, note
+) VALUES (
+    (SELECT id FROM apartment_complexes WHERE complex_name = '동탄역 시범 우남퍼스트빌'),
+    '41597', '동탄역 시범 우남퍼스트빌', '화성시 동탄구', '동탄역 시범 우남퍼스트빌 리모델링주택조합',
+    CURRENT_DATE, '통합 테스트용 픽스처'
+);
+
+INSERT INTO remodeling_sources (
+    project_id, source_url, source_name, source_title, source_type, source_date, checked_at, reliability
+) VALUES (
+    (SELECT id FROM remodeling_projects WHERE complex_name = '동탄역 시범 우남퍼스트빌'),
+    'https://example.test/notice/1', '화성시 고시', '리모델링 사업계획승인 고시', '고시',
+    DATE '2025-11-18', CURRENT_DATE, 'high'
+);
+
+INSERT INTO remodeling_facts (
+    project_id, field_name, field_key, value, value_numeric, unit, value_status,
+    effective_date, checked_at, source_id, confidence
+) VALUES
+    ((SELECT id FROM remodeling_projects WHERE complex_name = '동탄역 시범 우남퍼스트빌'),
+     'current_stage', NULL, '사업계획승인', NULL, NULL, 'confirmed',
+     DATE '2025-11-18', CURRENT_DATE,
+     (SELECT id FROM remodeling_sources WHERE source_url = 'https://example.test/notice/1'), 'high'),
+    ((SELECT id FROM remodeling_projects WHERE complex_name = '동탄역 시범 우남퍼스트빌'),
+     'household_count_before', NULL, '1234', 1234, '세대', 'confirmed',
+     DATE '2025-11-18', CURRENT_DATE,
+     (SELECT id FROM remodeling_sources WHERE source_url = 'https://example.test/notice/1'), 'high'),
+    ((SELECT id FROM remodeling_projects WHERE complex_name = '동탄역 시범 우남퍼스트빌'),
+     'household_count_after', NULL, '1418', 1418, '세대', 'confirmed',
+     DATE '2025-11-18', CURRENT_DATE,
+     (SELECT id FROM remodeling_sources WHERE source_url = 'https://example.test/notice/1'), 'high'),
+    -- 재조사 대상(stale) 검증용: 200일 전에 확인한 추정 분담금
+    ((SELECT id FROM remodeling_projects WHERE complex_name = '동탄역 시범 우남퍼스트빌'),
+     'contribution_amount', '84A', '25000', 25000, '만원', 'estimated',
+     DATE '2026-03-01', CURRENT_DATE - 200,
+     (SELECT id FROM remodeling_sources WHERE source_url = 'https://example.test/notice/1'), 'medium'),
+    ((SELECT id FROM remodeling_projects WHERE complex_name = '동탄역 시범 우남퍼스트빌'),
+     'loan_status', NULL, '이주비 대출 미확정', NULL, NULL, 'unknown',
+     NULL, CURRENT_DATE, NULL, 'low');
+
+INSERT INTO remodeling_project_history (
+    project_id, stage, effective_date, status, source_id, checked_at, note
+) VALUES
+    ((SELECT id FROM remodeling_projects WHERE complex_name = '동탄역 시범 우남퍼스트빌'),
+     '조합설립인가', DATE '2021-06-30', 'confirmed',
+     (SELECT id FROM remodeling_sources WHERE source_url = 'https://example.test/notice/1'), CURRENT_DATE, NULL),
+    ((SELECT id FROM remodeling_projects WHERE complex_name = '동탄역 시범 우남퍼스트빌'),
+     '사업계획승인', DATE '2025-11-18', 'confirmed',
+     (SELECT id FROM remodeling_sources WHERE source_url = 'https://example.test/notice/1'), CURRENT_DATE, NULL);

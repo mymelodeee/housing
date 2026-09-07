@@ -198,6 +198,39 @@
         }
       }
     },
+    "/api/listings/{id}/remodeling": {
+      "get": {
+        "tags": ["remodeling"],
+        "summary": "매물 상세 - 리모델링 추진 정보",
+        "description": "매물이 속한 단지의 리모델링 추진 사업 단계/세대수/분담금/대출 상태와 단계 이력을 반환한다. 단일 공식 API가 없어 수동 리서치로 관리되는 값이므로, 각 값에 출처·기준일(effectiveDate)·마지막 검증일(checkedAt)·경과일(daysSinceChecked)·오래됨 여부(isStale)·충돌 여부(isConflicted)가 함께 붙는다. 사업 정보가 없으면 200과 hasProject=false를 반환한다. 실거래가(priceLink)는 매매가 변동 이력 탭 결과의 최신 항목을 재사용하며, 조회 실패 시 null이다.",
+        "parameters": [ { "$ref": "#/components/parameters/ListingIdPath" } ],
+        "responses": {
+          "200": { "description": "리모델링 추진 정보", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RemodelingResponse" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/admin/remodeling/stale": {
+      "get": {
+        "tags": ["remodeling"],
+        "summary": "관리용 - 재조사 대상(오래된 항목) 목록",
+        "description": "checked_at이 staleAfterDays일보다 오래된 fact/단계이력/출처를 전부 반환한다. 재조사 대상을 특정하는 용도이며, scripts/refresh-remodeling-data.js --list 와 동일한 결과를 낸다.",
+        "parameters": [
+          {
+            "name": "staleAfterDays",
+            "in": "query",
+            "required": false,
+            "description": "며칠 이상 지난 항목을 오래된 것으로 볼지. 미지정 시 REMODELING_STALE_AFTER_DAYS(기본 30)",
+            "schema": { "type": "integer" },
+            "example": 30
+          }
+        ],
+        "responses": {
+          "200": { "description": "재조사 대상 목록", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RemodelingStaleResponse" } } } },
+          "400": { "description": "staleAfterDays가 숫자가 아닌 경우", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
     "/api/favorites/complexes": {
       "get": {
         "tags": ["favorites"],
@@ -407,6 +440,132 @@
       }
     },
     "schemas": {
+      "RemodelingSource": {
+        "type": "object",
+        "nullable": true,
+        "properties": {
+          "name": { "type": "string", "nullable": true, "example": "용인시 고시" },
+          "url": { "type": "string", "nullable": true },
+          "sourceDate": { "type": "string", "nullable": true, "example": "2025-11-18" },
+          "reliability": { "type": "string", "enum": ["high", "medium", "low"] }
+        }
+      },
+      "RemodelingValue": {
+        "type": "object",
+        "nullable": true,
+        "properties": {
+          "value": { "type": "string", "example": "사업계획승인" },
+          "status": { "type": "string", "enum": ["confirmed", "estimated", "proposal", "unknown"] },
+          "effectiveDate": { "type": "string", "nullable": true, "description": "그 사실이 발생한 날(as_of)", "example": "2025-11-18" },
+          "checkedAt": { "type": "string", "description": "정보를 마지막으로 검증한 날", "example": "2026-09-07" },
+          "daysSinceChecked": { "type": "integer", "example": 0 },
+          "isStale": { "type": "boolean", "example": false },
+          "isConflicted": { "type": "boolean", "example": false },
+          "source": { "$ref": "#/components/schemas/RemodelingSource" }
+        }
+      },
+      "RemodelingResponse": {
+        "type": "object",
+        "properties": {
+          "listingId": { "type": "integer", "example": 12 },
+          "complexId": { "type": "integer", "example": 5 },
+          "hasProject": { "type": "boolean", "example": true },
+          "message": { "type": "string", "description": "hasProject=false일 때만 존재", "example": "리모델링 추진 정보 없음" },
+          "projectName": { "type": "string", "nullable": true },
+          "complexName": { "type": "string", "nullable": true },
+          "currentStage": { "$ref": "#/components/schemas/RemodelingValue" },
+          "households": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "before": { "type": "integer", "nullable": true, "example": 1234 },
+              "after": { "type": "integer", "nullable": true, "example": 1418 },
+              "increase": { "type": "integer", "nullable": true, "description": "after - before 파생값. 둘 중 하나라도 없으면 null", "example": 184 },
+              "status": { "type": "string", "enum": ["confirmed", "estimated", "proposal", "unknown"] },
+              "effectiveDate": { "type": "string", "nullable": true },
+              "checkedAt": { "type": "string" },
+              "daysSinceChecked": { "type": "integer" },
+              "isStale": { "type": "boolean" },
+              "source": { "$ref": "#/components/schemas/RemodelingSource" }
+            }
+          },
+          "contributions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "unitType": { "type": "string", "nullable": true, "example": "84A" },
+                "amount": { "type": "number", "nullable": true, "example": 25000 },
+                "unit": { "type": "string", "nullable": true, "example": "만원" },
+                "status": { "type": "string", "enum": ["confirmed", "estimated", "proposal", "unknown"] },
+                "effectiveDate": { "type": "string", "nullable": true },
+                "checkedAt": { "type": "string" },
+                "daysSinceChecked": { "type": "integer" },
+                "isStale": { "type": "boolean" },
+                "isConflicted": { "type": "boolean" },
+                "source": { "$ref": "#/components/schemas/RemodelingSource" }
+              }
+            }
+          },
+          "loanStatus": { "$ref": "#/components/schemas/RemodelingValue" },
+          "stageHistory": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "stage": { "type": "string", "example": "조합설립인가" },
+                "effectiveDate": { "type": "string", "nullable": true, "example": "2021-06-30" },
+                "status": { "type": "string", "enum": ["confirmed", "estimated", "proposal", "unknown"] },
+                "checkedAt": { "type": "string" },
+                "source": { "$ref": "#/components/schemas/RemodelingSource" }
+              }
+            }
+          },
+          "priceLink": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "recentTransactionPrice": { "type": "number", "example": 118000 },
+              "recentTransactionDate": { "type": "string", "nullable": true, "example": "2026-08-20" },
+              "estimatedTotalCost": { "type": "number", "nullable": true, "description": "최근 실거래가 + 대표 분담금. 분담금 없으면 null", "example": 143000 },
+              "note": { "type": "string", "example": "실거래가는 매매가 변동 이력 탭 기준" }
+            }
+          },
+          "staleAfterDays": { "type": "integer", "example": 30 }
+        }
+      },
+      "RemodelingStaleItem": {
+        "type": "object",
+        "properties": {
+          "projectId": { "type": "integer" },
+          "projectName": { "type": "string", "nullable": true },
+          "complexName": { "type": "string", "nullable": true },
+          "lawdCd": { "type": "string", "nullable": true, "example": "41465" },
+          "fieldName": { "type": "string", "example": "current_stage" },
+          "stage": { "type": "string", "description": "stageHistory 항목에만 존재" },
+          "fieldKey": { "type": "string", "nullable": true },
+          "value": { "type": "string", "nullable": true },
+          "valueStatus": { "type": "string" },
+          "effectiveDate": { "type": "string", "nullable": true },
+          "checkedAt": { "type": "string" },
+          "daysSinceChecked": { "type": "integer" },
+          "isStale": { "type": "boolean", "example": true },
+          "sourceName": { "type": "string", "nullable": true },
+          "sourceUrl": { "type": "string", "nullable": true },
+          "reliability": { "type": "string", "nullable": true }
+        }
+      },
+      "RemodelingStaleResponse": {
+        "type": "object",
+        "properties": {
+          "staleAfterDays": { "type": "integer", "example": 30 },
+          "checkedOn": { "type": "string", "example": "2026-09-07" },
+          "facts": { "type": "array", "items": { "$ref": "#/components/schemas/RemodelingStaleItem" } },
+          "stageHistory": { "type": "array", "items": { "$ref": "#/components/schemas/RemodelingStaleItem" } },
+          "sources": { "type": "array", "items": { "$ref": "#/components/schemas/RemodelingStaleItem" } },
+          "totalCount": { "type": "integer", "example": 0 }
+        }
+      },
       "Error": {
         "type": "object",
         "properties": {

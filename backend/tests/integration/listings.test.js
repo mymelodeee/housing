@@ -16,6 +16,10 @@ const storeInfoApiRepository = require('../../src/repositories/store-info-api.re
 describe('GET /api/listings', () => {
   let dongtanId;
   let pyeongtaekId;
+  // 평택(41220)은 TARGET_REGIONS 비대상 지역이라 GET /api/listings 목록에서 제외된다.
+  // 상세/입지/실거래/규제 API는 id로 직접 조회하므로, 목록을 거치지 않고 DB에서 바로
+  // listing id를 얻어 해당 API들이 지역과 무관하게(기존과 동일하게) 동작함을 검증한다.
+  let pyeongtaekListingId;
 
   beforeAll(async () => {
     storeInfoApiRepository.fetchStoresInRadius.mockResolvedValue({
@@ -28,24 +32,37 @@ describe('GET /api/listings', () => {
 
     dongtanId = findIdByName('동탄역 시범 우남퍼스트빌');
     pyeongtaekId = findIdByName('평택 소사벌 한라비발디');
+
+    const pyeongtaekListingRow = await pool.query(
+      'SELECT id FROM listings WHERE complex_id = $1 LIMIT 1',
+      [pyeongtaekId]
+    );
+    pyeongtaekListingId = pyeongtaekListingRow.rows[0].id;
   });
 
   afterAll(async () => {
     await pool.end();
   });
 
-  it('파라미터 없이 조회 시 200과 매물 4건(동탄 3 + 평택 1)을 반환하며 각 item에 올바른 complex.id가 포함된다', async () => {
+  it('파라미터 없이 조회 시 200과 매물 3건(동탄, 대상 지역만)을 반환하며 각 item에 올바른 complex.id가 포함된다', async () => {
     const res = await request(app).get('/api/listings');
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
-    expect(res.body).toHaveLength(4);
+    expect(res.body).toHaveLength(3);
     res.body.forEach((item) => {
       expect(item).toHaveProperty('complex');
-      expect([dongtanId, pyeongtaekId]).toContain(item.complex.id);
+      expect(item.complex.id).toBe(dongtanId);
       expect(typeof item.complex.latitude).toBe('number');
       expect(typeof item.complex.longitude).toBe('number');
     });
+  });
+
+  it('평택(41220)은 TARGET_REGIONS 비대상 지역이라 목록에서 제외된다', async () => {
+    const res = await request(app).get('/api/listings');
+
+    expect(res.status).toBe(200);
+    expect(res.body.some((item) => item.complex.id === pyeongtaekId)).toBe(false);
   });
 
   it('minPrice=106000&maxPrice=150000 조회 시 salePrice 110000인 매물 1건만 반환한다', async () => {
@@ -72,15 +89,15 @@ describe('GET /api/listings', () => {
     expect(dongtanListing.complex.shuttleCommuteMinutes).not.toBeNull();
   });
 
-  it('평택 단지 매물은 셔틀 정보가 전부 null이고 salePrice 105000, exclusiveArea는 정상 숫자다', async () => {
-    const res = await request(app).get('/api/listings');
-    const pyeongtaekListing = res.body.find((item) => item.complex.id === pyeongtaekId);
+  it('평택 단지 매물은 (목록에서는 제외되어도) id 직접 조회 시 셔틀 정보가 전부 null이고 salePrice 105000, exclusiveArea는 정상 숫자다', async () => {
+    const res = await request(app).get(`/api/listings/${pyeongtaekListingId}`);
 
-    expect(pyeongtaekListing.complex.nearestShuttleStopName).toBeNull();
-    expect(pyeongtaekListing.complex.nearestShuttleStopDistance).toBeNull();
-    expect(pyeongtaekListing.complex.shuttleCommuteMinutes).toBeNull();
-    expect(pyeongtaekListing.salePrice).toBe(105000);
-    expect(typeof pyeongtaekListing.exclusiveArea).toBe('number');
+    expect(res.status).toBe(200);
+    expect(res.body.complex.nearestShuttleStopName).toBeNull();
+    expect(res.body.complex.nearestShuttleStopDistance).toBeNull();
+    expect(res.body.complex.shuttleCommuteMinutes).toBeNull();
+    expect(res.body.salePrice).toBe(105000);
+    expect(typeof res.body.exclusiveArea).toBe('number');
   });
 
   it('좌표 필터(동탄 좌표 포함, 평택 좌표 제외 범위) 적용 시 동탄 매물 3건만 반환한다', async () => {
@@ -147,10 +164,7 @@ describe('GET /api/listings', () => {
     });
 
     it('평택 매물 조회 시 fixture에 문자열로 저장된 "정보 없음" 값이 transportation에 그대로 반영된다', async () => {
-      const listRes = await request(app).get('/api/listings');
-      const pyeongtaekListing = listRes.body.find((item) => item.complex.id === pyeongtaekId);
-
-      const res = await request(app).get(`/api/listings/${pyeongtaekListing.id}/locality`);
+      const res = await request(app).get(`/api/listings/${pyeongtaekListingId}/locality`);
 
       expect(res.status).toBe(200);
       expect(res.body.complexId).toBe(pyeongtaekId);
@@ -196,13 +210,10 @@ describe('GET /api/listings', () => {
     });
 
     it('평택 매물(준공 2021, age<20) 조회 시 200과 "최초거래 이후" 분기로 fixture 3건이 전부 반환되고 firstTransactionMonth는 2021-06이다', async () => {
-      const listRes = await request(app).get('/api/listings');
-      const pyeongtaekListing = listRes.body.find((item) => item.complex.id === pyeongtaekId);
-
-      const res = await request(app).get(`/api/listings/${pyeongtaekListing.id}/price-history`);
+      const res = await request(app).get(`/api/listings/${pyeongtaekListingId}/price-history`);
 
       expect(res.status).toBe(200);
-      expect(res.body.listingId).toBe(pyeongtaekListing.id);
+      expect(res.body.listingId).toBe(pyeongtaekListingId);
       expect(res.body.complexId).toBe(pyeongtaekId);
       expect(res.body.lookupPeriodType).toBe('최초거래 이후');
       expect(res.body.firstTransactionMonth).toBe('2021-06');
@@ -292,13 +303,10 @@ describe('GET /api/listings', () => {
     it('평택 매물(비규제지역, 토허구역 미확정 null) + 프로필 완료 시 200과 regulationConfirmationNeeded true, isLandTransactionPermissionZone "확인필요", regionalLoanCapAmount null, ltvPercent는 비규제 기준(70)으로 임시 적용된다', async () => {
       await request(app).put('/api/user-profile').send(completeProfilePayload);
       try {
-        const listRes = await request(app).get('/api/listings');
-        const pyeongtaekListing = listRes.body.find((item) => item.complex.id === pyeongtaekId);
-
-        const res = await request(app).get(`/api/listings/${pyeongtaekListing.id}/regulation`);
+        const res = await request(app).get(`/api/listings/${pyeongtaekListingId}/regulation`);
 
         expect(res.status).toBe(200);
-        expect(res.body.listingId).toBe(pyeongtaekListing.id);
+        expect(res.body.listingId).toBe(pyeongtaekListingId);
         expect(res.body.complexId).toBe(pyeongtaekId);
         expect(res.body.regulationConfirmationNeeded).toBe(true);
         expect(res.body.isLandTransactionPermissionZone).toBe('확인필요');

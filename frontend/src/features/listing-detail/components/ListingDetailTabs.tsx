@@ -5,11 +5,19 @@ import { RegulationTab } from '../regulation/components/RegulationTab'
 import { LocalityTab } from '../locality/components/LocalityTab'
 import { PriceHistoryTab } from '../price-history/components/PriceHistoryTab'
 import { JeonseHistoryTab } from '../jeonse-history/components/JeonseHistoryTab'
+import { RemodelingTab } from '../remodeling/components/RemodelingTab'
 import { SchoolsTab } from '../schools/components/SchoolsTab'
 import { LoanSimulationTab } from '../../loan-simulation/components/LoanSimulationTab'
 import './ListingDetailTabs.css'
 
-type TabKey = 'regulation' | 'locality' | 'loan-simulation' | 'price-history' | 'jeonse-history' | 'schools'
+type TabKey =
+  | 'regulation'
+  | 'locality'
+  | 'loan-simulation'
+  | 'price-history'
+  | 'jeonse-history'
+  | 'remodeling'
+  | 'schools'
 
 interface ListingDetailTabsProps {
   listingId: string
@@ -27,6 +35,7 @@ const TABS: TabDefinition[] = [
   { key: 'loan-simulation', label: '대출 시뮬레이션', Component: LoanSimulationTab },
   { key: 'price-history', label: '매매가 변동 이력', Component: PriceHistoryTab },
   { key: 'jeonse-history', label: '전세가 변동 이력', Component: JeonseHistoryTab },
+  { key: 'remodeling', label: '리모델링', Component: RemodelingTab },
   { key: 'schools', label: '배정학교', Component: SchoolsTab },
 ]
 

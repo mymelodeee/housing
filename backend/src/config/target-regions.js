@@ -19,4 +19,18 @@ const TARGET_REGIONS = [
   { regionName: '하남시', lawdCd: '41450', dongs: ['학암동', '감이동'] }
 ];
 
-module.exports = { TARGET_REGIONS };
+// 서비스 대상 지역 판단의 단일 기준(canonical contract). lawdCd를 식별자로 사용하고
+// regionName은 표시용으로만 사용한다.
+function getTargetRegionCodes() {
+  return [...new Set(TARGET_REGIONS.map((region) => region.lawdCd))];
+}
+
+function getTargetRegion(lawdCd) {
+  return TARGET_REGIONS.find((region) => region.lawdCd === lawdCd) || null;
+}
+
+function isTargetRegion(lawdCd) {
+  return getTargetRegion(lawdCd) !== null;
+}
+
+module.exports = { TARGET_REGIONS, getTargetRegionCodes, getTargetRegion, isTargetRegion };

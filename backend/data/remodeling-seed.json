@@ -1,0 +1,167 @@
+{
+  "_comment": "형식 검증용 샘플 파일 — 실제 조사 전. 단지명은 placeholder이며 어떤 값도 실제 정보가 아니다. source_type='기타', reliability='low', value_status='unknown'으로 고정해 실제 데이터로 오인되지 않게 한다.",
+  "projects": [
+    {
+      "lawdCd": "41465",
+      "complexName": "샘플단지A",
+      "regionName": "용인시 수지구",
+      "projectName": "샘플단지A 리모델링 사업(샘플)",
+      "lastCheckedAt": "2026-09-07",
+      "note": "형식 검증용 샘플 — 실제 조사 전",
+      "sources": [
+        {
+          "key": "a1",
+          "sourceUrl": null,
+          "sourceName": "형식 검증용 샘플 출처",
+          "sourceTitle": null,
+          "sourceType": "기타",
+          "sourceDate": null,
+          "checkedAt": "2026-09-07",
+          "reliability": "low",
+          "isAccessible": true
+        }
+      ],
+      "facts": [
+        {
+          "fieldName": "current_stage",
+          "fieldKey": null,
+          "value": "미확인",
+          "valueNumeric": null,
+          "unit": null,
+          "valueStatus": "unknown",
+          "effectiveDate": null,
+          "checkedAt": "2026-09-07",
+          "sourceKey": "a1",
+          "confidence": "low"
+        },
+        {
+          "fieldName": "household_count_before",
+          "fieldKey": null,
+          "value": "미확인",
+          "valueNumeric": null,
+          "unit": "세대",
+          "valueStatus": "unknown",
+          "effectiveDate": null,
+          "checkedAt": "2026-09-07",
+          "sourceKey": "a1",
+          "confidence": "low"
+        },
+        {
+          "fieldName": "household_count_after",
+          "fieldKey": null,
+          "value": "미확인",
+          "valueNumeric": null,
+          "unit": "세대",
+          "valueStatus": "unknown",
+          "effectiveDate": null,
+          "checkedAt": "2026-09-07",
+          "sourceKey": "a1",
+          "confidence": "low"
+        },
+        {
+          "fieldName": "contribution_amount",
+          "fieldKey": "샘플평형",
+          "value": "미확인",
+          "valueNumeric": null,
+          "unit": "만원",
+          "valueStatus": "unknown",
+          "effectiveDate": null,
+          "checkedAt": "2026-09-07",
+          "sourceKey": "a1",
+          "confidence": "low"
+        },
+        {
+          "fieldName": "loan_status",
+          "fieldKey": null,
+          "value": "미확인",
+          "valueNumeric": null,
+          "unit": null,
+          "valueStatus": "unknown",
+          "effectiveDate": null,
+          "checkedAt": "2026-09-07",
+          "sourceKey": "a1",
+          "confidence": "low"
+        },
+        {
+          "fieldName": "move_out_schedule",
+          "fieldKey": null,
+          "value": "미확인",
+          "valueNumeric": null,
+          "unit": null,
+          "valueStatus": "unknown",
+          "effectiveDate": null,
+          "checkedAt": "2026-09-07",
+          "sourceKey": "a1",
+          "confidence": "low"
+        }
+      ],
+      "stageHistory": [
+        {
+          "stage": "추진위원회",
+          "effectiveDate": null,
+          "status": "unknown",
+          "sourceKey": "a1",
+          "checkedAt": "2026-09-07",
+          "note": "형식 검증용 샘플 — 실제 조사 전"
+        }
+      ]
+    },
+    {
+      "lawdCd": "41117",
+      "complexName": "샘플단지B",
+      "regionName": "수원시 영통구",
+      "projectName": "샘플단지B 리모델링 사업(샘플)",
+      "lastCheckedAt": "2026-09-07",
+      "note": "형식 검증용 샘플 — 실제 조사 전",
+      "sources": [
+        {
+          "key": "b1",
+          "sourceUrl": null,
+          "sourceName": "형식 검증용 샘플 출처",
+          "sourceTitle": null,
+          "sourceType": "기타",
+          "sourceDate": null,
+          "checkedAt": "2026-09-07",
+          "reliability": "low",
+          "isAccessible": true
+        }
+      ],
+      "facts": [
+        {
+          "fieldName": "current_stage",
+          "fieldKey": null,
+          "value": "미확인",
+          "valueNumeric": null,
+          "unit": null,
+          "valueStatus": "unknown",
+          "effectiveDate": null,
+          "checkedAt": "2026-09-07",
+          "sourceKey": "b1",
+          "confidence": "low"
+        },
+        {
+          "fieldName": "loan_status",
+          "fieldKey": null,
+          "value": "미확인",
+          "valueNumeric": null,
+          "unit": null,
+          "valueStatus": "unknown",
+          "effectiveDate": null,
+          "checkedAt": "2026-09-07",
+          "sourceKey": "b1",
+          "confidence": "low"
+        }
+      ],
+      "stageHistory": [
+        {
+          "stage": "추진위원회",
+          "effectiveDate": null,
+          "status": "unknown",
+          "sourceKey": "b1",
+          "checkedAt": "2026-09-07",
+          "note": "형식 검증용 샘플 — 실제 조사 전"
+        }
+      ]
+    }
+  ]
+}
