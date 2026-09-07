@@ -74,6 +74,15 @@ describe('JeonseHistoryTab', () => {
     expect(rows[0]).toHaveTextContent('66,000만원')
   })
 
+  it('그래프에 연/월 형식의 x축 날짜 라벨이 표시된다', () => {
+    mockedHook.mockReturnValue(mockResult({ data: sampleData }))
+    const { container } = render(<JeonseHistoryTab listingId="12" />)
+
+    const svg = container.querySelector('svg')
+    const labels = Array.from(svg?.querySelectorAll('text') ?? []).map((el) => el.textContent)
+    expect(labels.some((text) => /^\d{4}-\d{2}$/.test(text ?? ''))).toBe(true)
+  })
+
   it('전세 이력만 없으면 안내 문구를 표시하되 매매가 그래프는 유지한다', () => {
     mockedHook.mockReturnValue(mockResult({ data: { ...sampleData, jeonseEntries: [], ratioEntries: [] } }))
     render(<JeonseHistoryTab listingId="12" />)

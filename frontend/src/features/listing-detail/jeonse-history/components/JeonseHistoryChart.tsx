@@ -9,12 +9,13 @@ interface JeonseHistoryChartProps {
 }
 
 const WIDTH = 600
-const HEIGHT = 240
+const HEIGHT = 260
 const PADDING_TOP = 16
-const PADDING_BOTTOM = 24
+const PADDING_BOTTOM = 36
 const PADDING_LEFT = 64
 const PADDING_RIGHT = 48
 const TICK_COUNT = 4
+const X_TICK_COUNT = 6
 
 interface HoverInfo {
   label: string
@@ -26,10 +27,17 @@ function toTime(dateString: string) {
   return new Date(dateString).getTime()
 }
 
+function formatYearMonth(time: number) {
+  const d = new Date(time)
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  return `${yyyy}-${mm}`
+}
+
 export function JeonseHistoryChart({ saleEntries, jeonseEntries, ratioEntries }: JeonseHistoryChartProps) {
   const [hovered, setHovered] = useState<HoverInfo | null>(null)
 
-  const { salePoints, jeonsePoints, ratioPoints, priceTicks, ratioTicks } = useMemo(() => {
+  const { salePoints, jeonsePoints, ratioPoints, priceTicks, ratioTicks, xTicks, chartBottom } = useMemo(() => {
     const sortedSale = [...saleEntries].sort((a, b) => a.transactionDate.localeCompare(b.transactionDate))
     const sortedJeonse = [...jeonseEntries].sort((a, b) => a.transactionDate.localeCompare(b.transactionDate))
     const sortedRatio = [...ratioEntries].sort((a, b) => a.month.localeCompare(b.month))
@@ -55,10 +63,22 @@ export function JeonseHistoryChart({ saleEntries, jeonseEntries, ratioEntries }:
 
     const innerWidth = WIDTH - PADDING_LEFT - PADDING_RIGHT
     const innerHeight = HEIGHT - PADDING_TOP - PADDING_BOTTOM
+    const bottom = PADDING_TOP + innerHeight
 
     const toX = (time: number) => PADDING_LEFT + ((time - minTime) / timeRange) * innerWidth
     const toPriceY = (price: number) => PADDING_TOP + innerHeight - ((price - minPrice) / priceRange) * innerHeight
     const toRatioY = (ratio: number) => PADDING_TOP + innerHeight - ((ratio - minRatio) / ratioRange) * innerHeight
+
+    const xTickCount = X_TICK_COUNT
+    const seenMonths = new Set<string>()
+    const xTickList = Array.from({ length: xTickCount }, (_, i) => {
+      const time = minTime + (timeRange * i) / (xTickCount - 1)
+      return { x: toX(time), label: formatYearMonth(time) }
+    }).filter((tick) => {
+      if (seenMonths.has(tick.label)) return false
+      seenMonths.add(tick.label)
+      return true
+    })
 
     return {
       salePoints: sortedSale.map((entry) => ({
@@ -84,6 +104,8 @@ export function JeonseHistoryChart({ saleEntries, jeonseEntries, ratioEntries }:
         const ratio = minRatio + (ratioRange * i) / (TICK_COUNT - 1)
         return { value: Math.round(ratio * 10) / 10, y: toRatioY(ratio) }
       }),
+      xTicks: xTickList,
+      chartBottom: bottom,
     }
   }, [saleEntries, jeonseEntries, ratioEntries])
 
@@ -132,6 +154,20 @@ export function JeonseHistoryChart({ saleEntries, jeonseEntries, ratioEntries }:
               {tick.value}%
             </text>
           ))}
+        {xTicks.map((tick) => (
+          <g key={tick.label}>
+            <line
+              x1={tick.x}
+              y1={chartBottom}
+              x2={tick.x}
+              y2={chartBottom + 4}
+              className="jeonse-history-chart__gridline"
+            />
+            <text x={tick.x} y={chartBottom + 16} textAnchor="middle" className="jeonse-history-chart__axis-label">
+              {tick.label}
+            </text>
+          </g>
+        ))}
         {series.map(
           (s) =>
             s.points.length > 1 && (

@@ -217,13 +217,13 @@ describe('ListingSearchScreen', () => {
     spinbuttons.forEach((input) => expect(input).not.toBeDisabled())
   })
 
-  it('데이터가 있으면 매물 카드가 렌더링되고 MapView에 올바른 listings prop이 전달된다', () => {
+  it('데이터가 있으면 단지 위치 카드가 렌더링되고 MapView에 단지 좌표 prop이 전달된다', () => {
     const listings = [makeListing(1), makeListing(2), makeListing(3)]
     mockedUseListings.mockReturnValue(baseQueryResult({ data: listings }))
 
     const { container } = renderScreen()
 
-    const cards = container.querySelectorAll('.listing-card')
+    const cards = container.querySelectorAll('.complex-location-card')
     expect(cards).toHaveLength(3)
 
     expect(mockMapView).toHaveBeenCalled()
@@ -234,6 +234,23 @@ describe('ListingSearchScreen', () => {
       { id: 1, lat: listings[0].complex.latitude, lng: listings[0].complex.longitude },
       { id: 2, lat: listings[1].complex.latitude, lng: listings[1].complex.longitude },
       { id: 3, lat: listings[2].complex.latitude, lng: listings[2].complex.longitude },
+    ])
+  })
+
+  it('같은 단지의 매물이 여러 건이어도 위치 카드와 지도 마커는 단지별로 한 번만 표시된다', () => {
+    const first = makeListing(1)
+    const second = makeListing(2, { complexId: first.complexId, complex: first.complex })
+    mockedUseListings.mockReturnValue(baseQueryResult({ data: [first, second] }))
+
+    const { container } = renderScreen()
+
+    expect(container.querySelectorAll('.complex-location-card')).toHaveLength(1)
+
+    const lastCallProps = mockMapView.mock.calls[mockMapView.mock.calls.length - 1][0] as {
+      listings: Array<{ id: number; lat: number; lng: number }>
+    }
+    expect(lastCallProps.listings).toEqual([
+      { id: first.complex.id, lat: first.complex.latitude, lng: first.complex.longitude },
     ])
   })
 
@@ -275,18 +292,18 @@ describe('ListingSearchScreen', () => {
     expect(mapPanel).toHaveAttribute('data-mobile-visible', 'false')
   })
 
-  it('ListingCard 클릭 시 /listings/{id} 로 이동한다', async () => {
+  it('등록 매물 탭의 단지 위치 카드는 클릭해도 상세 페이지로 이동하지 않는다', async () => {
     const listings = [makeListing(1)]
     mockedUseListings.mockReturnValue(baseQueryResult({ data: listings }))
     const user = userEvent.setup()
 
     const { container } = renderScreen()
 
-    const card = container.querySelector('.listing-card')
+    const card = container.querySelector('.complex-location-card')
     expect(card).not.toBeNull()
     await user.click(card as Element)
 
-    expect(screen.getByTestId('detail-probe')).toBeInTheDocument()
+    expect(screen.queryByTestId('detail-probe')).not.toBeInTheDocument()
   })
 
   it('즐겨찾기가 아닌 단지의 별 아이콘을 클릭하면 useAddFavoriteComplex의 mutate가 호출되고 상세 이동은 발생하지 않는다', async () => {
@@ -325,7 +342,7 @@ describe('ListingSearchScreen', () => {
     expect(removeMutate).toHaveBeenCalledWith(1, expect.objectContaining({ onError: expect.any(Function) }))
   })
 
-  it('MapView의 onMarkerClick 호출 시 /listings/{id} 로 이동한다', () => {
+  it('등록 매물 탭에서 MapView의 onMarkerClick을 호출해도 상세 페이지로 이동하지 않는다', () => {
     const listings = [makeListing(1)]
     mockedUseListings.mockReturnValue(baseQueryResult({ data: listings }))
 
@@ -338,7 +355,7 @@ describe('ListingSearchScreen', () => {
       lastCallProps.onMarkerClick(1)
     })
 
-    expect(screen.getByTestId('detail-probe')).toBeInTheDocument()
+    expect(screen.queryByTestId('detail-probe')).not.toBeInTheDocument()
   })
 
   it('비교셋에 추가 아이콘을 클릭하면 선택되고 하단 비교하기 바가 표시된다', async () => {
@@ -414,6 +431,34 @@ describe('ListingSearchScreen', () => {
     expect(screen.getByText(/1000세대/)).toBeInTheDocument()
   })
 
+  it('같은 단지의 실시간 매물은 하나의 그룹으로 묶이고, 펼치기 전에는 개별 매물 카드가 보이지 않는다', async () => {
+    mockedUseListings.mockReturnValue(baseQueryResult({ data: [] }))
+    mockedUseLiveListings.mockReturnValue(
+      {
+        data: [
+          makeRegionalListing(1, { complexName: '같은단지', salePrice: 90000 }),
+          makeRegionalListing(2, { complexName: '같은단지', salePrice: 110000 }),
+          makeRegionalListing(3, { complexName: '다른단지' }),
+        ],
+        isLoading: false,
+        isError: false,
+      } as unknown as ReturnType<typeof useLiveListings>,
+    )
+    const user = userEvent.setup()
+
+    const { container } = renderScreen()
+    await user.click(screen.getByRole('button', { name: '실시간 탐색' }))
+
+    expect(screen.getAllByText('같은단지')).toHaveLength(1)
+    expect(screen.getByText('2건')).toBeInTheDocument()
+    expect(container.querySelectorAll('.listing-card')).toHaveLength(0)
+
+    const headers = container.querySelectorAll('.live-listing-group__header')
+    await user.click(headers[0])
+
+    expect(container.querySelectorAll('.listing-card')).toHaveLength(2)
+  })
+
   it('실시간 모드에서 결과가 0건이면 "조건에 맞는 매물이 0건입니다"를 표시한다', async () => {
     mockedUseListings.mockReturnValue(baseQueryResult({ data: [] }))
     mockedUseLiveListings.mockReturnValue(
@@ -441,6 +486,7 @@ describe('ListingSearchScreen', () => {
 
     const { container } = renderScreen()
     await user.click(screen.getByRole('button', { name: '실시간 탐색' }))
+    await user.click(container.querySelector('.live-listing-group__header') as Element)
 
     const card = container.querySelector('.listing-card')
     expect(card).not.toBeNull()
@@ -464,6 +510,7 @@ describe('ListingSearchScreen', () => {
 
     const { container } = renderScreen()
     await user.click(screen.getByRole('button', { name: '실시간 탐색' }))
+    await user.click(container.querySelector('.live-listing-group__header') as Element)
     await user.click(container.querySelector('.listing-card') as Element)
 
     expect(screen.getByText('실시간 매물 선택 실패')).toBeInTheDocument()

@@ -4,8 +4,10 @@ import { useListings } from '../hooks/useListings'
 import { useLiveListings } from '../hooks/useLiveListings'
 import { useSelectLiveListing } from '../hooks/useSelectLiveListing'
 import { PriceRangeFilter } from './PriceRangeFilter'
-import { ListingCard } from './ListingCard'
-import { LiveListingCard } from './LiveListingCard'
+import { ComplexLocationCard } from './ComplexLocationCard'
+import { LiveListingComplexGroup } from './LiveListingComplexGroup'
+import { groupLiveListingsByComplex } from '../utils/groupLiveListingsByComplex'
+import { dedupeComplexesFromListings } from '../utils/dedupeComplexesFromListings'
 import { ComplexFavoriteStar } from './ComplexFavoriteStar'
 import { ComplexCompareToggle } from './ComplexCompareToggle'
 import { MapView } from '../../../shared/map/MapView'
@@ -65,10 +67,10 @@ export function ListingSearchScreen() {
       ? (liveListings.data ?? [])
           .filter((entry) => entry.latitude !== null && entry.longitude !== null)
           .map((entry) => ({ id: entry.id, lat: entry.latitude as number, lng: entry.longitude as number }))
-      : (data ?? []).map((listing) => ({
-          id: listing.id,
-          lat: listing.complex.latitude,
-          lng: listing.complex.longitude,
+      : dedupeComplexesFromListings(data ?? []).map((complex) => ({
+          id: complex.id,
+          lat: complex.latitude,
+          lng: complex.longitude,
         }))
 
   return (
@@ -98,9 +100,9 @@ export function ListingSearchScreen() {
         <div className="listing-search-screen__map" data-mobile-visible={mobileView === 'map'}>
           <MapView
             listings={mapPoints}
-            onMarkerClick={(id) =>
-              searchMode === 'live' ? handleSelectLiveListing(Number(id)) : navigate(`/listings/${id}`)
-            }
+            onMarkerClick={(id) => {
+              if (searchMode === 'live') handleSelectLiveListing(Number(id))
+            }}
           />
         </div>
         <div className="listing-search-screen__list" data-mobile-visible={mobileView === 'list'}>
@@ -113,8 +115,8 @@ export function ListingSearchScreen() {
               )}
               {!liveListings.isLoading && !liveListings.isError && liveListings.data && liveListings.data.length > 0 && (
                 <div className="listing-search-screen__cards">
-                  {liveListings.data.map((entry) => (
-                    <LiveListingCard key={entry.id} entry={entry} onSelect={handleSelectLiveListing} />
+                  {groupLiveListingsByComplex(liveListings.data).map((group) => (
+                    <LiveListingComplexGroup key={group.key} group={group} onSelect={handleSelectLiveListing} />
                   ))}
                 </div>
               )}
@@ -127,21 +129,20 @@ export function ListingSearchScreen() {
           )}
           {searchMode === 'registered' && !isLoading && !isError && data && data.length > 0 && (
             <div className="listing-search-screen__cards">
-              {data.map((listing) => (
-                <ListingCard
-                  key={listing.id}
-                  listing={listing}
-                  onClick={(id) => navigate(`/listings/${id}`)}
+              {dedupeComplexesFromListings(data).map((complex) => (
+                <ComplexLocationCard
+                  key={complex.id}
+                  complex={complex}
                   favoriteSlot={
                     <ComplexFavoriteStar
-                      isFavorited={favoriteComplexIds.has(listing.complex.id)}
-                      onToggle={() => handleToggleFavorite(listing.complex.id)}
+                      isFavorited={favoriteComplexIds.has(complex.id)}
+                      onToggle={() => handleToggleFavorite(complex.id)}
                     />
                   }
                   compareSlot={
                     <ComplexCompareToggle
-                      isSelected={selectedComplexIds.has(listing.complex.id)}
-                      onToggle={() => handleToggle(listing.complex.id)}
+                      isSelected={selectedComplexIds.has(complex.id)}
+                      onToggle={() => handleToggle(complex.id)}
                     />
                   }
                 />

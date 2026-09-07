@@ -30,6 +30,14 @@ describe('PriceHistoryChart', () => {
     expect(tokens).toHaveLength(4)
   })
 
+  it('x축에 연/월 형식의 날짜 라벨이 표시된다', () => {
+    const { container } = render(<PriceHistoryChart entries={entries} />)
+
+    const svg = container.querySelector('svg')
+    const labels = Array.from(svg?.querySelectorAll('text') ?? []).map((el) => el.textContent)
+    expect(labels).toEqual(expect.arrayContaining(['2019-01', '2022-11']))
+  })
+
   it('마지막 시점의 가격이 라벨로 표시된다', () => {
     const { container } = render(<PriceHistoryChart entries={entries} />)
 
@@ -63,11 +71,10 @@ describe('PriceHistoryChart', () => {
     const target = points[1]
 
     await user.hover(target)
-    expect(screen.getByText(/2020-05/)).toBeInTheDocument()
-    expect(screen.getByText(/80,000만원/)).toBeInTheDocument()
+    expect(container.querySelector('.price-history-chart__tooltip')).toHaveTextContent(/2020-05.*80,000만원/)
 
     await user.unhover(target)
-    expect(screen.queryByText(/2020-05/)).not.toBeInTheDocument()
+    expect(container.querySelector('.price-history-chart__tooltip')).not.toBeInTheDocument()
   })
 
   it('point에 focus하면 툴팁이 표시되고, blur하면 사라진다', () => {
@@ -77,10 +84,9 @@ describe('PriceHistoryChart', () => {
     const target = points[2]
 
     fireEvent.focus(target)
-    expect(screen.getByText(/2021-09/)).toBeInTheDocument()
-    expect(screen.getByText(/88,000만원/)).toBeInTheDocument()
+    expect(container.querySelector('.price-history-chart__tooltip')).toHaveTextContent(/2021-09.*88,000만원/)
 
     fireEvent.blur(target)
-    expect(screen.queryByText(/2021-09/)).not.toBeInTheDocument()
+    expect(container.querySelector('.price-history-chart__tooltip')).not.toBeInTheDocument()
   })
 })
