@@ -2,13 +2,13 @@ const apartmentComplexesRepository = require('../repositories/apartment-complexe
 const apartmentComplexPriceService = require('./apartment-complex-price.service');
 const localityEnrichmentService = require('./locality-enrichment.service');
 
+// 학군/개발호재는 각각 전용 탭(단지 상세 "학군"/"개발호재")으로 대체돼 완전 중복이라
+// 2026-09-08 정리하며 제거했다(docs/search-architecture-refactor-plan.md §6/§18).
 const LOCALITY_KEY_MAP = {
   교통: 'transportation',
   상권: 'commercialArea',
-  학군: 'schoolDistrict',
   강남접근성: 'gangnamAccessibility',
   '유흥·공원': 'entertainmentAndParks',
-  개발호재: 'developmentProspects',
   주변일자리: 'nearbyJobs'
 };
 

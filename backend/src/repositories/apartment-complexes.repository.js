@@ -39,6 +39,24 @@ async function findByAddress(address) {
   return rows[0] || null;
 }
 
+async function findAllWithMolitLookupInfo() {
+  const { rows } = await pool.query(
+    `SELECT id, complex_name, lawd_cd, molit_apt_name, completion_year
+     FROM apartment_complexes
+     WHERE lawd_cd IS NOT NULL AND molit_apt_name IS NOT NULL
+     ORDER BY id`
+  );
+  return rows;
+}
+
+async function updateCompletionYear(id, completionYear) {
+  const { rows } = await pool.query(
+    'UPDATE apartment_complexes SET completion_year = $2 WHERE id = $1 RETURNING *',
+    [id, completionYear]
+  );
+  return rows[0] || null;
+}
+
 async function insert({
   complexName,
   latitude,
@@ -76,5 +94,7 @@ module.exports = {
   findWithinBoundingBox,
   findPriceHistoryByComplexId,
   findByAddress,
+  findAllWithMolitLookupInfo,
+  updateCompletionYear,
   insert
 };

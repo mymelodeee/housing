@@ -5,9 +5,11 @@ const {
   generateRecentDealYmds,
   parseAptTradeXml,
   mapTradeItem,
+  resolveBuildYear,
   filterByAptName,
   buildMolitPriceHistoryResult,
   fetchPriceHistoryForComplex,
+  resolveCompletionYearFromTrades,
   DATA_SOURCE,
 } = require('../../src/services/molit-price-history.service');
 
@@ -129,6 +131,45 @@ describe('services/molit-price-history.service', () => {
         transactionDate: '2025-11-20',
         transactionPrice: 120500,
       });
+    });
+  });
+
+  describe('mapTradeItem - buildYear', () => {
+    it('buildYear가 응답에 있으면 정수로 변환해 포함한다', () => {
+      const item = {
+        aptNm: '동탄역시범우남퍼스트빌',
+        dealAmount: '95,000',
+        dealYear: '2024',
+        dealMonth: '1',
+        dealDay: '5',
+        buildYear: '2015',
+      };
+
+      expect(mapTradeItem(item).buildYear).toBe(2015);
+    });
+
+    it('buildYear가 없으면 undefined로 둔다', () => {
+      const item = {
+        aptNm: '동탄역시범우남퍼스트빌',
+        dealAmount: '95,000',
+        dealYear: '2024',
+        dealMonth: '1',
+        dealDay: '5',
+      };
+
+      expect(mapTradeItem(item).buildYear).toBeUndefined();
+    });
+  });
+
+  describe('resolveBuildYear', () => {
+    it('가장 많이 등장한 buildYear를 반환한다', () => {
+      const transactions = [{ buildYear: 2015 }, { buildYear: 2015 }, { buildYear: 2016 }];
+
+      expect(resolveBuildYear(transactions)).toBe(2015);
+    });
+
+    it('buildYear가 전혀 없으면 null을 반환한다', () => {
+      expect(resolveBuildYear([{ buildYear: undefined }, {}])).toBeNull();
     });
   });
 
@@ -270,6 +311,78 @@ describe('services/molit-price-history.service', () => {
       });
 
       expect(result).toEqual({ lookupPeriodType: '실거래 이력 없음', firstTransactionMonth: null, entries: [] });
+    });
+
+    it('모든 월의 API 호출이 실패(reject)해서 매칭 결과가 0건이면 "실거래 이력 없음" 대신 "확인 필요"를 반환한다', async () => {
+      molitApiRepository.fetchAptTradeXml.mockRejectedValue(new Error('LIMITED_NUMBER_OF_SERVICE_REQUESTS_PER_SECOND_EXCEEDS_ERROR'));
+
+      const result = await fetchPriceHistoryForComplex({
+        lawdCd: '41590',
+        aptName: '동탄역시범우남퍼스트빌',
+        now: new Date('2026-07-10T00:00:00Z'),
+      });
+
+      expect(result).toEqual({ lookupPeriodType: '확인 필요', firstTransactionMonth: null, entries: [], hasApiError: true });
+    });
+
+    it('API가 rate-limit 에러 코드를 200 응답으로 반환(reject 아님)해도 실패로 집계해 "확인 필요"를 반환한다', async () => {
+      molitApiRepository.fetchAptTradeXml.mockResolvedValue(`
+        <response>
+          <header><resultCode>22</resultCode><resultMsg>LIMITED_NUMBER_OF_SERVICE_REQUESTS_PER_SECOND_EXCEEDS_ERROR</resultMsg></header>
+          <body></body>
+        </response>
+      `);
+
+      const result = await fetchPriceHistoryForComplex({
+        lawdCd: '41590',
+        aptName: '동탄역시범우남퍼스트빌',
+        now: new Date('2026-07-10T00:00:00Z'),
+      });
+
+      expect(result).toEqual({ lookupPeriodType: '확인 필요', firstTransactionMonth: null, entries: [], hasApiError: true });
+    });
+  });
+
+  describe('resolveCompletionYearFromTrades', () => {
+    it('매칭된 거래들의 buildYear 중 최빈값을 준공년도로 반환한다', async () => {
+      molitApiRepository.fetchAptTradeXml.mockResolvedValue(`
+        <response>
+          <header><resultCode>00</resultCode><resultMsg>OK</resultMsg></header>
+          <body>
+            <items>
+              <item><aptNm>동탄역시범우남퍼스트빌</aptNm><dealAmount>95,000</dealAmount><dealYear>2024</dealYear><dealMonth>1</dealMonth><dealDay>5</dealDay><buildYear>2015</buildYear></item>
+              <item><aptNm>동탄역시범우남퍼스트빌</aptNm><dealAmount>96,000</dealAmount><dealYear>2024</dealYear><dealMonth>2</dealMonth><dealDay>5</dealDay><buildYear>2015</buildYear></item>
+            </items>
+          </body>
+        </response>
+      `);
+
+      const result = await resolveCompletionYearFromTrades({
+        lawdCd: '41590',
+        aptName: '동탄역시범우남퍼스트빌',
+        now: new Date('2026-07-10T00:00:00Z'),
+      });
+
+      expect(result.completionYear).toBe(2015);
+      expect(result.sampleSize).toBeGreaterThan(0);
+      expect(result.hasApiError).toBe(false);
+    });
+
+    it('매칭된 거래가 없으면 completionYear는 null이다', async () => {
+      molitApiRepository.fetchAptTradeXml.mockResolvedValue(`
+        <response>
+          <header><resultCode>00</resultCode><resultMsg>OK</resultMsg></header>
+          <body><items></items></body>
+        </response>
+      `);
+
+      const result = await resolveCompletionYearFromTrades({
+        lawdCd: '41590',
+        aptName: '동탄역시범우남퍼스트빌',
+        now: new Date('2026-07-10T00:00:00Z'),
+      });
+
+      expect(result.completionYear).toBeNull();
     });
   });
 });

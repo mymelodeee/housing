@@ -43,7 +43,7 @@ function generateRecentDealYmds(monthsCount = LOOKUP_MONTHS, now = new Date()) {
   return result;
 }
 
-function parseAptTradeXml(xmlString) {
+function parseAptTradeResponse(xmlString) {
   const parsed = xmlParser.parse(xmlString);
   const response = parsed && parsed.response;
   const resultCode = response && response.header && response.header.resultCode;
@@ -51,12 +51,16 @@ function parseAptTradeXml(xmlString) {
   // fast-xml-parser는 선행 0이 있는 숫자 문자열(예: "00", "03")도 숫자로 변환하므로
   // 문자열/숫자 표현을 모두 허용해 성공 코드("00")인지 판별한다.
   if (Number(resultCode) !== 0) {
-    return [];
+    return { items: [], isSuccess: false };
   }
 
   const items = response.body && response.body.items && response.body.items.item;
-  if (!items) return [];
-  return Array.isArray(items) ? items : [items];
+  if (!items) return { items: [], isSuccess: true };
+  return { items: Array.isArray(items) ? items : [items], isSuccess: true };
+}
+
+function parseAptTradeXml(xmlString) {
+  return parseAptTradeResponse(xmlString).items;
 }
 
 function normalizeAptName(name) {
@@ -72,8 +76,27 @@ function mapTradeItem(item) {
     aptName: item.aptNm,
     transactionDate: `${item.dealYear}-${month}-${day}`,
     transactionPrice: parseInt(dealAmount, 10),
-    exclusiveArea: item.excluUseAr === undefined ? undefined : parseFloat(item.excluUseAr)
+    exclusiveArea: item.excluUseAr === undefined ? undefined : parseFloat(item.excluUseAr),
+    buildYear: item.buildYear === undefined ? undefined : parseInt(item.buildYear, 10)
   };
+}
+
+function resolveBuildYear(transactions) {
+  const counts = new Map();
+  for (const transaction of transactions) {
+    if (transaction.buildYear === undefined || Number.isNaN(transaction.buildYear)) continue;
+    counts.set(transaction.buildYear, (counts.get(transaction.buildYear) || 0) + 1);
+  }
+
+  let mostCommonYear = null;
+  let highestCount = 0;
+  for (const [year, count] of counts) {
+    if (count > highestCount) {
+      mostCommonYear = year;
+      highestCount = count;
+    }
+  }
+  return mostCommonYear;
 }
 
 function filterByAptName(transactions, aptName) {
@@ -93,8 +116,13 @@ function mapEntry(transaction) {
   };
 }
 
-function buildMolitPriceHistoryResult({ transactions, now = new Date() }) {
+function buildMolitPriceHistoryResult({ transactions, now = new Date(), hasApiError = false }) {
   if (transactions.length === 0) {
+    // 조회된 거래가 0건이라도, 국토부 API 호출/응답 자체가 실패(rate limit 등)했다면
+    // "실거래 이력이 실제로 없음"과 구분해야 한다(§12 정책 — 실패를 없음으로 오인 방지).
+    if (hasApiError) {
+      return { lookupPeriodType: '확인 필요', firstTransactionMonth: null, entries: [], hasApiError: true };
+    }
     return { lookupPeriodType: '실거래 이력 없음', firstTransactionMonth: null, entries: [] };
   }
 
@@ -115,20 +143,42 @@ function buildMolitPriceHistoryResult({ transactions, now = new Date() }) {
   };
 }
 
-async function fetchPriceHistoryForComplex({ lawdCd, aptName, now = new Date() }) {
+async function fetchMatchedTransactions({ lawdCd, aptName, now = new Date() }) {
   const dealYmds = generateRecentDealYmds(LOOKUP_MONTHS, now);
 
   const settledResults = await settleInBatches(
     dealYmds.map((dealYmd) => () => molitApiRepository.fetchAptTradeXml({ lawdCd, dealYmd }))
   );
 
-  const allItems = settledResults.flatMap((result) =>
-    result.status === 'fulfilled' ? parseAptTradeXml(result.value) : []
-  );
+  let hasApiError = false;
+  const allItems = [];
+  for (const result of settledResults) {
+    if (result.status !== 'fulfilled') {
+      hasApiError = true;
+      continue;
+    }
+    const { items, isSuccess } = parseAptTradeResponse(result.value);
+    if (!isSuccess) hasApiError = true;
+    allItems.push(...items);
+  }
 
   const transactions = filterByAptName(allItems.map(mapTradeItem), aptName);
+  return { transactions, hasApiError };
+}
 
-  return buildMolitPriceHistoryResult({ transactions, now });
+async function fetchPriceHistoryForComplex({ lawdCd, aptName, now = new Date() }) {
+  const { transactions, hasApiError } = await fetchMatchedTransactions({ lawdCd, aptName, now });
+  return buildMolitPriceHistoryResult({ transactions, now, hasApiError });
+}
+
+// 준공년도(연식)를 별도 공공API 없이, 이미 승인된 실거래가 API 응답의 buildYear(건축년도)
+// 필드로부터 역산한다. 매매 실거래가 조회와 동일한 lawdCd/aptName 매칭을 재사용한다.
+async function resolveCompletionYearFromTrades({ lawdCd, aptName, now = new Date() }) {
+  const { transactions, hasApiError } = await fetchMatchedTransactions({ lawdCd, aptName, now });
+  const sampleSize = transactions.filter(
+    (t) => t.buildYear !== undefined && !Number.isNaN(t.buildYear)
+  ).length;
+  return { completionYear: resolveBuildYear(transactions), sampleSize, hasApiError };
 }
 
 module.exports = {
@@ -136,9 +186,12 @@ module.exports = {
   settleInBatches,
   parseAptTradeXml,
   mapTradeItem,
+  resolveBuildYear,
   filterByAptName,
   buildMolitPriceHistoryResult,
+  fetchMatchedTransactions,
   fetchPriceHistoryForComplex,
+  resolveCompletionYearFromTrades,
   DATA_SOURCE,
   LOOKUP_MONTHS
 };

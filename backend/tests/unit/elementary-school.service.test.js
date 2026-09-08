@@ -4,9 +4,9 @@ const elementarySchoolsRepository = require('../../src/repositories/elementary-s
 const {
   haversineDistanceMeters,
   buildBoundingBoxDegrees,
-  selectNearestWithin700m,
-  findNearestElementarySchoolWithin700m,
-  RADIUS_METERS,
+  selectNearest,
+  findNearestSchoolByLevel,
+  ASSIGNED_SCHOOL_SEARCH_RADIUS_METERS,
 } = require('../../src/services/elementary-school.service');
 
 describe('services/elementary-school.service', () => {
@@ -37,42 +37,34 @@ describe('services/elementary-school.service', () => {
     });
   });
 
-  describe('selectNearestWithin700m', () => {
+  describe('selectNearest', () => {
     const latitude = 37.2;
     const longitude = 127.1;
 
-    it('700m 이내 후보가 없으면 null을 반환한다', () => {
-      const candidates = [{ school_name: '먼초등학교', latitude: 38.5, longitude: 128.5 }];
-
-      expect(selectNearestWithin700m(candidates, latitude, longitude)).toBeNull();
+    it('후보가 없으면 null을 반환한다', () => {
+      expect(selectNearest([], latitude, longitude)).toBeNull();
     });
 
-    it('700m 이내 후보 중 가장 가까운 학교를 반환한다', () => {
+    it('가장 가까운 학교를 반경 제한 없이 반환한다', () => {
       const candidates = [
         { school_name: '먼초등학교', latitude: 37.204, longitude: 127.1 }, // ~444m
         { school_name: '가까운초등학교', latitude: 37.201, longitude: 127.1 }, // ~111m
       ];
 
-      const result = selectNearestWithin700m(candidates, latitude, longitude);
+      const result = selectNearest(candidates, latitude, longitude);
 
       expect(result.schoolName).toBe('가까운초등학교');
       expect(result.distanceMeters).toBeLessThan(200);
     });
-
-    it('정확히 700m 초과인 후보는 제외한다', () => {
-      const candidates = [{ school_name: '경계밖', latitude: 37.21, longitude: 127.1 }]; // ~1113m
-
-      expect(selectNearestWithin700m(candidates, latitude, longitude)).toBeNull();
-    });
   });
 
-  describe('findNearestElementarySchoolWithin700m', () => {
+  describe('findNearestSchoolByLevel', () => {
     it('repository에서 받은 후보로 가장 가까운 학교를 계산해 반환한다', async () => {
       elementarySchoolsRepository.findWithinBoundingBox.mockResolvedValue([
         { school_name: '동탄중앙초등학교', latitude: 37.201, longitude: 127.1 },
       ]);
 
-      const result = await findNearestElementarySchoolWithin700m(37.2, 127.1);
+      const result = await findNearestSchoolByLevel(37.2, 127.1, '초등학교');
 
       expect(elementarySchoolsRepository.findWithinBoundingBox).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -80,6 +72,7 @@ describe('services/elementary-school.service', () => {
           maxLat: expect.any(Number),
           minLng: expect.any(Number),
           maxLng: expect.any(Number),
+          schoolLevel: '초등학교',
         })
       );
       expect(result.schoolName).toBe('동탄중앙초등학교');
@@ -88,13 +81,13 @@ describe('services/elementary-school.service', () => {
     it('후보가 없으면 null을 반환한다', async () => {
       elementarySchoolsRepository.findWithinBoundingBox.mockResolvedValue([]);
 
-      const result = await findNearestElementarySchoolWithin700m(37.2, 127.1);
+      const result = await findNearestSchoolByLevel(37.2, 127.1, '중학교');
 
       expect(result).toBeNull();
     });
   });
 
-  it('RADIUS_METERS는 700이다', () => {
-    expect(RADIUS_METERS).toBe(700);
+  it('ASSIGNED_SCHOOL_SEARCH_RADIUS_METERS는 3000이다', () => {
+    expect(ASSIGNED_SCHOOL_SEARCH_RADIUS_METERS).toBe(3000);
   });
 });

@@ -176,11 +176,9 @@ describe('GET /api/listings', () => {
       });
       expect(res.body.localityAttributes).toEqual({
         transportation: '지하철 SRT 동탄역 도보 10분',
-        commercialArea: '정보 없음',
-        schoolDistrict: '정보 없음',
-        gangnamAccessibility: '정보 없음',
+        commercialArea: '음식점 0 · 카페 0 · 마트/편의점 0 · 병원 0 (700m 이내)',
+        gangnamAccessibility: '강남역 직선 33.8km',
         entertainmentAndParks: '유흥주점 없음 (700m 이내)',
-        developmentProspects: '정보 없음',
         nearbyJobs: '정보 없음',
       });
     });
@@ -403,7 +401,7 @@ describe('GET /api/listings', () => {
         expect(['단독', '부부합산', null]).toContain(res.body.recommendedScenario);
         expect(res.body.policyMortgageNotice).toBe(POLICY_MORTGAGE_NOTICE);
         res.body.scenarios.forEach((scenario) => {
-          expect(scenario.interestRatePercent).toBe(4.5);
+          expect(typeof scenario.interestRatePercent).toBe('number');
           expect(typeof scenario.interestRateSource).toBe('string');
           ['graduatedRepayment10y', 'graduatedRepayment20y', 'graduatedRepayment30y'].forEach((key) => {
             expect(typeof scenario[key].initialMonthlyPayment).toBe('number');

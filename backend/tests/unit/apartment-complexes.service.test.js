@@ -26,7 +26,7 @@ const baseRow = {
   longitude: 127.0982,
   remodeling_completion_year: null,
   nearby_redevelopment_info: null,
-  locality_attributes: { 교통: '지하철 SRT 동탄역 도보 10분', 학군: '정보 없음' },
+  locality_attributes: { 교통: '지하철 SRT 동탄역 도보 10분' },
 };
 
 describe('services/apartment-complexes.service', () => {
@@ -102,15 +102,13 @@ describe('services/apartment-complexes.service', () => {
       expect(result.localityAttributes).toEqual({
         transportation: '지하철 도보 5분',
         commercialArea: '정보 없음',
-        schoolDistrict: '정보 없음',
         gangnamAccessibility: '정보 없음',
         entertainmentAndParks: '정보 없음',
-        developmentProspects: '정보 없음',
         nearbyJobs: '정보 없음',
       });
     });
 
-    it('locality_attributes가 null이면 7개 전부 "정보 없음"이다', async () => {
+    it('locality_attributes가 null이면 5개 전부 "정보 없음"이다', async () => {
       apartmentComplexesRepository.findById.mockResolvedValue({
         ...baseRow,
         locality_attributes: null,
@@ -122,10 +120,8 @@ describe('services/apartment-complexes.service', () => {
       expect(result.localityAttributes).toEqual({
         transportation: '정보 없음',
         commercialArea: '정보 없음',
-        schoolDistrict: '정보 없음',
         gangnamAccessibility: '정보 없음',
         entertainmentAndParks: '정보 없음',
-        developmentProspects: '정보 없음',
         nearbyJobs: '정보 없음',
       });
     });
@@ -136,21 +132,18 @@ describe('services/apartment-complexes.service', () => {
       localityEnrichmentService.enrichLocalityAttributes.mockResolvedValue({
         transportation: '지하철 SRT 동탄역 도보 10분',
         commercialArea: '정보 없음',
-        schoolDistrict: '동탄중앙초등학교 (350m 이내)',
         gangnamAccessibility: '정보 없음',
         entertainmentAndParks: '유흥주점 없음 (700m 이내)',
-        developmentProspects: '정보 없음',
         nearbyJobs: '정보 없음',
       });
 
       const result = await getComplexDetail(1);
 
       expect(localityEnrichmentService.enrichLocalityAttributes).toHaveBeenCalledWith(
-        expect.objectContaining({ transportation: '지하철 SRT 동탄역 도보 10분', schoolDistrict: '정보 없음' }),
+        expect.objectContaining({ transportation: '지하철 SRT 동탄역 도보 10분' }),
         baseRow.latitude,
         baseRow.longitude
       );
-      expect(result.localityAttributes.schoolDistrict).toBe('동탄중앙초등학교 (350m 이내)');
       expect(result.localityAttributes.entertainmentAndParks).toBe('유흥주점 없음 (700m 이내)');
     });
   });
