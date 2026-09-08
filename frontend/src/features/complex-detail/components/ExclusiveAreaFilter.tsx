@@ -1,3 +1,4 @@
+import { formatAreaWithPyeong } from '../../../shared/utils/formatArea'
 import './ExclusiveAreaFilter.css'
 
 interface ExclusiveAreaFilterProps {
@@ -18,7 +19,7 @@ export function ExclusiveAreaFilter({ areas, value, onChange }: ExclusiveAreaFil
         <option value="">전체</option>
         {areas.map((area) => (
           <option key={area} value={area}>
-            {area}m²
+            {formatAreaWithPyeong(area)}
           </option>
         ))}
       </select>

@@ -1,6 +1,6 @@
 # 검색 아키텍처 분석 및 리팩터 계획
 
-- 버전: v0.2
+- 버전: v0.3
 - 작성일: 2026-09-07
 - 최종 수정일: 2026-09-08
 - 참조: [1-domain-definition.md](./1-domain-definition.md), [6-erd.md](./6-erd.md), [7-execution-plan.md](./7-execution-plan.md), `database/schema.sql`, `backend/src/config/target-regions.js`
@@ -449,3 +449,26 @@ GitHub나 마지막 커밋이 아닌 로컬 modified/staged/untracked 파일을 
 - 별도 실행한 최신 백엔드에서 수원시 실거래 97건이 모두 `41117`로 반환되고, 알 수 없는 시는 빈 배열을 반환함을 확인했다. 기존 단지 선택 API는 201과 올바른 `complexId`를 반환하며 `listings` 행 수를 변경하지 않았다.
 - 브라우저 검증은 미완료다. 내장 브라우저 연결이 불가능했고 대체 Playwright 도구는 `approval policy: never`로 호출이 차단됐다.
 - 기존 3000/5173 포트의 프로세스 ID는 확인했으나 실행 경로·작업 디렉터리 조회가 권한 제한으로 불가능했다. 해당 프로세스는 종료하지 않았다. 기존 서버가 이전 모듈을 메모리에 유지하고 있다면 사용자가 소유한 터미널에서 최신 코드로 재시작해야 한다.
+
+## 17. Phase 1~2(단지 물리 스펙, 실거래/전세 필터·요약) 완료 현황 (2026-09-08)
+
+`docs/hogangnono-benchmark-plan.md`(§13 단계별 구현 순서)의 Phase 1·Phase 2를 완료했다.
+
+### 17.1 Phase 1 — 단지 물리 스펙 + 전용면적 매핑
+
+- `backend/src/repositories/apt-list-api.repository.js`가 쓰던 `AptListService3`/`AptBasisInfoServiceV4`가 실제로는 폐기되어 `NO_OPENAPI_SERVICE_ERROR`를 반환함을 실측 확인(datago-api-prober 조사)했다. `AptListService4`/`AptBasisInfoServiceV5`로 교체했다(파라미터·응답 구조는 동일). V5 응답에는 세대수(`kaptdaCnt`)와 동수(`kaptDongCnt`)가 있으나 용적률·건폐율 필드는 없어 해당 컬럼 추가는 보류했다.
+- `apartment_complexes`에 nullable `household_count`/`building_count` 컬럼을 추가(`1788400000000_add-physical-specs-to-apartment-complexes`)하고, 실거래 캐시에서 단지를 find-or-create할 때(`regional-transactions.service.js`) `kaptCode`로 함께 조회해 채운다. `ComplexOverviewTab`에 "n세대 · n개동" 형태로 표시.
+- MOLIT 원본 응답의 전용면적(`excluUseAr`)을 `molit-price-history.service.js`/`jeonse-history.service.js`에서 살려 `PriceHistoryEntry`/`JeonseSaleEntry`/`JeonseEntry`에 `exclusiveArea`(optional)로 매핑했다. 이 시점에는 필드만 확보하고 필터 UI는 만들지 않았다(Phase 2로 이연).
+
+### 17.2 Phase 2 — 평형/기간 필터, 거래량·전년대비, 핵심 요약
+
+- **평형(전용면적) 필터**: `ExclusiveAreaFilter` 컴포넌트를 매매가·전세가 탭에 추가했다. 매매가 탭은 이미 받아온 `entries`를 클라이언트에서 필터링하지만, 전세가 탭은 전세가율이 매매/전세 평균의 비율이라 평형을 섞으면 왜곡되므로 `GET /api/complexes/:id/jeonse-history?exclusiveArea=`를 백엔드에서 지원해(`ComplexJeonseHistoryResponse` 신규 swagger 스키마) 매매·전세·전세가율을 모두 해당 평형 기준으로 재계산한다. `availableExclusiveAreas`는 항상 미필터 전체 목록을 반환해 드롭다운이 좁아지지 않게 했다.
+- **기간(1년/3년/전체) 필터**: `PeriodFilter` + `filterByPeriod` 유틸로 순수 클라이언트 사이드 처리(MOLIT 조회가 이미 최근 36개월을 반환하므로 재요청 불필요). 차트·표(과거 구간)만 좁히고, 최근 월평균·최고가 대비·거래량·전년동월대비·전세가율 배지 등 "최신값" 요약은 항상 전체 기간 기준으로 고정해 기간을 좁혀도 숫자가 왜곡되지 않게 했다.
+- **거래량/전년동월대비/최고가**: `monthlySeries.ts`에 `findYearAgoPoint` 추가, 매매가 탭 요약에 최고가 대비 현재 %와 당월 거래량·전년동월대비 %를 표시.
+- **평형 단위 병기(2026-09-08 추가 지시)**: `ExclusiveAreaFilter`의 옵션 라벨에 평 환산값을 병기한다(`frontend/src/shared/utils/formatArea.ts`의 `formatAreaWithPyeong`, 1평 = 3.305785m² 고정 환산, 소수 첫째자리 반올림). 예: `84.98m² (25.7평)`. 다른 화면(레거시 `ListingDetailScreen` 등)의 전용면적 표시는 이번 범위에 포함하지 않았다.
+
+### 17.3 검증
+
+- 백엔드: 관련 단위 테스트 통과, 전체 회귀 454~457/457(사전에 알려진 `remodeling.test.js` 날짜 드리프트 3건 제외 전부 통과 — §15.1과 무관한 별개의 기존 이슈).
+- 프론트: 전체 348/348 테스트 통과, `tsc --noEmit` clean.
+- 브라우저: 실제 단지(id=37, 버들치마을성복힐스테이트3차)에 대해 MOLIT 라이브 데이터로 평형 필터(9개 평형 중 필터 시 표·요약이 해당 평형 값으로 정확히 수렴), 기간 필터(표만 좁혀지고 요약 4종은 불변), 전세가율 평형별 재계산(전체 58.7% → 95.148m² 필터 시 64.2%, 직접 API 호출 결과와 일치)을 확인. 콘솔 에러 없음.

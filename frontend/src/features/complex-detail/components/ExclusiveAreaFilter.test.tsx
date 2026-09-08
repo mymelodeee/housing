@@ -8,8 +8,8 @@ describe('ExclusiveAreaFilter', () => {
     render(<ExclusiveAreaFilter areas={[59.95, 84.98]} value={null} onChange={vi.fn()} />)
 
     expect(screen.getByRole('option', { name: '전체' })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: '59.95m²' })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: '84.98m²' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: '59.95m² (18.1평)' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: '84.98m² (25.7평)' })).toBeInTheDocument()
   })
 
   it('평형을 선택하면 숫자로 onChange를 호출한다', async () => {
