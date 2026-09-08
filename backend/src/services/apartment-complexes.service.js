@@ -40,7 +40,9 @@ function mapSummaryFields(row) {
     isLandTransactionPermissionZone: mapLandTransactionZoneStatus(row.is_land_transaction_permission_zone),
     nearestShuttleStopName: row.nearest_shuttle_stop_name,
     nearestShuttleStopDistance: row.nearest_shuttle_stop_distance,
-    shuttleCommuteMinutes: row.shuttle_commute_minutes
+    shuttleCommuteMinutes: row.shuttle_commute_minutes,
+    householdCount: row.household_count,
+    buildingCount: row.building_count
   };
 }
 

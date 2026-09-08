@@ -36,6 +36,8 @@ function makeFavorite(overrides: Partial<FavoriteComplex> = {}): FavoriteComplex
       nearestShuttleStopName: '정류장1',
       nearestShuttleStopDistance: 100,
       shuttleCommuteMinutes: 30,
+      householdCount: null,
+      buildingCount: null,
     },
     ...overrides,
   }

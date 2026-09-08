@@ -2,6 +2,7 @@ const regionalTransactionCacheRepository = require('../repositories/regional-tra
 const apartmentComplexesRepository = require('../repositories/apartment-complexes.repository');
 const listingsRepository = require('../repositories/listings.repository');
 const geocodingService = require('./geocoding.service');
+const aptListService = require('./apt-list.service');
 const { getTargetRegion, getTargetRegionCodes, getLawdCdsByCity } = require('../config/target-regions');
 
 const DEFAULT_MIN_PRICE = 70000;
@@ -66,10 +67,23 @@ async function resolveCoordinates(row) {
   return geocodingService.geocodeAddress(address);
 }
 
+async function resolvePhysicalSpecs(kaptCode) {
+  if (!kaptCode) return { householdCount: undefined, buildingCount: undefined };
+
+  try {
+    const result = await aptListService.fetchAptBasisInfo(kaptCode);
+    return result || { householdCount: undefined, buildingCount: undefined };
+  } catch {
+    return { householdCount: undefined, buildingCount: undefined };
+  }
+}
+
 async function findOrCreateComplex(row, coordinates) {
   const address = row.address || row.complex_name;
   const existing = await apartmentComplexesRepository.findByAddress(address);
   if (existing) return existing;
+
+  const { householdCount, buildingCount } = await resolvePhysicalSpecs(row.kapt_code);
 
   return apartmentComplexesRepository.insert({
     complexName: row.complex_name,
@@ -78,7 +92,9 @@ async function findOrCreateComplex(row, coordinates) {
     address,
     completionYear: null,
     lawdCd: row.lawd_cd,
-    molitAptName: row.complex_name
+    molitAptName: row.complex_name,
+    householdCount,
+    buildingCount
   });
 }
 

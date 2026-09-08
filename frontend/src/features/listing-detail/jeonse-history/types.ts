@@ -1,12 +1,14 @@
 export interface JeonseSaleEntry {
   transactionDate: string
   transactionPrice: number
+  exclusiveArea?: number
   dataSource: string
 }
 
 export interface JeonseEntry {
   transactionDate: string
   deposit: number
+  exclusiveArea?: number
   dataSource: string
 }
 

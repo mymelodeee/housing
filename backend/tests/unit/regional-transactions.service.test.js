@@ -2,12 +2,14 @@ jest.mock('../../src/repositories/regional-transaction-cache.repository');
 jest.mock('../../src/repositories/apartment-complexes.repository');
 jest.mock('../../src/repositories/listings.repository');
 jest.mock('../../src/services/geocoding.service');
+jest.mock('../../src/services/apt-list.service');
 
 const { getLawdCdsByCity } = require('../../src/config/target-regions');
 const regionalTransactionCacheRepository = require('../../src/repositories/regional-transaction-cache.repository');
 const apartmentComplexesRepository = require('../../src/repositories/apartment-complexes.repository');
 const listingsRepository = require('../../src/repositories/listings.repository');
 const geocodingService = require('../../src/services/geocoding.service');
+const aptListService = require('../../src/services/apt-list.service');
 const {
   searchRecentTransactions,
   selectCacheEntry,
@@ -138,10 +140,12 @@ describe('services/regional-transactions.service', () => {
       apartmentComplexesRepository.insert.mockResolvedValue({ id: 11 });
       listingsRepository.findByComplexAndArea.mockResolvedValue(null);
       listingsRepository.insert.mockResolvedValue({ id: 21 });
+      aptListService.fetchAptBasisInfo.mockResolvedValue({ householdCount: 1200, buildingCount: 10 });
 
       const result = await selectCacheEntry(1);
 
       expect(geocodingService.geocodeAddress).toHaveBeenCalledWith('경기도 화성시 동탄역로 123');
+      expect(aptListService.fetchAptBasisInfo).toHaveBeenCalledWith('A1');
       expect(apartmentComplexesRepository.insert).toHaveBeenCalledWith(
         expect.objectContaining({
           complexName: '동탄역 시범 우남퍼스트빌',
@@ -150,7 +154,9 @@ describe('services/regional-transactions.service', () => {
           address: '경기도 화성시 동탄역로 123',
           completionYear: null,
           lawdCd: '41597',
-          molitAptName: '동탄역 시범 우남퍼스트빌'
+          molitAptName: '동탄역 시범 우남퍼스트빌',
+          householdCount: 1200,
+          buildingCount: 10
         })
       );
       expect(listingsRepository.insert).toHaveBeenCalledWith({
@@ -159,6 +165,22 @@ describe('services/regional-transactions.service', () => {
         exclusiveArea: 84.98
       });
       expect(result).toEqual({ listingId: 21 });
+    });
+
+    it('kaptCode로 물리 스펙 조회가 실패해도 단지 생성은 실패하지 않는다', async () => {
+      regionalTransactionCacheRepository.findById.mockResolvedValue({ ...baseCacheRow, latitude: null, longitude: null });
+      geocodingService.geocodeAddress.mockResolvedValue({ latitude: 37.1, longitude: 127.1 });
+      apartmentComplexesRepository.findByAddress.mockResolvedValue(null);
+      apartmentComplexesRepository.insert.mockResolvedValue({ id: 11 });
+      listingsRepository.findByComplexAndArea.mockResolvedValue(null);
+      listingsRepository.insert.mockResolvedValue({ id: 21 });
+      aptListService.fetchAptBasisInfo.mockRejectedValue(new Error('network'));
+
+      await selectCacheEntry(1);
+
+      expect(apartmentComplexesRepository.insert).toHaveBeenCalledWith(
+        expect.objectContaining({ householdCount: undefined, buildingCount: undefined })
+      );
     });
 
     it('좌표가 없고 geocoding도 실패하면 422 에러를 던진다', async () => {

@@ -17,7 +17,8 @@ function mapRentItem(item) {
     aptName: item.aptNm,
     transactionDate: `${item.dealYear}-${month}-${day}`,
     deposit: parseDepositAmount(item.deposit),
-    monthlyRent: parseDepositAmount(item.monthlyRent)
+    monthlyRent: parseDepositAmount(item.monthlyRent),
+    exclusiveArea: item.excluUseAr === undefined ? undefined : parseFloat(item.excluUseAr)
   };
 }
 
@@ -41,7 +42,12 @@ async function fetchJeonseTransactionsForComplex({ lawdCd, aptName, now = new Da
     .filterByAptName(allItems.map(mapRentItem), aptName)
     .filter(isJeonse)
     .sort((a, b) => (a.transactionDate < b.transactionDate ? -1 : 1))
-    .map((tx) => ({ transactionDate: tx.transactionDate, deposit: tx.deposit, dataSource: DATA_SOURCE }));
+    .map((tx) => ({
+      transactionDate: tx.transactionDate,
+      deposit: tx.deposit,
+      exclusiveArea: tx.exclusiveArea,
+      dataSource: DATA_SOURCE
+    }));
 }
 
 function averageByMonth(entries, valueSelector) {

@@ -715,6 +715,7 @@
               "properties": {
                 "transactionDate": { "type": "string", "format": "date", "example": "2026-06-10" },
                 "transactionPrice": { "type": "integer", "description": "매매가(만원)", "example": 100000 },
+                "exclusiveArea": { "type": "number", "format": "double", "nullable": true, "description": "전용면적(m^2)", "example": 84.98 },
                 "dataSource": { "type": "string", "example": "국토교통부 아파트 실거래가 공개시스템(오픈API)" }
               }
             }
@@ -726,6 +727,7 @@
               "properties": {
                 "transactionDate": { "type": "string", "format": "date", "example": "2026-06-15" },
                 "deposit": { "type": "integer", "description": "전세 보증금(만원)", "example": 60000 },
+                "exclusiveArea": { "type": "number", "format": "double", "nullable": true, "description": "전용면적(m^2)", "example": 84.98 },
                 "dataSource": { "type": "string", "example": "국토교통부 아파트 전월세 실거래가 자료(오픈API)" }
               }
             }
@@ -832,7 +834,9 @@
           "isLandTransactionPermissionZone": { "$ref": "#/components/schemas/LandTransactionPermissionZoneStatus" },
           "nearestShuttleStopName": { "type": "string", "nullable": true, "description": "배차 정보 미확보 시 null(\"정보 없음\" 표시, 도메인 §4.1)", "example": "동탄역 셔틀정류장" },
           "nearestShuttleStopDistance": { "type": "integer", "nullable": true, "description": "m", "example": 350 },
-          "shuttleCommuteMinutes": { "type": "integer", "nullable": true, "description": "분", "example": 42 }
+          "shuttleCommuteMinutes": { "type": "integer", "nullable": true, "description": "분", "example": 42 },
+          "householdCount": { "type": "integer", "nullable": true, "description": "세대수. 공동주택 기본정보제공 서비스에서 kaptCode로 조회 가능한 경우만 값 존재, 그 외 null(\"확인필요\")", "example": 1620 },
+          "buildingCount": { "type": "integer", "nullable": true, "description": "동수. 세대수와 동일한 출처·null 처리 규칙", "example": 14 }
         }
       },
       "ApartmentComplex": {
@@ -1090,6 +1094,7 @@
         "properties": {
           "transactionDate": { "type": "string", "format": "date", "example": "2024-11-02" },
           "transactionPrice": { "type": "integer", "description": "만원", "example": 92000 },
+          "exclusiveArea": { "type": "number", "format": "double", "nullable": true, "description": "전용면적(m^2). 실시간 국토부 조회 경로에서만 값 존재, 로컬 데이터 폴백 시 없음", "example": 84.98 },
           "dataSource": { "type": "string", "enum": ["국토교통부 아파트 실거래가 공개시스템(오픈API)"], "example": "국토교통부 아파트 실거래가 공개시스템(오픈API)" }
         }
       },

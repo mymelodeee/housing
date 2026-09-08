@@ -71,7 +71,8 @@ function mapTradeItem(item) {
   return {
     aptName: item.aptNm,
     transactionDate: `${item.dealYear}-${month}-${day}`,
-    transactionPrice: parseInt(dealAmount, 10)
+    transactionPrice: parseInt(dealAmount, 10),
+    exclusiveArea: item.excluUseAr === undefined ? undefined : parseFloat(item.excluUseAr)
   };
 }
 
@@ -87,6 +88,7 @@ function mapEntry(transaction) {
   return {
     transactionDate: transaction.transactionDate,
     transactionPrice: transaction.transactionPrice,
+    exclusiveArea: transaction.exclusiveArea,
     dataSource: DATA_SOURCE
   };
 }

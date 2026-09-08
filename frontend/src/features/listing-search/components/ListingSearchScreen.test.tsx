@@ -149,6 +149,8 @@ function makeFavoriteComplex(complexId: number): FavoriteComplex {
       nearestShuttleStopName: null,
       nearestShuttleStopDistance: null,
       shuttleCommuteMinutes: null,
+      householdCount: null,
+      buildingCount: null,
     },
   }
 }

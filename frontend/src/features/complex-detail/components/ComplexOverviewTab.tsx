@@ -20,6 +20,11 @@ export function ComplexOverviewTab({ complexId }: ComplexOverviewTabProps) {
           ? '실거래 기반 시세: 매물 없음'
           : `실거래 기반 시세 ${formatPriceKorean(data.priceRange.minPrice)} ~ ${formatPriceKorean(data.priceRange.maxPrice)}`}
       </p>
+      <p>
+        {data.householdCount === null ? '세대수 확인필요' : `${data.householdCount.toLocaleString()}세대`}
+        {' · '}
+        {data.buildingCount === null ? '동수 확인필요' : `${data.buildingCount}개동`}
+      </p>
       <LocalityAxisList data={data} />
     </div>
   )

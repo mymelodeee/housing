@@ -39,6 +39,8 @@ export interface ApartmentComplexSummary {
   nearestShuttleStopName: string | null
   nearestShuttleStopDistance: number | null
   shuttleCommuteMinutes: number | null
+  householdCount: number | null
+  buildingCount: number | null
 }
 
 export interface Listing {

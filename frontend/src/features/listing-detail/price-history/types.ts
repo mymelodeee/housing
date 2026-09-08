@@ -1,6 +1,7 @@
 export interface PriceHistoryEntry {
   transactionDate: string
   transactionPrice: number
+  exclusiveArea?: number
   dataSource: string
 }
 

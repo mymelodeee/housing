@@ -4,8 +4,10 @@ const aptListApiRepository = require('../../src/repositories/apt-list-api.reposi
 const {
   parseAptListJson,
   parseAptBasisInfoJson,
+  parseAptBasisInfo,
   fetchAptListForRegion,
-  fetchHouseholdCount
+  fetchHouseholdCount,
+  fetchAptBasisInfo
 } = require('../../src/services/apt-list.service');
 
 describe('services/apt-list.service', () => {
@@ -60,6 +62,23 @@ describe('services/apt-list.service', () => {
     });
   });
 
+  describe('parseAptBasisInfo', () => {
+    it('item의 kaptdaCnt/kaptDongCnt를 세대수/동수로 반환한다', () => {
+      const json = JSON.stringify({
+        response: { body: { item: { kaptCode: 'A1', kaptdaCnt: '1900', kaptDongCnt: '12' } } }
+      });
+
+      expect(parseAptBasisInfo(json)).toEqual({ householdCount: 1900, buildingCount: 12 });
+    });
+
+    it('item이 없거나 필드가 없으면 각각 undefined를 반환한다', () => {
+      expect(parseAptBasisInfo(JSON.stringify({ response: { body: {} } }))).toEqual({
+        householdCount: undefined,
+        buildingCount: undefined
+      });
+    });
+  });
+
   describe('fetchAptListForRegion', () => {
     it('시군구 코드로 레포지토리를 호출하고 JSON을 파싱해 반환한다', async () => {
       aptListApiRepository.fetchAptListJson.mockResolvedValue(
@@ -82,6 +101,19 @@ describe('services/apt-list.service', () => {
       const result = await fetchHouseholdCount('A1');
 
       expect(result).toBe(4932);
+      expect(aptListApiRepository.fetchAptBasisInfoJson).toHaveBeenCalledWith({ kaptCode: 'A1' });
+    });
+  });
+
+  describe('fetchAptBasisInfo', () => {
+    it('kaptCode로 기본정보를 조회해 세대수/동수를 반환한다', async () => {
+      aptListApiRepository.fetchAptBasisInfoJson.mockResolvedValue(
+        JSON.stringify({ response: { body: { item: { kaptCode: 'A1', kaptdaCnt: 4932, kaptDongCnt: 20 } } } })
+      );
+
+      const result = await fetchAptBasisInfo('A1');
+
+      expect(result).toEqual({ householdCount: 4932, buildingCount: 20 });
       expect(aptListApiRepository.fetchAptBasisInfoJson).toHaveBeenCalledWith({ kaptCode: 'A1' });
     });
   });

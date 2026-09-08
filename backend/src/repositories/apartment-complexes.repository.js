@@ -39,12 +39,33 @@ async function findByAddress(address) {
   return rows[0] || null;
 }
 
-async function insert({ complexName, latitude, longitude, address, completionYear, lawdCd, molitAptName }) {
+async function insert({
+  complexName,
+  latitude,
+  longitude,
+  address,
+  completionYear,
+  lawdCd,
+  molitAptName,
+  householdCount,
+  buildingCount
+}) {
   const { rows } = await pool.query(
-    `INSERT INTO apartment_complexes (complex_name, latitude, longitude, address, completion_year, lawd_cd, molit_apt_name)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `INSERT INTO apartment_complexes
+       (complex_name, latitude, longitude, address, completion_year, lawd_cd, molit_apt_name, household_count, building_count)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
      RETURNING *`,
-    [complexName, latitude, longitude, address, completionYear, lawdCd, molitAptName]
+    [
+      complexName,
+      latitude,
+      longitude,
+      address,
+      completionYear,
+      lawdCd,
+      molitAptName,
+      householdCount === undefined ? null : householdCount,
+      buildingCount === undefined ? null : buildingCount
+    ]
   );
   return rows[0];
 }

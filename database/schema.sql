@@ -99,7 +99,12 @@ CREATE TABLE apartment_complexes (
     -- 마이그레이션 이력: 최초 nullable로 추가(1783618964630)되었다가 대상 지역 밖 데이터가
     -- 등록 매물 조회에 새는 것을 막기 위해 NOT NULL로 전환됨(1788100000000).
     lawd_cd varchar(5) NOT NULL,
-    molit_apt_name varchar(255) -- 국토부 API 조회용 단지명 매핑, 매핑 안 된 단지는 null(fetch-through 미적용)
+    molit_apt_name varchar(255), -- 국토부 API 조회용 단지명 매핑, 매핑 안 된 단지는 null(fetch-through 미적용)
+
+    -- 단지 물리 스펙: 공동주택 기본 정보제공 서비스(AptBasisInfoServiceV5)에서 kaptCode로
+    -- 조회 가능한 경우만 값 존재(2026-09-08 실측: 용적률/건폐율은 이 API 응답에 없어 컬럼 추가 보류).
+    household_count integer CHECK (household_count IS NULL OR household_count > 0),
+    building_count integer CHECK (building_count IS NULL OR building_count > 0)
 );
 
 CREATE INDEX idx_apartment_complexes_is_regulated_area ON apartment_complexes (is_regulated_area);

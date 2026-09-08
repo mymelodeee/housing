@@ -22,15 +22,29 @@ function parseAptListJson(jsonText) {
     }));
 }
 
-function parseAptBasisInfoJson(jsonText) {
-  const parsed = safeJsonParse(jsonText);
-  const item = parsed && parsed.response && parsed.response.body && parsed.response.body.item;
-  if (!item || item.kaptdaCnt === undefined || item.kaptdaCnt === null || item.kaptdaCnt === '') {
+function parseCountField(item, fieldName) {
+  if (!item || item[fieldName] === undefined || item[fieldName] === null || item[fieldName] === '') {
     return undefined;
   }
 
-  const value = Number(item.kaptdaCnt);
+  const value = Number(item[fieldName]);
   return Number.isNaN(value) ? undefined : value;
+}
+
+function parseAptBasisInfoJson(jsonText) {
+  const parsed = safeJsonParse(jsonText);
+  const item = parsed && parsed.response && parsed.response.body && parsed.response.body.item;
+  return parseCountField(item, 'kaptdaCnt');
+}
+
+function parseAptBasisInfo(jsonText) {
+  const parsed = safeJsonParse(jsonText);
+  const item = parsed && parsed.response && parsed.response.body && parsed.response.body.item;
+
+  return {
+    householdCount: parseCountField(item, 'kaptdaCnt'),
+    buildingCount: parseCountField(item, 'kaptDongCnt')
+  };
 }
 
 async function fetchAptListForRegion(lawdCd) {
@@ -43,4 +57,16 @@ async function fetchHouseholdCount(kaptCode) {
   return parseAptBasisInfoJson(json);
 }
 
-module.exports = { parseAptListJson, parseAptBasisInfoJson, fetchAptListForRegion, fetchHouseholdCount };
+async function fetchAptBasisInfo(kaptCode) {
+  const json = await aptListApiRepository.fetchAptBasisInfoJson({ kaptCode });
+  return parseAptBasisInfo(json);
+}
+
+module.exports = {
+  parseAptListJson,
+  parseAptBasisInfoJson,
+  parseAptBasisInfo,
+  fetchAptListForRegion,
+  fetchHouseholdCount,
+  fetchAptBasisInfo
+};
