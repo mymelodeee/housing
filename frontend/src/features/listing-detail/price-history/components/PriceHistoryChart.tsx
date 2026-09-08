@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { PriceHistoryEntry } from '../types'
 import { buildMonthlyAverageSeries } from '../../../../shared/utils/monthlySeries'
+import { formatEok, buildEokAxis } from '../../../../shared/utils/eokAxis'
 import './PriceHistoryChart.css'
 
 interface PriceHistoryChartProps {
@@ -14,7 +15,6 @@ const PADDING_TOP = 26
 const PADDING_BOTTOM = 36
 const PADDING_LEFT = 64
 const PADDING_RIGHT = 64
-const TICK_COUNT = 4
 const X_TICK_COUNT = 6
 
 function formatManwon(value: number) {
@@ -35,8 +35,7 @@ export function PriceHistoryChart({ entries, askingPrice }: PriceHistoryChartPro
   const { points, ticks, xTicks, chartBottom, askingY } = useMemo(() => {
     const values = monthly.map((p) => p.value)
     const domainValues = hasAskingPrice ? [...values, askingPrice as number] : values
-    const min = Math.min(...domainValues)
-    const max = Math.max(...domainValues)
+    const { min, max, ticks: tickValues } = buildEokAxis(domainValues)
     const range = max - min || 1
     const innerWidth = WIDTH - PADDING_LEFT - PADDING_RIGHT
     const innerHeight = HEIGHT - PADDING_TOP - PADDING_BOTTOM
@@ -48,8 +47,7 @@ export function PriceHistoryChart({ entries, askingPrice }: PriceHistoryChartPro
 
     const pts = monthly.map((point, i) => ({ x: toX(i), y: toY(point.value), point }))
 
-    const tickValues = Array.from({ length: TICK_COUNT }, (_, i) => min + (range * i) / (TICK_COUNT - 1))
-    const tickList = tickValues.map((value) => ({ value: Math.round(value), y: toY(value) }))
+    const tickList = tickValues.map((value) => ({ value, y: toY(value) }))
 
     const xTickCount = Math.min(X_TICK_COUNT, monthly.length)
     const xTickIndices =
@@ -86,7 +84,7 @@ export function PriceHistoryChart({ entries, askingPrice }: PriceHistoryChartPro
                 className="price-history-chart__gridline"
               />
               <text x={PADDING_LEFT - 6} y={tick.y + 4} textAnchor="end" className="price-history-chart__axis-label">
-                {tick.value.toLocaleString()}만원
+                {formatEok(tick.value)}
               </text>
             </g>
           ))}

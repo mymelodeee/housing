@@ -32,6 +32,9 @@ describe('ComplexDevelopmentProjectsTab', () => {
             status: '착공',
             effectiveDate: '2025-11-18',
             checkedAt: '2026-09-01',
+            confidence: 'high',
+            isStale: false,
+            isConflicted: false,
             note: '2028년 개통 예정',
             sources: [
               {

@@ -11,10 +11,8 @@ import type { LocalityAttributes } from '../../../shared/types/locality'
 const localityAttributes: LocalityAttributes = {
   transportation: '좋음',
   commercialArea: '보통',
-  schoolDistrict: '좋음',
   gangnamAccessibility: '보통',
   entertainmentAndParks: '좋음',
-  developmentProspects: '보통',
   nearbyJobs: '좋음',
 }
 
@@ -61,10 +59,10 @@ describe('calcHousingAge', () => {
 })
 
 describe('buildComplexComparisonRows', () => {
-  it('준공연도가 없으면 연식을 정보 없음으로 표시한다', () => {
+  it('준공연도가 없으면 연식을 확인 필요로 표시한다(공식 데이터 부재가 아니라 조사 미완료를 의미)', () => {
     const rows = buildComplexComparisonRows([makeComplexItem({ completionYear: null })])
 
-    expect(rows.find((row) => row.label === '연식')?.values).toEqual(['정보 없음'])
+    expect(rows.find((row) => row.label === '연식')?.values).toEqual(['확인 필요'])
   })
 })
 
@@ -80,12 +78,12 @@ describe('formatPriceRange', () => {
 })
 
 describe('buildComplexComparisonRows', () => {
-  it('13개 행(연식/리모델링/재건축/재개발정보/7개 입지축/셔틀/단지시세)을 생성하고 각 행의 값 길이는 아이템 개수와 같다', () => {
+  it('11개 행(연식/리모델링/재건축/재개발정보/5개 입지축/셔틀/단지시세)을 생성하고 각 행의 값 길이는 아이템 개수와 같다', () => {
     const items = [makeComplexItem({ complexId: 1 }), makeComplexItem({ complexId: 2 }), makeComplexItem({ complexId: 3 })]
 
     const rows = buildComplexComparisonRows(items)
 
-    expect(rows).toHaveLength(13)
+    expect(rows).toHaveLength(11)
     const labels = rows.map((r) => r.label)
     expect(labels).toEqual([
       '연식',
@@ -94,10 +92,8 @@ describe('buildComplexComparisonRows', () => {
       '주변 재개발 정보',
       '교통',
       '상권',
-      '학군',
       '강남 접근성',
       '유흥·공원',
-      '개발호재',
       '주변일자리',
       '셔틀 통근시간',
       '단지 시세',
@@ -130,11 +126,11 @@ describe('buildListingComparisonRows', () => {
 })
 
 describe('null 값 처리 (시나리오 3-1)', () => {
-  it("nearbyRedevelopmentInfo가 null이면 '정보 없음'을 표시한다", () => {
+  it("nearbyRedevelopmentInfo가 null이면 '확인 필요'를 표시한다(정비사업은 조사 대상이지 없는 것이 아님)", () => {
     const items = [makeComplexItem({ nearbyRedevelopmentInfo: null })]
     const rows = buildComplexComparisonRows(items)
     const row = rows.find((r) => r.label === '주변 재개발 정보')
-    expect(row?.values).toEqual(['정보 없음'])
+    expect(row?.values).toEqual(['확인 필요'])
   })
 
   it("shuttleCommuteMinutes가 null이면 '정보 없음'을 표시한다", () => {

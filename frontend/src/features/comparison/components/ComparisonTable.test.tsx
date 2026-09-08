@@ -7,10 +7,8 @@ import type { LocalityAttributes } from '../../../shared/types/locality'
 const localityAttributes: LocalityAttributes = {
   transportation: '좋음',
   commercialArea: '보통',
-  schoolDistrict: '좋음',
   gangnamAccessibility: '보통',
   entertainmentAndParks: '좋음',
-  developmentProspects: '보통',
   nearbyJobs: '좋음',
 }
 
@@ -67,10 +65,8 @@ describe('ComparisonComplexTable', () => {
       '주변 재개발 정보',
       '교통',
       '상권',
-      '학군',
       '강남 접근성',
       '유흥·공원',
-      '개발호재',
       '주변일자리',
       '셔틀 통근시간',
       '단지 시세',
@@ -78,7 +74,7 @@ describe('ComparisonComplexTable', () => {
       expect(screen.getByText(label)).toBeInTheDocument()
     })
 
-    expect(container.querySelectorAll('tbody tr')).toHaveLength(13)
+    expect(container.querySelectorAll('tbody tr')).toHaveLength(11)
     expect(screen.getAllByText('9억 ~ 11억')).toHaveLength(3)
   })
 

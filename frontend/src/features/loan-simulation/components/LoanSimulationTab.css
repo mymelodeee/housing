@@ -21,6 +21,15 @@
   color: var(--color-info);
 }
 
+.loan-simulation-tab__rate-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
 .loan-simulation-tab__incomplete {
   display: flex;
   flex-direction: column;

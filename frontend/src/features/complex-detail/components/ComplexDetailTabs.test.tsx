@@ -9,6 +9,11 @@ import { apiClient } from '../../../shared/api/client'
 vi.mock('../../../shared/api/client', () => ({
   apiClient: vi.fn(() => new Promise(() => {})),
 }))
+vi.mock('./ComplexOverviewTab', () => ({
+  ComplexOverviewTab: ({ onRemodelingDetails }: { onRemodelingDetails?: () => void }) => (
+    <button type="button" onClick={onRemodelingDetails}>리모델링 상세 보기</button>
+  ),
+}))
 
 function renderTabs() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -51,5 +56,15 @@ describe('ComplexDetailTabs', () => {
     const panels = screen.getAllByRole('tabpanel', { hidden: true })
     expect(panels.find((p) => p.id === 'complex-tabpanel-schools')).not.toHaveAttribute('hidden')
     expect(panels.find((p) => p.id === 'complex-tabpanel-overview')).toHaveAttribute('hidden')
+  })
+
+  it('개요의 리모델링 상세 버튼으로 리모델링 탭을 선택한다', async () => {
+    const user = userEvent.setup()
+    renderTabs()
+
+    await user.click(screen.getByRole('button', { name: '리모델링 상세 보기' }))
+
+    expect(screen.getByRole('tab', { name: '리모델링' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tabpanel', { name: '리모델링' })).not.toHaveAttribute('hidden')
   })
 })

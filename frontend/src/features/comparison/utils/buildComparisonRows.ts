@@ -21,12 +21,12 @@ function buildComplexAxisRows(items: (ComparisonComplexItem | ComparisonListingI
     {
       label: '연식',
       values: items.map((i) =>
-        i.completionYear === null ? '정보 없음' : `${i.completionYear}년 (${calcHousingAge(i.completionYear)}년차)`,
+        i.completionYear === null ? '확인 필요' : `${i.completionYear}년 (${calcHousingAge(i.completionYear)}년차)`,
       ),
     },
     { label: '리모델링 이력', values: items.map((i) => i.remodelingStatus) },
     { label: '재건축 추진현황', values: items.map((i) => i.reconstructionStatus) },
-    { label: '주변 재개발 정보', values: items.map((i) => i.nearbyRedevelopmentInfo ?? '정보 없음') },
+    { label: '주변 재개발 정보', values: items.map((i) => i.nearbyRedevelopmentInfo ?? '확인 필요') },
   ]
 
   for (const key of LOCALITY_ATTRIBUTE_ORDER) {

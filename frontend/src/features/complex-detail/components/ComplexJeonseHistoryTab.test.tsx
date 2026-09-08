@@ -36,6 +36,29 @@ describe('ComplexJeonseHistoryTab', () => {
     expect(mockedUseComplexJeonseHistory).toHaveBeenLastCalledWith('1', 84.98)
   })
 
+  it('전체 평형(필터 미선택) 상태에서는 전세 표에 평형 컬럼이 나타나고, 특정 평형 선택 시 사라진다', async () => {
+    const user = userEvent.setup()
+    mockedUseComplexJeonseHistory.mockReturnValue(
+      mockResult({
+        complexId: 1,
+        saleEntries: [],
+        jeonseEntries: [{ transactionDate: '2025-06-01', deposit: 60000, exclusiveArea: 84.98, dataSource: 'y' }],
+        ratioEntries: [],
+        availableExclusiveAreas: [59.95, 84.98],
+        lookupWindowNote: '안내',
+      })
+    )
+
+    render(<ComplexJeonseHistoryTab complexId="1" />)
+
+    expect(screen.getByRole('columnheader', { name: '평형' })).toBeInTheDocument()
+    expect(screen.getAllByText('84.98m² (25.7평)').length).toBeGreaterThan(0)
+
+    await user.selectOptions(screen.getByRole('combobox', { name: '평형(전용면적)' }), '84.98')
+
+    expect(screen.queryByRole('columnheader', { name: '평형' })).not.toBeInTheDocument()
+  })
+
   it('평형 정보가 없으면 필터를 표시하지 않는다', () => {
     mockedUseComplexJeonseHistory.mockReturnValue(
       mockResult({

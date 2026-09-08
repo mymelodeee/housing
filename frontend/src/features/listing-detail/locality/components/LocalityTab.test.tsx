@@ -56,10 +56,8 @@ describe('LocalityTab', () => {
       localityAttributes: {
         transportation: '지하철 2호선 도보 5분',
         commercialArea: '대형 쇼핑몰 인접',
-        schoolDistrict: '명문 학군',
         gangnamAccessibility: '강남까지 20분',
         entertainmentAndParks: '한강공원 인접',
-        developmentProspects: 'GTX 개발 예정',
         nearbyJobs: 'IT 밸리 인접',
       },
     }

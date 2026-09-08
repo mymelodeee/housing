@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { JeonseSaleEntry, JeonseEntry, JeonseRatioEntry } from '../types'
 import { buildMonthlyAverageSeries, type MonthlySeriesPoint } from '../../../../shared/utils/monthlySeries'
+import { formatEok, buildEokAxis } from '../../../../shared/utils/eokAxis'
 import './JeonseHistoryChart.css'
 
 interface JeonseHistoryChartProps {
@@ -54,8 +55,7 @@ export function JeonseHistoryChart({ saleEntries, jeonseEntries, ratioEntries, a
 
     const priceValues = [...saleMonthly.map((p) => p.value), ...jeonseMonthly.map((p) => p.value)]
     if (hasAskingPrice) priceValues.push(askingPrice as number)
-    const minPrice = priceValues.length ? Math.min(...priceValues) : 0
-    const maxPrice = priceValues.length ? Math.max(...priceValues) : 1
+    const { min: minPrice, max: maxPrice, ticks: priceTickValues } = buildEokAxis(priceValues)
     const priceRange = maxPrice - minPrice || 1
     const toPriceY = (value: number) => PADDING_TOP + innerHeight - ((value - minPrice) / priceRange) * innerHeight
 
@@ -78,10 +78,7 @@ export function JeonseHistoryChart({ saleEntries, jeonseEntries, ratioEntries, a
       xTickCount <= 1 ? [0] : Array.from({ length: xTickCount }, (_, i) => Math.round((i / (xTickCount - 1)) * (axis.length - 1)))
     const xTicks = [...new Set(xTickIndices)].map((i) => ({ x: toX(axis[i]), label: axis[i] }))
 
-    const priceTicks = Array.from({ length: TICK_COUNT }, (_, i) => {
-      const value = minPrice + (priceRange * i) / (TICK_COUNT - 1)
-      return { value: Math.round(value), y: toPriceY(value) }
-    })
+    const priceTicks = priceTickValues.map((value) => ({ value, y: toPriceY(value) }))
     const ratioTicks = Array.from({ length: TICK_COUNT }, (_, i) => {
       const value = minRatio + (ratioRange * i) / (TICK_COUNT - 1)
       return { value: Math.round(value * 10) / 10, y: toRatioY(value) }
@@ -143,7 +140,7 @@ export function JeonseHistoryChart({ saleEntries, jeonseEntries, ratioEntries, a
                 className="jeonse-history-chart__gridline"
               />
               <text x={PADDING_LEFT - 6} y={tick.y + 4} textAnchor="end" className="jeonse-history-chart__axis-label">
-                {tick.value.toLocaleString()}만원
+                {formatEok(tick.value)}
               </text>
             </g>
           ))}

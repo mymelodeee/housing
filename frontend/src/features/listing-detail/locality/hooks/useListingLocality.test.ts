@@ -35,10 +35,8 @@ describe('useListingLocality', () => {
       localityAttributes: {
         transportation: '지하철 2호선 도보 5분',
         commercialArea: '대형 쇼핑몰 인접',
-        schoolDistrict: '명문 학군',
         gangnamAccessibility: '강남까지 20분',
         entertainmentAndParks: '한강공원 인접',
-        developmentProspects: 'GTX 개발 예정',
         nearbyJobs: 'IT 밸리 인접',
       },
     }
@@ -68,10 +66,8 @@ describe('useListingLocality', () => {
       localityAttributes: {
         transportation: '지하철 2호선 도보 5분',
         commercialArea: '대형 쇼핑몰 인접',
-        schoolDistrict: '명문 학군',
         gangnamAccessibility: '강남까지 20분',
         entertainmentAndParks: '한강공원 인접',
-        developmentProspects: 'GTX 개발 예정',
         nearbyJobs: 'IT 밸리 인접',
       },
     }
@@ -85,10 +81,8 @@ describe('useListingLocality', () => {
       localityAttributes: {
         transportation: '정보 없음',
         commercialArea: '정보 없음',
-        schoolDistrict: '정보 없음',
         gangnamAccessibility: '정보 없음',
         entertainmentAndParks: '정보 없음',
-        developmentProspects: '정보 없음',
         nearbyJobs: '정보 없음',
       },
     }

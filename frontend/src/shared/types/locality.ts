@@ -5,10 +5,8 @@ export type ReconstructionStatus =
 export interface LocalityAttributes {
   transportation: string
   commercialArea: string
-  schoolDistrict: string
   gangnamAccessibility: string
   entertainmentAndParks: string
-  developmentProspects: string
   nearbyJobs: string
 }
 

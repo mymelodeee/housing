@@ -94,7 +94,7 @@ export function ComplexPriceHistoryTab({ complexId }: ComplexPriceHistoryTabProp
         <p className="price-history-tab__notice">최초거래({data.firstTransactionMonth}) 이후 데이터</p>
       )}
       <PriceHistoryChart entries={periodEntries} />
-      <PriceHistoryTable entries={periodEntries} />
+      <PriceHistoryTable entries={periodEntries} showExclusiveArea={selectedArea === null} />
     </div>
   )
 }

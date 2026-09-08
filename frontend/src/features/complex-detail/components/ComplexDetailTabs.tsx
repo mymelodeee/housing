@@ -70,7 +70,11 @@ export function ComplexDetailTabs({ complexId }: ComplexDetailTabsProps) {
           hidden={activeTab !== tab.key}
         >
           <TabErrorBoundary>
-            <tab.Component complexId={complexId} />
+            {tab.key === 'overview' ? (
+              <ComplexOverviewTab complexId={complexId} onRemodelingDetails={() => setActiveTab('remodeling')} />
+            ) : (
+              <tab.Component complexId={complexId} />
+            )}
           </TabErrorBoundary>
         </div>
       ))}

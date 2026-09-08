@@ -4,6 +4,7 @@ import { buildMonthlyAverageSeries } from '../../../shared/utils/monthlySeries'
 import { formatPriceKorean } from '../../../shared/utils/formatPrice'
 import { ExclusiveAreaFilter } from './ExclusiveAreaFilter'
 import { PeriodFilter } from './PeriodFilter'
+import { formatAreaWithPyeong } from '../../../shared/utils/formatArea'
 import { filterByPeriod, type Period } from '../utils/periodFilter'
 import { JeonseHistoryChart } from '../../listing-detail/jeonse-history/components/JeonseHistoryChart'
 import '../../listing-detail/jeonse-history/components/JeonseHistoryTab.css'
@@ -84,6 +85,7 @@ export function ComplexJeonseHistoryTab({ complexId }: ComplexJeonseHistoryTabPr
             <tr>
               <th>거래일자</th>
               <th>전세가</th>
+              {selectedArea === null && <th>평형</th>}
               <th>데이터 출처</th>
             </tr>
           </thead>
@@ -92,6 +94,9 @@ export function ComplexJeonseHistoryTab({ complexId }: ComplexJeonseHistoryTabPr
               <tr key={`${entry.transactionDate}-${i}`}>
                 <td>{entry.transactionDate}</td>
                 <td>{entry.deposit.toLocaleString()}만원</td>
+                {selectedArea === null && (
+                  <td>{typeof entry.exclusiveArea === 'number' ? formatAreaWithPyeong(entry.exclusiveArea) : '확인필요'}</td>
+                )}
                 <td>{entry.dataSource}</td>
               </tr>
             ))}

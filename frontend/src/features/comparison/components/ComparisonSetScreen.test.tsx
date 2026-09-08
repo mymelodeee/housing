@@ -28,10 +28,8 @@ const mockedUseFavoriteListings = vi.mocked(useFavoriteListings)
 const localityAttributes: LocalityAttributes = {
   transportation: '좋음',
   commercialArea: '보통',
-  schoolDistrict: '좋음',
   gangnamAccessibility: '보통',
   entertainmentAndParks: '좋음',
-  developmentProspects: '보통',
   nearbyJobs: '좋음',
 }
 

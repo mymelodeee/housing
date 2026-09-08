@@ -24,3 +24,32 @@
   margin: 0;
   text-align: right;
 }
+
+.locality-axis-list__value-with-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.locality-axis-list__details-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-primary);
+  font: inherit;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.locality-axis-list__details-button:hover,
+.locality-axis-list__details-button:focus-visible {
+  background: var(--color-surface-muted);
+}

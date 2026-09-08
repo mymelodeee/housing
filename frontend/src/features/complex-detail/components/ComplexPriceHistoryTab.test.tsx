@@ -41,6 +41,29 @@ describe('ComplexPriceHistoryTab', () => {
     expect(container.textContent).not.toContain('7억 5,000만원')
   })
 
+  it('전체 평형(필터 미선택) 상태에서는 표에 평형 컬럼이 나타나고, 특정 평형 선택 시 사라진다', async () => {
+    const user = userEvent.setup()
+    mockedUseComplexPriceHistory.mockReturnValue(
+      mockResult({
+        complexId: 1,
+        lookupPeriodType: '최근 3년',
+        firstTransactionMonth: null,
+        entries: [
+          { transactionDate: '2025-06-01', transactionPrice: 90000, exclusiveArea: 84.98, dataSource: 'x' },
+          { transactionDate: '2025-06-10', transactionPrice: 60000, exclusiveArea: 59.95, dataSource: 'x' },
+        ],
+      })
+    )
+
+    render(<ComplexPriceHistoryTab complexId="1" />)
+
+    expect(screen.getByRole('columnheader', { name: '평형' })).toBeInTheDocument()
+
+    await user.selectOptions(screen.getByRole('combobox', { name: '평형(전용면적)' }), '84.98')
+
+    expect(screen.queryByRole('columnheader', { name: '평형' })).not.toBeInTheDocument()
+  })
+
   it('평형 정보가 없으면 필터를 표시하지 않는다', () => {
     mockedUseComplexPriceHistory.mockReturnValue(
       mockResult({
