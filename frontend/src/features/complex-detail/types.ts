@@ -26,6 +26,7 @@ export interface ComplexJeonseHistoryResponse {
   saleEntries: JeonseSaleEntry[]
   jeonseEntries: JeonseEntry[]
   ratioEntries: JeonseRatioEntry[]
+  availableExclusiveAreas: number[]
   lookupWindowNote: string
 }
 

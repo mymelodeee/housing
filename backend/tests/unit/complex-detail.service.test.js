@@ -82,8 +82,56 @@ describe('services/complex-detail.service', () => {
         saleEntries: [],
         jeonseEntries: [],
         ratioEntries: [],
+        availableExclusiveAreas: [],
         lookupWindowNote: '실시간 연동 특성상 최근 3년(36개월) 범위만 조회합니다',
       });
+    });
+
+    it('exclusiveArea 미지정 시 전체 평형의 availableExclusiveAreas를 함께 반환한다', async () => {
+      apartmentComplexesRepository.findById.mockResolvedValue(baseComplexRow);
+      molitPriceHistoryService.fetchPriceHistoryForComplex.mockResolvedValue({
+        entries: [
+          { transactionDate: '2026-01-01', transactionPrice: 95000, exclusiveArea: 84.98, dataSource: 'x' },
+          { transactionDate: '2026-02-01', transactionPrice: 60000, exclusiveArea: 59.95, dataSource: 'x' },
+        ],
+      });
+      jeonseHistoryService.fetchJeonseTransactionsForComplex.mockResolvedValue([
+        { transactionDate: '2026-01-05', deposit: 70000, exclusiveArea: 84.98, dataSource: 'y' },
+      ]);
+      jeonseHistoryService.buildJeonseRatioEntries.mockReturnValue([{ month: '2026-01', jeonseRatioPercent: 73.7 }]);
+
+      const result = await getJeonseHistory(10);
+
+      expect(result.saleEntries).toHaveLength(2);
+      expect(result.availableExclusiveAreas).toEqual([59.95, 84.98]);
+    });
+
+    it('exclusiveArea를 지정하면 매매/전세 목록과 전세가율을 해당 평형 기준으로 재계산한다', async () => {
+      apartmentComplexesRepository.findById.mockResolvedValue(baseComplexRow);
+      molitPriceHistoryService.fetchPriceHistoryForComplex.mockResolvedValue({
+        entries: [
+          { transactionDate: '2026-01-01', transactionPrice: 95000, exclusiveArea: 84.98, dataSource: 'x' },
+          { transactionDate: '2026-02-01', transactionPrice: 60000, exclusiveArea: 59.95, dataSource: 'x' },
+        ],
+      });
+      jeonseHistoryService.fetchJeonseTransactionsForComplex.mockResolvedValue([
+        { transactionDate: '2026-01-05', deposit: 70000, exclusiveArea: 84.98, dataSource: 'y' },
+        { transactionDate: '2026-02-05', deposit: 40000, exclusiveArea: 59.95, dataSource: 'y' },
+      ]);
+
+      const result = await getJeonseHistory(10, { exclusiveArea: 84.98 });
+
+      expect(result.saleEntries).toEqual([
+        { transactionDate: '2026-01-01', transactionPrice: 95000, exclusiveArea: 84.98, dataSource: 'x' },
+      ]);
+      expect(result.jeonseEntries).toEqual([
+        { transactionDate: '2026-01-05', deposit: 70000, exclusiveArea: 84.98, dataSource: 'y' },
+      ]);
+      expect(jeonseHistoryService.buildJeonseRatioEntries).toHaveBeenCalledWith({
+        saleEntries: [{ transactionDate: '2026-01-01', transactionPrice: 95000, exclusiveArea: 84.98, dataSource: 'x' }],
+        jeonseEntries: [{ transactionDate: '2026-01-05', deposit: 70000, exclusiveArea: 84.98, dataSource: 'y' }],
+      });
+      expect(result.availableExclusiveAreas).toEqual([59.95, 84.98]);
     });
   });
 

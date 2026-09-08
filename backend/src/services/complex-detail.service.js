@@ -34,12 +34,34 @@ async function getPriceHistory(complexId) {
   return { complexId, lookupPeriodType, firstTransactionMonth, entries };
 }
 
-async function getJeonseHistory(complexId) {
+function filterByExclusiveArea(entries, exclusiveArea) {
+  if (typeof exclusiveArea !== 'number' || Number.isNaN(exclusiveArea)) return entries;
+  return entries.filter((entry) => entry.exclusiveArea === exclusiveArea);
+}
+
+function collectAvailableExclusiveAreas(entryLists) {
+  const areas = new Set();
+  for (const entries of entryLists) {
+    for (const entry of entries) {
+      if (typeof entry.exclusiveArea === 'number') areas.add(entry.exclusiveArea);
+    }
+  }
+  return [...areas].sort((a, b) => a - b);
+}
+
+async function getJeonseHistory(complexId, { exclusiveArea } = {}) {
   const complexRow = await apartmentComplexesRepository.findById(complexId);
   if (!complexRow) return null;
 
   if (!complexRow.lawd_cd || !complexRow.molit_apt_name) {
-    return { complexId, saleEntries: [], jeonseEntries: [], ratioEntries: [], lookupWindowNote: LOOKUP_WINDOW_NOTE };
+    return {
+      complexId,
+      saleEntries: [],
+      jeonseEntries: [],
+      ratioEntries: [],
+      availableExclusiveAreas: [],
+      lookupWindowNote: LOOKUP_WINDOW_NOTE
+    };
   }
 
   // 공공데이터포털 초당 요청 제한 때문에 매매/전세 조회를 동시에 실행하지 않고 순차 실행한다.
@@ -52,11 +74,20 @@ async function getJeonseHistory(complexId) {
     aptName: complexRow.molit_apt_name
   });
 
+  // 평형을 지정하면 매매/전세 목록과 전세가율을 모두 해당 평형 기준으로 재계산한다
+  // (평형별 매매가와 전체 평형 기준 전세가율이 뒤섞여 표시되는 것을 방지).
+  const filteredSaleEntries = filterByExclusiveArea(saleResult.entries, exclusiveArea);
+  const filteredJeonseEntries = filterByExclusiveArea(jeonseEntries, exclusiveArea);
+
   return {
     complexId,
-    saleEntries: saleResult.entries,
-    jeonseEntries,
-    ratioEntries: jeonseHistoryService.buildJeonseRatioEntries({ saleEntries: saleResult.entries, jeonseEntries }),
+    saleEntries: filteredSaleEntries,
+    jeonseEntries: filteredJeonseEntries,
+    ratioEntries: jeonseHistoryService.buildJeonseRatioEntries({
+      saleEntries: filteredSaleEntries,
+      jeonseEntries: filteredJeonseEntries
+    }),
+    availableExclusiveAreas: collectAvailableExclusiveAreas([saleResult.entries, jeonseEntries]),
     lookupWindowNote: LOOKUP_WINDOW_NOTE
   };
 }

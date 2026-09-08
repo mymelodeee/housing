@@ -102,8 +102,14 @@ describe('controllers/complexes.controller', () => {
       const result = { complexId: 1, saleEntries: [], jeonseEntries: [], ratioEntries: [] };
       complexDetailService.getJeonseHistory.mockResolvedValue(result);
       const res = createRes();
-      await getJeonseHistory({ params: { id: '1' } }, res, jest.fn());
+      await getJeonseHistory({ params: { id: '1' }, query: {} }, res, jest.fn());
       expect(res.json).toHaveBeenCalledWith(result);
+    });
+
+    it('query의 exclusiveArea를 Number로 변환해 서비스에 전달한다', async () => {
+      complexDetailService.getJeonseHistory.mockResolvedValue({});
+      await getJeonseHistory({ params: { id: '1' }, query: { exclusiveArea: '84.98' } }, createRes(), jest.fn());
+      expect(complexDetailService.getJeonseHistory).toHaveBeenCalledWith(1, { exclusiveArea: 84.98 });
     });
   });
 

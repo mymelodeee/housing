@@ -50,7 +50,9 @@ async function getPriceHistory(req, res, next) {
 async function getJeonseHistory(req, res, next) {
   try {
     const id = Number(req.params.id);
-    const result = await complexDetailService.getJeonseHistory(id);
+    const result = await complexDetailService.getJeonseHistory(id, {
+      exclusiveArea: parseNumberOrUndefined(req.query.exclusiveArea)
+    });
     if (!result) return notFound(next);
     res.json(result);
   } catch (err) {

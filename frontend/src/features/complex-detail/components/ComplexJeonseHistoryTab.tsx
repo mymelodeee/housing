@@ -1,7 +1,8 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useComplexJeonseHistory } from '../hooks/useComplexJeonseHistory'
 import { buildMonthlyAverageSeries } from '../../../shared/utils/monthlySeries'
 import { formatPriceKorean } from '../../../shared/utils/formatPrice'
+import { ExclusiveAreaFilter } from './ExclusiveAreaFilter'
 import { JeonseHistoryChart } from '../../listing-detail/jeonse-history/components/JeonseHistoryChart'
 import '../../listing-detail/jeonse-history/components/JeonseHistoryTab.css'
 
@@ -10,7 +11,8 @@ interface ComplexJeonseHistoryTabProps {
 }
 
 export function ComplexJeonseHistoryTab({ complexId }: ComplexJeonseHistoryTabProps) {
-  const { data, isLoading, isError } = useComplexJeonseHistory(complexId)
+  const [selectedArea, setSelectedArea] = useState<number | null>(null)
+  const { data, isLoading, isError } = useComplexJeonseHistory(complexId, selectedArea)
 
   const saleMonthly = useMemo(
     () =>
@@ -24,12 +26,17 @@ export function ComplexJeonseHistoryTab({ complexId }: ComplexJeonseHistoryTabPr
 
   if (isLoading) return <p>불러오는 중...</p>
   if (isError || !data) return <p role="alert">전세가 변동 이력을 불러오지 못했습니다.</p>
-  if (data.jeonseEntries.length === 0 && data.saleEntries.length === 0) return <p>실거래 이력 없음</p>
+  if (data.availableExclusiveAreas.length === 0 && data.jeonseEntries.length === 0 && data.saleEntries.length === 0) {
+    return <p>실거래 이력 없음</p>
+  }
 
   const sortedJeonse = [...data.jeonseEntries].sort((a, b) => b.transactionDate.localeCompare(a.transactionDate))
 
   return (
     <div className="jeonse-history-tab">
+      {data.availableExclusiveAreas.length > 0 && (
+        <ExclusiveAreaFilter areas={data.availableExclusiveAreas} value={selectedArea} onChange={setSelectedArea} />
+      )}
       {(latestSale || latestRatio) && (
         <div className="jeonse-history-tab__summary">
           {latestSale && (
