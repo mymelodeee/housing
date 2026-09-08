@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildMonthlyAverageSeries } from './monthlySeries'
+import { buildMonthlyAverageSeries, findYearAgoPoint } from './monthlySeries'
 
 describe('buildMonthlyAverageSeries', () => {
   it('entries가 없으면 빈 배열을 반환한다', () => {
@@ -43,5 +43,22 @@ describe('buildMonthlyAverageSeries', () => {
     expect(result).toEqual([
       { month: '2024-06', value: 70000, isCarried: false, count: 1, transactions: [{ date: '2024-06-01', value: 70000 }] },
     ])
+  })
+})
+
+describe('findYearAgoPoint', () => {
+  it('같은 월의 1년 전 포인트를 찾는다', () => {
+    const points = buildMonthlyAverageSeries([
+      { transactionDate: '2023-06-01', value: 50000 },
+      { transactionDate: '2024-06-01', value: 70000 },
+    ])
+
+    expect(findYearAgoPoint(points, '2024-06')).toMatchObject({ month: '2023-06', value: 50000 })
+  })
+
+  it('1년 전 데이터가 없으면 undefined를 반환한다', () => {
+    const points = buildMonthlyAverageSeries([{ transactionDate: '2024-06-01', value: 70000 }])
+
+    expect(findYearAgoPoint(points, '2024-06')).toBeUndefined()
   })
 })

@@ -56,3 +56,10 @@ export function buildMonthlyAverageSeries(entries: SourceEntry[]): MonthlySeries
 
   return points
 }
+
+// 주어진 월의 1년 전 같은 월 데이터 포인트를 찾는다(거래량 전년동월대비 계산용).
+export function findYearAgoPoint(points: MonthlySeriesPoint[], month: string): MonthlySeriesPoint | undefined {
+  const [year, mon] = month.split('-')
+  const yearAgoMonth = `${Number(year) - 1}-${mon}`
+  return points.find((p) => p.month === yearAgoMonth)
+}
