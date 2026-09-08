@@ -1,6 +1,6 @@
 /**
  * 전국초중등학교위치표준데이터(data.go.kr, 15021148) 중 서비스 대상 지역의
- * 초등학교·중학교를 걸러 elementary_schools 테이블에 적재하는 1회성 시드 스크립트.
+ * 초등학교·중학교·고등학교를 걸러 elementary_schools 테이블에 적재하는 1회성 시드 스크립트.
  *
  * 반기 갱신되는 정적 데이터셋이므로 요청마다 호출하지 않고, 이 스크립트를 필요할 때만
  * 직접 실행한다.
@@ -50,15 +50,16 @@ async function fetchSchoolsPage(pageNo) {
   const response = await fetch(url);
   const json = await response.json();
 
-  const resultCode = json && json.response && json.response.header && json.response.header.resultCode;
-  const resultMsg = json && json.response && json.response.header && json.response.header.resultMsg;
+  const resultCode = json && json.header && json.header.resultCode;
+  const resultMsg = json && json.header && json.header.resultMsg;
 
   if (String(resultCode) !== '00') {
     throw new Error(`전국초중등학교위치표준데이터 API 오류: resultCode=${resultCode} resultMsg=${resultMsg}`);
   }
 
-  const items = json.response.body && json.response.body.items;
-  return Array.isArray(items) ? items : [];
+  const items = json.body && json.body.items && json.body.items.item;
+  if (!items) return [];
+  return Array.isArray(items) ? items : [items];
 }
 
 async function fetchAllSchools() {
@@ -109,7 +110,7 @@ async function main() {
     })
     .filter((school) => school !== null);
 
-  console.log(`대상 지역 초·중학교 ${targetSchools.length}건 필터링 완료`);
+  console.log(`대상 지역 초·중·고 ${targetSchools.length}건 필터링 완료`);
 
   await elementarySchoolsRepository.deleteAll();
   await elementarySchoolsRepository.insertMany(targetSchools);
@@ -117,9 +118,19 @@ async function main() {
   console.log(`elementary_schools 테이블에 ${targetSchools.length}건 적재 완료`);
 }
 
-main()
-  .catch((err) => {
-    console.error('[ERROR] 학교 데이터 시드 실패:', err.message);
-    process.exitCode = 1;
-  })
-  .finally(() => pool.end());
+if (require.main === module) {
+  main()
+    .catch((err) => {
+      console.error('[ERROR] 학교 데이터 시드 실패:', err.message);
+      process.exitCode = 1;
+    })
+    .finally(() => pool.end());
+}
+
+module.exports = {
+  isTargetRegionAddress,
+  resolveSchoolLevel,
+  fetchSchoolsPage,
+  mapToSchool,
+  TARGET_SCHOOL_LEVELS
+};
