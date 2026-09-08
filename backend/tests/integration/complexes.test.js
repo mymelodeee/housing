@@ -145,6 +145,21 @@ describe('GET /api/complexes', () => {
     });
   });
 
+  describe('GET /api/complexes/:id/development-projects', () => {
+    it('등록된 개발호재가 없으면 빈 배열을 반환한다', async () => {
+      const res = await request(app).get(`/api/complexes/${dongtanId}/development-projects`);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ complexId: dongtanId, projects: [] });
+    });
+
+    it('존재하지 않는 단지는 404를 반환한다', async () => {
+      const res = await request(app).get('/api/complexes/999999/development-projects');
+
+      expect(res.status).toBe(404);
+    });
+  });
+
   describe('GET /api/complexes/:id/regulation', () => {
     it('salePrice 없이 조회해도 로컬 price_history의 최신 실거래가 있으면 자동으로 기준가격을 사용한다(프로필 완료 시)', async () => {
       const res = await request(app).get(`/api/complexes/${dongtanId}/regulation`);

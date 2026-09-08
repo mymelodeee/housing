@@ -9,6 +9,7 @@ const userProfileService = require('./user-profile.service');
 const loanScenarioService = require('./loan-scenario.service');
 const remodelingService = require('./remodeling.service');
 const remodelingRepository = require('../repositories/remodeling.repository');
+const developmentProjectsService = require('./development-projects.service');
 
 const POLICY_MORTGAGE_NOTICE = '디딤돌대출·보금자리론 등 정책모기지는 계산 범위에서 제외되며, 필요 시 한국주택금융공사·주택도시기금 채널에서 별도 확인이 필요합니다.';
 const LOOKUP_WINDOW_NOTE = '실시간 연동 특성상 최근 3년(36개월) 범위만 조회합니다';
@@ -97,15 +98,16 @@ async function getAssignedSchools(complexId) {
   if (!complexRow) return null;
 
   if (complexRow.latitude === null || complexRow.longitude === null) {
-    return { complexId, elementarySchool: null, middleSchool: null, assignmentNote: ASSIGNMENT_NOTE };
+    return { complexId, elementarySchool: null, middleSchool: null, highSchool: null, assignmentNote: ASSIGNMENT_NOTE };
   }
 
-  const [elementarySchool, middleSchool] = await Promise.all([
+  const [elementarySchool, middleSchool, highSchool] = await Promise.all([
     elementarySchoolService.findNearestSchoolByLevel(complexRow.latitude, complexRow.longitude, '초등학교'),
-    elementarySchoolService.findNearestSchoolByLevel(complexRow.latitude, complexRow.longitude, '중학교')
+    elementarySchoolService.findNearestSchoolByLevel(complexRow.latitude, complexRow.longitude, '중학교'),
+    elementarySchoolService.findNearestSchoolByLevel(complexRow.latitude, complexRow.longitude, '고등학교')
   ]);
 
-  return { complexId, elementarySchool, middleSchool, assignmentNote: ASSIGNMENT_NOTE };
+  return { complexId, elementarySchool, middleSchool, highSchool, assignmentNote: ASSIGNMENT_NOTE };
 }
 
 async function getRemodeling(complexId) {
@@ -127,6 +129,13 @@ async function getRemodeling(complexId) {
   }
 
   return remodelingService.getProjectView({ complexId, project, priceEntries });
+}
+
+async function getDevelopmentProjects(complexId) {
+  const complexRow = await apartmentComplexesRepository.findById(complexId);
+  if (!complexRow) return null;
+
+  return developmentProjectsService.getDevelopmentProjects(complexId);
 }
 
 // 사용자가 매매가를 직접 입력하지 않으면 해당 단지의 최신 유효 매매 실거래가를 자동 기준가격으로 사용한다.
@@ -287,6 +296,7 @@ module.exports = {
   getJeonseHistory,
   getAssignedSchools,
   getRemodeling,
+  getDevelopmentProjects,
   getRegulation,
   getLoanSimulation
 };

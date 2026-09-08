@@ -82,6 +82,17 @@ async function getRemodeling(req, res, next) {
   }
 }
 
+async function getDevelopmentProjects(req, res, next) {
+  try {
+    const id = Number(req.params.id);
+    const result = await complexDetailService.getDevelopmentProjects(id);
+    if (!result) return notFound(next);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function getRegulation(req, res, next) {
   try {
     const id = Number(req.params.id);
@@ -111,6 +122,7 @@ module.exports = {
   getJeonseHistory,
   getAssignedSchools,
   getRemodeling,
+  getDevelopmentProjects,
   getRegulation,
   getLoanSimulation
 };

@@ -6,10 +6,18 @@ import { ComplexPriceHistoryTab } from './ComplexPriceHistoryTab'
 import { ComplexJeonseHistoryTab } from './ComplexJeonseHistoryTab'
 import { ComplexSchoolsTab } from './ComplexSchoolsTab'
 import { ComplexRemodelingTab } from './ComplexRemodelingTab'
+import { ComplexDevelopmentProjectsTab } from './ComplexDevelopmentProjectsTab'
 import { ComplexLoanTab } from './ComplexLoanTab'
 import '../../listing-detail/components/ListingDetailTabs.css'
 
-type TabKey = 'overview' | 'price-history' | 'jeonse-history' | 'schools' | 'remodeling' | 'loan'
+type TabKey =
+  | 'overview'
+  | 'price-history'
+  | 'jeonse-history'
+  | 'schools'
+  | 'remodeling'
+  | 'development-projects'
+  | 'loan'
 
 interface ComplexDetailTabsProps {
   complexId: string
@@ -27,6 +35,7 @@ const TABS: TabDefinition[] = [
   { key: 'jeonse-history', label: '전세가·전세가율', Component: ComplexJeonseHistoryTab },
   { key: 'schools', label: '학군', Component: ComplexSchoolsTab },
   { key: 'remodeling', label: '리모델링', Component: ComplexRemodelingTab },
+  { key: 'development-projects', label: '개발호재', Component: ComplexDevelopmentProjectsTab },
   { key: 'loan', label: '대출/자금', Component: ComplexLoanTab },
 ]
 

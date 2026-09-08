@@ -34,6 +34,7 @@ export interface ComplexAssignedSchoolsResponse {
   complexId: number
   elementarySchool: AssignedSchool | null
   middleSchool: AssignedSchool | null
+  highSchool: AssignedSchool | null
   assignmentNote: string
 }
 
@@ -58,6 +59,35 @@ interface ComplexRemodelingEmptyResponse {
 }
 
 export type ComplexRemodelingResponse = ComplexRemodelingProjectResponse | ComplexRemodelingEmptyResponse
+
+export type DevelopmentProjectCategory = '철도' | '도로' | '택지개발' | '기타'
+export type DevelopmentProjectStatus = '계획' | '확정' | '착공' | '공사중' | '완료' | '취소'
+
+export interface DevelopmentProjectSource {
+  name: string | null
+  url: string | null
+  sourceType: '고시' | '공고' | '보도자료' | '뉴스' | '기타'
+  sourceDate: string | null
+  checkedAt: string
+  reliability: 'high' | 'medium' | 'low'
+  isAccessible: boolean
+}
+
+export interface DevelopmentProject {
+  id: number
+  projectName: string
+  category: DevelopmentProjectCategory
+  status: DevelopmentProjectStatus
+  effectiveDate: string | null
+  checkedAt: string
+  note: string | null
+  sources: DevelopmentProjectSource[]
+}
+
+export interface ComplexDevelopmentProjectsResponse {
+  complexId: number
+  projects: DevelopmentProject[]
+}
 
 export type SalePriceSource = 'user' | 'transaction' | null
 

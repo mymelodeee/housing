@@ -6,6 +6,7 @@ jest.mock('../../src/services/user-profile.service');
 jest.mock('../../src/services/loan-limit.service');
 jest.mock('../../src/services/loan-scenario.service');
 jest.mock('../../src/repositories/remodeling.repository');
+jest.mock('../../src/services/development-projects.service');
 
 const apartmentComplexesRepository = require('../../src/repositories/apartment-complexes.repository');
 const molitPriceHistoryService = require('../../src/services/molit-price-history.service');
@@ -15,11 +16,13 @@ const userProfileService = require('../../src/services/user-profile.service');
 const loanLimitService = require('../../src/services/loan-limit.service');
 const loanScenarioService = require('../../src/services/loan-scenario.service');
 const remodelingRepository = require('../../src/repositories/remodeling.repository');
+const developmentProjectsService = require('../../src/services/development-projects.service');
 const {
   getPriceHistory,
   getJeonseHistory,
   getAssignedSchools,
   getRemodeling,
+  getDevelopmentProjects,
   getRegulation,
   getLoanSimulation,
 } = require('../../src/services/complex-detail.service');
@@ -145,20 +148,25 @@ describe('services/complex-detail.service', () => {
         complexId: 10,
         elementarySchool: null,
         middleSchool: null,
+        highSchool: null,
         assignmentNote: expect.any(String),
       });
     });
 
-    it('좌표가 있으면 초/중 최근접 학교를 조회한다', async () => {
+    it('좌표가 있으면 초/중/고 최근접 학교를 조회한다', async () => {
       apartmentComplexesRepository.findById.mockResolvedValue(baseComplexRow);
       elementarySchoolService.findNearestSchoolByLevel.mockResolvedValueOnce({ schoolName: 'A초', distanceMeters: 300 });
       elementarySchoolService.findNearestSchoolByLevel.mockResolvedValueOnce({ schoolName: 'B중', distanceMeters: 500 });
+      elementarySchoolService.findNearestSchoolByLevel.mockResolvedValueOnce({ schoolName: 'C고', distanceMeters: 800 });
 
       const result = await getAssignedSchools(10);
 
       expect(elementarySchoolService.findNearestSchoolByLevel).toHaveBeenCalledWith(37.2, 127.09, '초등학교');
       expect(elementarySchoolService.findNearestSchoolByLevel).toHaveBeenCalledWith(37.2, 127.09, '중학교');
+      expect(elementarySchoolService.findNearestSchoolByLevel).toHaveBeenCalledWith(37.2, 127.09, '고등학교');
       expect(result.elementarySchool).toEqual({ schoolName: 'A초', distanceMeters: 300 });
+      expect(result.middleSchool).toEqual({ schoolName: 'B중', distanceMeters: 500 });
+      expect(result.highSchool).toEqual({ schoolName: 'C고', distanceMeters: 800 });
     });
   });
 
@@ -171,6 +179,25 @@ describe('services/complex-detail.service', () => {
 
       expect(result).toMatchObject({ complexId: 10, hasProject: false });
       expect(remodelingRepository.findProjectByComplexId).toHaveBeenCalledWith(10);
+    });
+  });
+
+  describe('getDevelopmentProjects', () => {
+    it('존재하지 않는 단지면 null을 반환한다', async () => {
+      apartmentComplexesRepository.findById.mockResolvedValue(null);
+
+      expect(await getDevelopmentProjects(999)).toBeNull();
+      expect(developmentProjectsService.getDevelopmentProjects).not.toHaveBeenCalled();
+    });
+
+    it('단지가 존재하면 development-projects.service 결과를 그대로 반환한다', async () => {
+      apartmentComplexesRepository.findById.mockResolvedValue(baseComplexRow);
+      developmentProjectsService.getDevelopmentProjects.mockResolvedValue({ complexId: 10, projects: [] });
+
+      const result = await getDevelopmentProjects(10);
+
+      expect(developmentProjectsService.getDevelopmentProjects).toHaveBeenCalledWith(10);
+      expect(result).toEqual({ complexId: 10, projects: [] });
     });
   });
 

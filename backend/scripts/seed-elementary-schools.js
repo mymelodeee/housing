@@ -26,7 +26,7 @@ const TARGET_REGION_KEYWORDS = [
   '서울특별시 강동구',
   '서울특별시 송파구'
 ];
-const TARGET_SCHOOL_LEVELS = ['초등학교', '중학교'];
+const TARGET_SCHOOL_LEVELS = ['초등학교', '중학교', '고등학교'];
 const PAGE_SIZE = 1000;
 
 function isTargetRegionAddress(address) {

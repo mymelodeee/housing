@@ -9,6 +9,7 @@ router.get('/:id/price-history', complexesController.getPriceHistory);
 router.get('/:id/jeonse-history', complexesController.getJeonseHistory);
 router.get('/:id/assigned-schools', complexesController.getAssignedSchools);
 router.get('/:id/remodeling', complexesController.getRemodeling);
+router.get('/:id/development-projects', complexesController.getDevelopmentProjects);
 router.get('/:id/regulation', complexesController.getRegulation);
 router.get('/:id/loan-simulation', complexesController.getLoanSimulation);
 

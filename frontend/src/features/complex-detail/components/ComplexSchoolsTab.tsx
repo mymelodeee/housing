@@ -28,6 +28,7 @@ export function ComplexSchoolsTab({ complexId }: ComplexSchoolsTabProps) {
       <dl className="schools-tab__list">
         <SchoolRow label="초등학교" school={data.elementarySchool} />
         <SchoolRow label="중학교" school={data.middleSchool} />
+        <SchoolRow label="고등학교" school={data.highSchool} />
       </dl>
       <p className="schools-tab__note">{data.assignmentNote}</p>
     </div>

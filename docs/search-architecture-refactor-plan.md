@@ -1,6 +1,6 @@
 # 검색 아키텍처 분석 및 리팩터 계획
 
-- 버전: v0.3
+- 버전: v0.4
 - 작성일: 2026-09-07
 - 최종 수정일: 2026-09-08
 - 참조: [1-domain-definition.md](./1-domain-definition.md), [6-erd.md](./6-erd.md), [7-execution-plan.md](./7-execution-plan.md), `database/schema.sql`, `backend/src/config/target-regions.js`
@@ -472,3 +472,33 @@ GitHub나 마지막 커밋이 아닌 로컬 modified/staged/untracked 파일을 
 - 백엔드: 관련 단위 테스트 통과, 전체 회귀 454~457/457(사전에 알려진 `remodeling.test.js` 날짜 드리프트 3건 제외 전부 통과 — §15.1과 무관한 별개의 기존 이슈).
 - 프론트: 전체 348/348 테스트 통과, `tsc --noEmit` clean.
 - 브라우저: 실제 단지(id=37, 버들치마을성복힐스테이트3차)에 대해 MOLIT 라이브 데이터로 평형 필터(9개 평형 중 필터 시 표·요약이 해당 평형 값으로 정확히 수렴), 기간 필터(표만 좁혀지고 요약 4종은 불변), 전세가율 평형별 재계산(전체 58.7% → 95.148m² 필터 시 64.2%, 직접 API 호출 결과와 일치)을 확인. 콘솔 에러 없음.
+
+## 18. Phase 3(학군 확장) + Phase 4(개발호재 스캐폴드) 완료 현황 (2026-09-08)
+
+Phase 4는 사용자 지시로 **스키마/API/탭까지만** 범위를 한정했다(실제 개발호재 데이터 수동 조사·지도 오버레이는 별도 세션으로 분리).
+
+### 18.1 Phase 3 — 학군 확장
+
+- **고등학교 추가**: `seed-elementary-schools.js`의 `TARGET_SCHOOL_LEVELS`에 `'고등학교'`를 추가(스키마 변경 없음, `school_level varchar(20)`가 이미 수용). `complex-detail.service.js`의 `getAssignedSchools`가 초/중에 더해 고등학교도 최근접 조회하도록 확장하고, 응답에 `highSchool` 필드 추가(신규 swagger 스키마 `ComplexAssignedSchoolsResponse`로 분리 — listing-anchor의 `AssignedSchoolsResponse`는 건드리지 않음). `ComplexSchoolsTab`에 고등학교 행 추가.
+- **차단 확인(실측)**: `DATA_SCHOOL_API_KEY`로 "전국초중등학교위치표준데이터"(15021148) 호출 시 `SERVICE_KEY_IS_NOT_REGISTERED_ERROR`(활용신청 미승인) 확인. 엔드포인트 자체는 유효하다(apt-list처럼 버전 폐기가 아님). **data.go.kr에서 이 데이터셋 활용신청 승인이 나야 `elementary_schools` 시드 실행 및 고등학교 데이터 확인이 가능** — 코드는 미리 반영해뒀고 승인 후 `node scripts/seed-elementary-schools.js` 재실행만 하면 된다.
+- **학원가 데이터 소스 검증(실측)**: 소상공인시장진흥공단 상가정보 API(이미 `store-info-api.repository.js`/`DATA_STORE_API_KEY`로 연동돼 유흥주점 판별에 쓰는 중)의 업종분류에 학원 관련 소분류코드 24종(`P10501` 입시·교과학원 등)이 실존하며, 반경검색(`storeListInRadius`)으로 실제 학원명/주소/좌표가 포함된 응답을 즉시 받을 수 있음을 확인했다. 별도 활용신청 없이 재사용 가능. **단, 실제 "학원가 밀집도" 기능 구현(카운트 집계, UI, 지도 레이어)은 이번 세션 범위에 포함하지 않았다** — 데이터 소스 검증까지만 완료.
+- **보류한 항목**: `LocalityAxisList`의 `schoolDistrict`/`developmentProspects` 필드 정리(§6)는 착수하지 않았다. 학원가 밀집도가 실제로 구현돼 학군 탭과 완전히 중복되는 시점, 그리고 개발호재 탭에 실제 데이터가 들어가는 시점에 다시 판단하는 것이 안전하다고 보았다 — `LocalityAxisList`는 비교(`ComparisonSetScreen`) 기능과도 공유되는 컴포넌트라 지금 제거하면 회귀 위험이 있다.
+
+### 18.2 Phase 4 — 개발호재 스캐폴드
+
+- 신규 마이그레이션 `1788500000000_create-development-projects-tables`: `development_projects`(complex_id 지연 연결 가능, category/status CHECK 제약)와 `development_project_sources`(출처 추적) 2개 테이블. `remodeling_projects`/`remodeling_sources`와 동일한 "출처+checked_at 추적" 패턴을 따르되, 아직 실제 데이터가 없어 `remodeling_facts`/`remodeling_project_history`에 해당하는 값 버전 관리 테이블은 만들지 않았다(YAGNI — 실제 데이터를 확보해 다건·시간 경과 충돌 관리가 필요해지면 그때 확장).
+- 신규 `GET /api/complexes/:id/development-projects`(`development-projects.repository.js`/`.service.js`, `ComplexDetailScreen`에 "개발호재" 탭 추가). 현재 등록된 실제 데이터가 0건이라 항상 `{ complexId, projects: [] }`를 반환하고 탭에는 "등록된 개발호재 없음"이 표시된다.
+- **dev/test DB 동기화 이슈 발견 및 수정**: 통합테스트가 쓰는 `housing_test` DB가 `1788300000000`(리모델링 complex_id 백필)·`1788400000000`(물리 스펙 컬럼)부터 이미 밀려 있었다(이번 세션 Phase 1에서 dev DB에만 마이그레이션을 적용하고 `housing_test`엔 반영하지 않았던 것이 이번에 처음 실제 쿼리로 드러남 — 그 전까지는 unit test만으로는 감지되지 않았다). `node-pg-migrate`가 `--envPath .env`를 강제로 override해 shell에서 넘긴 접속 문자열을 무시하길래, `housing_test`에 동일 SQL을 직접 실행하고 `pgmigrations`에 3건을 함께 기록해 dev/test 스키마를 동기화했다. **앞으로 새 마이그레이션을 만들 때는 dev DB뿐 아니라 `housing_test`에도 반드시 적용할 것.**
+
+### 18.3 검증
+
+- 백엔드: development-projects 관련 신규 유닛/통합 테스트 포함 전체 464/467 통과(사전에 알려진 `remodeling.test.js` 날짜 드리프트 3건 제외 전부 통과).
+- 프론트: 전체 354/354 통과, `tsc --noEmit` clean.
+- 브라우저: 단지(id=37) "학군" 탭에 고등학교 행("정보 없음", 활용신청 대기 중이라 정상) 확인, "개발호재" 탭에 "등록된 개발호재 없음" 확인. 콘솔 에러 없음.
+
+### 18.4 다음 세션으로 이연된 항목
+
+- `elementary_schools` 활용신청 승인 후 시드 재실행(고교 포함) 및 배정학교 실데이터 검증.
+- 학원가 밀집도 실제 구현(상가정보 API 24개 소분류코드로 반경 내 카운트, UI/지도 레이어).
+- 개발호재 실제 데이터 수동 조사·입력(remodeling-seed.json 수준), 지도 좌표 연결, 지도 레이어 토글 UI(원 계획 Phase 5).
+- `LocalityAxisList` 중복 필드(`schoolDistrict`/`developmentProspects`) 정리.

@@ -10,6 +10,7 @@ const {
   getJeonseHistory,
   getAssignedSchools,
   getRemodeling,
+  getDevelopmentProjects,
   getRegulation,
   getLoanSimulation,
 } = require('../../src/controllers/complexes.controller');
@@ -130,6 +131,25 @@ describe('controllers/complexes.controller', () => {
       const res = createRes();
       await getRemodeling({ params: { id: '1' } }, res, jest.fn());
       expect(res.json).toHaveBeenCalledWith(result);
+    });
+  });
+
+  describe('getDevelopmentProjects', () => {
+    it('서비스 결과를 그대로 반환한다', async () => {
+      const result = { complexId: 1, projects: [] };
+      complexDetailService.getDevelopmentProjects.mockResolvedValue(result);
+      const res = createRes();
+      await getDevelopmentProjects({ params: { id: '1' } }, res, jest.fn());
+      expect(res.json).toHaveBeenCalledWith(result);
+    });
+
+    it('서비스가 null을 반환하면 404 에러로 next를 호출한다', async () => {
+      complexDetailService.getDevelopmentProjects.mockResolvedValue(null);
+      const next = jest.fn();
+      await getDevelopmentProjects({ params: { id: '999999' } }, createRes(), next);
+
+      expect(next).toHaveBeenCalledTimes(1);
+      expect(next.mock.calls[0][0].status).toBe(404);
     });
   });
 

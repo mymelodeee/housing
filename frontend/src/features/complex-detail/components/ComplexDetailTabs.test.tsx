@@ -26,11 +26,11 @@ describe('ComplexDetailTabs', () => {
     vi.restoreAllMocks()
   })
 
-  it('6개의 탭이 올바른 순서와 라벨로 렌더링되고 listingId를 쓰지 않는다', () => {
+  it('7개의 탭이 올바른 순서와 라벨로 렌더링되고 listingId를 쓰지 않는다', () => {
     renderTabs()
 
     const labels = screen.getAllByRole('tab').map((tab) => tab.textContent)
-    expect(labels).toEqual(['개요', '매매가', '전세가·전세가율', '학군', '리모델링', '대출/자금'])
+    expect(labels).toEqual(['개요', '매매가', '전세가·전세가율', '학군', '리모델링', '개발호재', '대출/자금'])
     expect(apiClient).toHaveBeenCalled()
   })
 

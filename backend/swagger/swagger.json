@@ -83,10 +83,10 @@
       "get": {
         "tags": ["locality"],
         "summary": "단지 상세 - 배정학교 (complex-anchor, 신규)",
-        "description": "단지 좌표 기준 최근접 초/중학교를 조회한다(`/api/listings/{id}/assigned-schools`와 동일 로직, 단지 id 기준).",
+        "description": "단지 좌표 기준 최근접 초/중/고등학교를 조회한다(`/api/listings/{id}/assigned-schools`는 초/중만 반환하는 별도 로직).",
         "parameters": [ { "$ref": "#/components/parameters/ComplexIdPath" } ],
         "responses": {
-          "200": { "description": "배정학교 정보", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AssignedSchoolsResponse" } } } },
+          "200": { "description": "배정학교 정보", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ComplexAssignedSchoolsResponse" } } } },
           "404": { "$ref": "#/components/responses/NotFound" }
         }
       }
@@ -99,6 +99,18 @@
         "parameters": [ { "$ref": "#/components/parameters/ComplexIdPath" } ],
         "responses": {
           "200": { "description": "리모델링 추진 정보", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RemodelingResponse" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/complexes/{id}/development-projects": {
+      "get": {
+        "tags": ["development-projects"],
+        "summary": "단지 상세 - 개발호재 (complex-anchor, 신규, Phase 4 스캐폴드)",
+        "description": "단지에 연결된 개발호재(철도/도로/택지개발 등) 목록을 조회한다. 실제 데이터는 아직 수동 조사로 입력된 건이 없어(2026-09-08) 항상 빈 배열을 반환하며, API/응답 구조만 먼저 마련한 상태다.",
+        "parameters": [ { "$ref": "#/components/parameters/ComplexIdPath" } ],
+        "responses": {
+          "200": { "description": "개발호재 목록", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DevelopmentProjectsResponse" } } } },
           "404": { "$ref": "#/components/responses/NotFound" }
         }
       }
@@ -579,6 +591,43 @@
           "source": { "$ref": "#/components/schemas/RemodelingSource" }
         }
       },
+      "DevelopmentProjectsResponse": {
+        "type": "object",
+        "description": "단지에 연결된 개발호재 목록(Phase 4 스캐폴드). 현재는 항상 빈 배열.",
+        "properties": {
+          "complexId": { "type": "integer", "example": 5 },
+          "projects": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "integer", "example": 1 },
+                "projectName": { "type": "string", "example": "GTX-A 동탄역" },
+                "category": { "type": "string", "enum": ["철도", "도로", "택지개발", "기타"], "example": "철도" },
+                "status": { "type": "string", "enum": ["계획", "확정", "착공", "공사중", "완료", "취소"], "example": "착공" },
+                "effectiveDate": { "type": "string", "format": "date", "nullable": true },
+                "checkedAt": { "type": "string", "format": "date" },
+                "note": { "type": "string", "nullable": true },
+                "sources": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": { "type": "string", "nullable": true },
+                      "url": { "type": "string", "nullable": true },
+                      "sourceType": { "type": "string", "enum": ["고시", "공고", "보도자료", "뉴스", "기타"] },
+                      "sourceDate": { "type": "string", "format": "date", "nullable": true },
+                      "checkedAt": { "type": "string", "format": "date" },
+                      "reliability": { "type": "string", "enum": ["high", "medium", "low"] },
+                      "isAccessible": { "type": "boolean" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "RemodelingResponse": {
         "type": "object",
         "properties": {
@@ -817,6 +866,38 @@
             "properties": {
               "schoolName": { "type": "string", "example": "동탄중학교" },
               "distanceMeters": { "type": "integer", "example": 540 }
+            }
+          },
+          "assignmentNote": { "type": "string", "example": "최근접 학교 기준 근사치이며, 실제 배정은 교육청 학구도에 따라 달라질 수 있습니다" }
+        }
+      },
+      "ComplexAssignedSchoolsResponse": {
+        "type": "object",
+        "description": "단지 상세(complex-anchor) 배정학교. 초/중학교에 더해 고등학교도 함께 반환한다(listing-anchor의 AssignedSchoolsResponse와는 분리).",
+        "properties": {
+          "complexId": { "type": "integer", "example": 8 },
+          "elementarySchool": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "schoolName": { "type": "string", "example": "동탄초등학교" },
+              "distanceMeters": { "type": "integer", "example": 320 }
+            }
+          },
+          "middleSchool": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "schoolName": { "type": "string", "example": "동탄중학교" },
+              "distanceMeters": { "type": "integer", "example": 540 }
+            }
+          },
+          "highSchool": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "schoolName": { "type": "string", "example": "동탄고등학교" },
+              "distanceMeters": { "type": "integer", "example": 780 }
             }
           },
           "assignmentNote": { "type": "string", "example": "최근접 학교 기준 근사치이며, 실제 배정은 교육청 학구도에 따라 달라질 수 있습니다" }
