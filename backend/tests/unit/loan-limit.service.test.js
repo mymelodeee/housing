@@ -30,11 +30,11 @@ describe('calculateLtvCapAmount', () => {
 });
 
 describe('calculateDsrCapAmount', () => {
-  it('연소득+보너스의 40%를 연 원리금 상환액으로 보고, 금리 4.5%/30년 기준으로 역산한 원금과 일치한다', () => {
+  it('연소득+보너스의 40%를 연 원리금 상환액으로 보고, 주어진 금리/30년 기준으로 역산한 원금과 일치한다', () => {
     const annualIncome = 7000;
     const annualBonus = 1000;
 
-    const result = calculateDsrCapAmount({ annualIncome, annualBonus });
+    const result = calculateDsrCapAmount({ annualIncome, annualBonus, annualInterestRate: 0.045 });
 
     const expected = calculatePrincipalFromAnnualPayment({
       annualPayment: (annualIncome + annualBonus) * 0.4,
@@ -46,8 +46,8 @@ describe('calculateDsrCapAmount', () => {
   });
 
   it('소득이 낮을수록 dsrCapAmount도 작다', () => {
-    const low = calculateDsrCapAmount({ annualIncome: 3000, annualBonus: 0 });
-    const high = calculateDsrCapAmount({ annualIncome: 7000, annualBonus: 1000 });
+    const low = calculateDsrCapAmount({ annualIncome: 3000, annualBonus: 0, annualInterestRate: 0.045 });
+    const high = calculateDsrCapAmount({ annualIncome: 7000, annualBonus: 1000, annualInterestRate: 0.045 });
 
     expect(low).toBeLessThan(high);
   });
@@ -62,6 +62,7 @@ describe('calculateMaxLoanAmount', () => {
       isRegulatedArea: false,
       annualIncome: 50000,
       annualBonus: 10000,
+      annualInterestRate: 0.045,
     };
 
     const result = calculateMaxLoanAmount(params);
@@ -79,6 +80,7 @@ describe('calculateMaxLoanAmount', () => {
       isRegulatedArea: false,
       annualIncome: 3000,
       annualBonus: 0,
+      annualInterestRate: 0.045,
     };
 
     const result = calculateMaxLoanAmount(params);
@@ -96,6 +98,7 @@ describe('calculateMaxLoanAmount', () => {
       isRegulatedArea: true,
       annualIncome: 100000,
       annualBonus: 50000,
+      annualInterestRate: 0.045,
     };
 
     const result = calculateMaxLoanAmount(params);
@@ -114,6 +117,7 @@ describe('calculateMaxLoanAmount', () => {
       isRegulatedArea: true,
       annualIncome: 100000,
       annualBonus: 50000,
+      annualInterestRate: 0.045,
     });
 
     expect(result.ltvPercent).toBe(0);

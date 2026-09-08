@@ -5,15 +5,10 @@ const regulationService = require('./regulation.service');
 const FORCED_HOUSING_TIER = '1주택';
 const FORCED_IS_FIRST_TIME_BUYER = false;
 
-const INTEREST_RATE_SOURCE =
-  '우리은행 우리아파트론 변동금리 신규취급 하단 연 4.37%(2026.6.11 확인)와 한국은행 신규취급액 기준 ' +
-  '전체은행 가중평균금리 연 4.34%(2026.3월)를 교차검증한 대표값. 우리은행 공식 고시금리 페이지 자동조회 ' +
-  '불가로 뉴스 보도 기반 대체값을 사용했으며 실제 고시금리와 다를 수 있음.';
-
-function calculateDsrUsageRate({ maxLoanAmount, annualIncome, annualBonus }) {
+function calculateDsrUsageRate({ maxLoanAmount, annualIncome, annualBonus, annualInterestRate }) {
   const schedule = repaymentService.calculateRepaymentSchedule({
     principal: maxLoanAmount,
-    annualInterestRate: loanLimitService.DSR_REFERENCE_ANNUAL_INTEREST_RATE
+    annualInterestRate
   });
   const referenceSchedule = schedule.find((s) => s.years === loanLimitService.DSR_REFERENCE_YEARS);
   const actualAnnualPayment = referenceSchedule.annualPayment;
@@ -22,16 +17,19 @@ function calculateDsrUsageRate({ maxLoanAmount, annualIncome, annualBonus }) {
   return actualAnnualPayment / dsrAllowedAnnualPayment;
 }
 
-function buildScenario({ ownershipStructure, salePrice, isRegulatedArea, annualIncome, annualBonus, availableCapital, isLandTransactionPermissionZone }) {
+function buildScenario({
+  ownershipStructure, salePrice, isRegulatedArea, annualIncome, annualBonus, availableCapital,
+  isLandTransactionPermissionZone, annualInterestRate, interestRateSource
+}) {
   const loanLimit = loanLimitService.calculateMaxLoanAmount({
     salePrice,
     housingOwnershipTier: FORCED_HOUSING_TIER,
     isFirstTimeBuyer: FORCED_IS_FIRST_TIME_BUYER,
     isRegulatedArea,
     annualIncome,
-    annualBonus
+    annualBonus,
+    annualInterestRate
   });
-  const annualInterestRate = loanLimitService.DSR_REFERENCE_ANNUAL_INTEREST_RATE;
   const schedule = repaymentService.calculateRepaymentSchedule({
     principal: loanLimit.maxLoanAmount,
     annualInterestRate
@@ -57,7 +55,7 @@ function buildScenario({ ownershipStructure, salePrice, isRegulatedArea, annualI
     maxLoanAmount: loanLimit.maxLoanAmount,
     requiredCapital,
     capitalSufficient: requiredCapital <= 0,
-    dsrUsageRate: calculateDsrUsageRate({ maxLoanAmount: loanLimit.maxLoanAmount, annualIncome, annualBonus }),
+    dsrUsageRate: calculateDsrUsageRate({ maxLoanAmount: loanLimit.maxLoanAmount, annualIncome, annualBonus, annualInterestRate }),
     monthlyRepayment10y: monthly(10),
     monthlyRepayment20y: monthly(20),
     monthlyRepayment30y: monthly(30),
@@ -66,24 +64,27 @@ function buildScenario({ ownershipStructure, salePrice, isRegulatedArea, annualI
       isMortgageInRegulatedArea
     }),
     interestRatePercent: annualInterestRate * 100,
-    interestRateSource: INTEREST_RATE_SOURCE,
+    interestRateSource,
     graduatedRepayment10y: graduatedMonthly(10),
     graduatedRepayment20y: graduatedMonthly(20),
     graduatedRepayment30y: graduatedMonthly(30)
   };
 }
 
-function buildScenarios({ salePrice, isRegulatedArea, annualIncome, annualBonus, availableCapital, isLandTransactionPermissionZone }) {
+function buildScenarios({
+  salePrice, isRegulatedArea, annualIncome, annualBonus, availableCapital, isLandTransactionPermissionZone,
+  annualInterestRate, interestRateSource
+}) {
   return [
     buildScenario({
       ownershipStructure: '단독',
       salePrice, isRegulatedArea, availableCapital, isLandTransactionPermissionZone,
-      annualIncome, annualBonus
+      annualIncome, annualBonus, annualInterestRate, interestRateSource
     }),
     buildScenario({
       ownershipStructure: '부부합산',
       salePrice, isRegulatedArea, availableCapital, isLandTransactionPermissionZone,
-      annualIncome: annualIncome * 2, annualBonus: annualBonus * 2
+      annualIncome: annualIncome * 2, annualBonus: annualBonus * 2, annualInterestRate, interestRateSource
     })
   ];
 }

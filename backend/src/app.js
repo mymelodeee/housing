@@ -10,6 +10,7 @@ const userProfileRoutes = require("./routes/user-profile.routes");
 const favoritesRoutes = require("./routes/favorites.routes");
 const comparisonSetsRoutes = require("./routes/comparison-sets.routes");
 const adminRemodelingRoutes = require("./routes/admin-remodeling.routes");
+const adminMarketInterestRateRoutes = require("./routes/admin-market-interest-rate.routes");
 
 const app = express();
 
@@ -26,6 +27,7 @@ app.use("/api/user-profile", userProfileRoutes);
 app.use("/api/favorites", favoritesRoutes);
 app.use("/api/comparison-sets", comparisonSetsRoutes);
 app.use("/api/admin/remodeling", adminRemodelingRoutes);
+app.use("/api/admin/market-interest-rate", adminMarketInterestRateRoutes);
 
 if (process.env.NODE_ENV !== "production") {
   const swaggerUi = require("swagger-ui-express");

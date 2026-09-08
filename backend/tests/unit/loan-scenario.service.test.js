@@ -13,6 +13,8 @@ describe('buildScenarios', () => {
       annualBonus: 1000,
       availableCapital: 20000,
       isLandTransactionPermissionZone: true,
+      annualInterestRate: 0.045,
+      interestRateSource: 'test-source',
     });
     const nonRegulated = buildScenarios({
       salePrice: 88000,
@@ -21,6 +23,8 @@ describe('buildScenarios', () => {
       annualBonus: 1000,
       availableCapital: 20000,
       isLandTransactionPermissionZone: false,
+      annualInterestRate: 0.045,
+      interestRateSource: 'test-source',
     });
 
     regulated.forEach((s) => expect(s.ltvPercent).toBe(40));
@@ -38,6 +42,8 @@ describe('buildScenarios', () => {
       annualBonus: 0,
       availableCapital: 0,
       isLandTransactionPermissionZone: false,
+      annualInterestRate: 0.045,
+      interestRateSource: 'test-source',
     });
 
     expect(couple.maxLoanAmount).toBeGreaterThanOrEqual(solo.maxLoanAmount);
@@ -52,6 +58,8 @@ describe('buildScenarios', () => {
       annualIncome: 3000,
       annualBonus: 0,
       isLandTransactionPermissionZone: false,
+      annualInterestRate: 0.045,
+      interestRateSource: 'test-source',
     };
 
     // maxLoanAmount는 availableCapital에 의존하지 않으므로, 우선 availableCapital=0으로
@@ -89,6 +97,8 @@ describe('buildScenarios', () => {
         annualBonus: 1000,
         availableCapital: 20000,
         isLandTransactionPermissionZone,
+        annualInterestRate: 0.045,
+        interestRateSource: 'test-source',
       });
 
       [solo, couple].forEach((scenario) => {
@@ -113,6 +123,8 @@ describe('buildScenarios - 이율/체증식 상환 필드', () => {
       annualBonus: 1000,
       availableCapital: 20000,
       isLandTransactionPermissionZone: false,
+      annualInterestRate: 0.045,
+      interestRateSource: 'test-source',
     });
 
     expect(solo.interestRatePercent).toBe(4.5);
@@ -134,6 +146,8 @@ describe('buildScenarios - 이율/체증식 상환 필드', () => {
       annualBonus: 1000,
       availableCapital: 20000,
       isLandTransactionPermissionZone: false,
+      annualInterestRate: 0.045,
+      interestRateSource: 'test-source',
     });
 
     expect(typeof solo.monthlyRepayment10y).toBe('number');
