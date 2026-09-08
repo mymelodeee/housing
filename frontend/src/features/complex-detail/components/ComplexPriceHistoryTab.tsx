@@ -3,7 +3,9 @@ import { useComplexPriceHistory } from '../hooks/useComplexPriceHistory'
 import { buildMonthlyAverageSeries, findYearAgoPoint } from '../../../shared/utils/monthlySeries'
 import { formatPriceKorean } from '../../../shared/utils/formatPrice'
 import { getAvailableExclusiveAreas, filterByExclusiveArea } from '../utils/exclusiveArea'
+import { filterByPeriod, type Period } from '../utils/periodFilter'
 import { ExclusiveAreaFilter } from './ExclusiveAreaFilter'
+import { PeriodFilter } from './PeriodFilter'
 import { PriceHistoryChart } from '../../listing-detail/price-history/components/PriceHistoryChart'
 import { PriceHistoryTable } from '../../listing-detail/price-history/components/PriceHistoryTable'
 import '../../listing-detail/price-history/components/PriceHistoryTab.css'
@@ -15,11 +17,18 @@ interface ComplexPriceHistoryTabProps {
 export function ComplexPriceHistoryTab({ complexId }: ComplexPriceHistoryTabProps) {
   const { data, isLoading, isError } = useComplexPriceHistory(complexId)
   const [selectedArea, setSelectedArea] = useState<number | null>(null)
+  const [period, setPeriod] = useState<Period>('all')
 
   const availableAreas = useMemo(() => getAvailableExclusiveAreas(data?.entries ?? []), [data?.entries])
   const filteredEntries = useMemo(
     () => filterByExclusiveArea(data?.entries ?? [], selectedArea),
     [data?.entries, selectedArea]
+  )
+  // 기간 filter는 차트/표에 보이는 과거 구간만 좁힌다 — 최근 월평균/최고가/전년동월대비는
+  // 항상 전체 기간 기준으로 유지해야 기간을 좁혀도 요약 숫자가 왜곡되지 않는다.
+  const periodEntries = useMemo(
+    () => filterByPeriod(filteredEntries, period, (e) => e.transactionDate.slice(0, 7)),
+    [filteredEntries, period]
   )
 
   const monthly = useMemo(
@@ -47,6 +56,7 @@ export function ComplexPriceHistoryTab({ complexId }: ComplexPriceHistoryTabProp
       {availableAreas.length > 0 && (
         <ExclusiveAreaFilter areas={availableAreas} value={selectedArea} onChange={setSelectedArea} />
       )}
+      <PeriodFilter value={period} onChange={setPeriod} />
       {latest && (
         <div className="price-history-tab__summary">
           <div>
@@ -83,8 +93,8 @@ export function ComplexPriceHistoryTab({ complexId }: ComplexPriceHistoryTabProp
       {data.lookupPeriodType === '최초거래 이후' && data.firstTransactionMonth && (
         <p className="price-history-tab__notice">최초거래({data.firstTransactionMonth}) 이후 데이터</p>
       )}
-      <PriceHistoryChart entries={filteredEntries} />
-      <PriceHistoryTable entries={filteredEntries} />
+      <PriceHistoryChart entries={periodEntries} />
+      <PriceHistoryTable entries={periodEntries} />
     </div>
   )
 }

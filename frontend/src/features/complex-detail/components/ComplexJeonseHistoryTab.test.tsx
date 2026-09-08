@@ -31,7 +31,7 @@ describe('ComplexJeonseHistoryTab', () => {
     expect(screen.getByText('평형(전용면적)')).toBeInTheDocument()
     expect(screen.getByText('전세가율 66.7%')).toBeInTheDocument()
 
-    await user.selectOptions(screen.getByRole('combobox'), '84.98')
+    await user.selectOptions(screen.getByRole('combobox', { name: '평형(전용면적)' }), '84.98')
 
     expect(mockedUseComplexJeonseHistory).toHaveBeenLastCalledWith('1', 84.98)
   })
@@ -51,6 +51,35 @@ describe('ComplexJeonseHistoryTab', () => {
     render(<ComplexJeonseHistoryTab complexId="1" />)
 
     expect(screen.queryByText('평형(전용면적)')).not.toBeInTheDocument()
+  })
+
+  it('기간 필터는 표(과거 구간)만 좁히고 매매 월평균/전세가율 요약은 그대로 유지한다', async () => {
+    const user = userEvent.setup()
+    const now = new Date()
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    mockedUseComplexJeonseHistory.mockReturnValue(
+      mockResult({
+        complexId: 1,
+        saleEntries: [
+          { transactionDate: '2015-01-05', transactionPrice: 80000, dataSource: 'x' },
+          { transactionDate: `${currentMonth}-01`, transactionPrice: 90000, dataSource: 'x' },
+        ],
+        jeonseEntries: [{ transactionDate: '2015-01-10', deposit: 40000, dataSource: 'y' }],
+        ratioEntries: [{ month: '2015-01', jeonseRatioPercent: 50 }],
+        availableExclusiveAreas: [],
+        lookupWindowNote: '안내',
+      })
+    )
+
+    render(<ComplexJeonseHistoryTab complexId="1" />)
+
+    expect(screen.getByText('2015-01-10')).toBeInTheDocument()
+    expect(screen.getByText('전세가율 50%')).toBeInTheDocument()
+
+    await user.selectOptions(screen.getByRole('combobox', { name: '기간' }), '최근 1년')
+
+    expect(screen.queryByText('2015-01-10')).not.toBeInTheDocument()
+    expect(screen.getByText('전세가율 50%')).toBeInTheDocument()
   })
 
   it('데이터가 전혀 없으면 실거래 이력 없음을 표시한다', () => {

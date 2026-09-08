@@ -34,7 +34,7 @@ describe('ComplexPriceHistoryTab', () => {
     // 필터 미적용 시 두 평형(9억/6억) 평균 = 7억 5,000만원
     expect(container.textContent).toContain('7억 5,000만원')
 
-    await user.selectOptions(screen.getByRole('combobox'), '84.98')
+    await user.selectOptions(screen.getByRole('combobox', { name: '평형(전용면적)' }), '84.98')
 
     // 84.98m²만 남으면 평균/최고가 모두 9억으로 수렴한다
     expect(container.textContent).toContain('9억')
@@ -73,6 +73,35 @@ describe('ComplexPriceHistoryTab', () => {
     const { container } = render(<ComplexPriceHistoryTab complexId="1" />)
 
     expect(container.textContent).toContain('전년동월대비 ▲ 100%')
+  })
+
+  it('기간 필터는 표(과거 구간)만 좁히고 최근 월평균/최고가 요약은 그대로 유지한다', async () => {
+    const user = userEvent.setup()
+    const now = new Date()
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    mockedUseComplexPriceHistory.mockReturnValue(
+      mockResult({
+        complexId: 1,
+        lookupPeriodType: '최초거래 이후',
+        firstTransactionMonth: '2015-01',
+        entries: [
+          { transactionDate: '2015-01-05', transactionPrice: 200000, dataSource: 'x' },
+          { transactionDate: `${currentMonth}-01`, transactionPrice: 90000, dataSource: 'x' },
+        ],
+      })
+    )
+
+    const { container } = render(<ComplexPriceHistoryTab complexId="1" />)
+
+    // 필터 적용 전: 과거 최고가(20억)까지 표에 보인다
+    expect(screen.getByText('2015-01-05')).toBeInTheDocument()
+    expect(container.textContent).toContain('20억')
+
+    await user.selectOptions(screen.getByRole('combobox', { name: '기간' }), '최근 1년')
+
+    // 표에서는 2015년 행이 사라지지만, 최고가 요약(전체 기간 기준)은 20억 그대로 유지된다
+    expect(screen.queryByText('2015-01-05')).not.toBeInTheDocument()
+    expect(container.textContent).toContain('20억')
   })
 
   it('실거래 이력이 없으면 안내 문구를 표시한다', () => {
