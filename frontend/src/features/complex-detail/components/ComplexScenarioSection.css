@@ -1,0 +1,112 @@
+.complex-scenario-section {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin-top: var(--space-4);
+  padding: var(--space-2) var(--space-3);
+}
+
+.complex-scenario-section > summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: var(--space-2) 0;
+}
+
+.complex-scenario-section__body {
+  padding-top: var(--space-2);
+}
+
+.complex-scenario-section__inputs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.complex-scenario-section__inputs label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.complex-scenario-section__inputs input,
+.complex-scenario-section__inputs select {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  max-width: 120px;
+}
+
+.complex-scenario-section__cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.complex-scenario-section__card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+}
+
+.complex-scenario-section__card-label {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-text-secondary);
+}
+
+.complex-scenario-section__card-value {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  margin: var(--space-1) 0;
+}
+
+.complex-scenario-section__card-note {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.complex-scenario-section__sensitivity-toggle {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-size-sm);
+  color: var(--color-primary);
+  cursor: pointer;
+}
+
+.complex-scenario-section__sensitivity-table-wrapper {
+  margin-top: var(--space-2);
+  overflow-x: auto;
+}
+
+.complex-scenario-section__sensitivity-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.complex-scenario-section__sensitivity-table th,
+.complex-scenario-section__sensitivity-table td {
+  padding: var(--space-1) var(--space-2);
+  text-align: right;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.complex-scenario-section__sensitivity-table th:first-child,
+.complex-scenario-section__sensitivity-table td:first-child {
+  text-align: left;
+}
+
+@media (max-width: 700px) {
+  .complex-scenario-section__cards {
+    grid-template-columns: 1fr;
+  }
+}

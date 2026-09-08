@@ -8,6 +8,7 @@ jest.mock('../../src/services/loan-scenario.service');
 jest.mock('../../src/repositories/remodeling.repository');
 jest.mock('../../src/services/development-projects.service');
 jest.mock('../../src/services/academy.service');
+jest.mock('../../src/services/market-interest-rate.service');
 
 const apartmentComplexesRepository = require('../../src/repositories/apartment-complexes.repository');
 const molitPriceHistoryService = require('../../src/services/molit-price-history.service');
@@ -19,6 +20,7 @@ const loanScenarioService = require('../../src/services/loan-scenario.service');
 const remodelingRepository = require('../../src/repositories/remodeling.repository');
 const developmentProjectsService = require('../../src/services/development-projects.service');
 const academyService = require('../../src/services/academy.service');
+const marketInterestRateService = require('../../src/services/market-interest-rate.service');
 const {
   getPriceHistory,
   getJeonseHistory,
@@ -27,6 +29,9 @@ const {
   getDevelopmentProjects,
   getRegulation,
   getLoanSimulation,
+  getAcquisitionCosts,
+  getLoanSchedule,
+  getHoldingTaxEstimate,
 } = require('../../src/services/complex-detail.service');
 
 const baseComplexRow = {
@@ -40,7 +45,22 @@ const baseComplexRow = {
   is_land_transaction_permission_zone: true,
 };
 
+const baseInterestRate = {
+  ratePercent: 4.48,
+  referencePeriod: '2026-07',
+  sourceName: '한국은행 금융기관 가중평균금리',
+  sourceUrl: 'https://www.bok.or.kr',
+  checkedAt: '2026-09-08',
+  daysSinceChecked: 0,
+  isStale: false,
+  sourceLabel: '한국은행 금융기관 가중평균금리(2026-07 기준, 2026-09-08 확인).',
+};
+
 describe('services/complex-detail.service', () => {
+  beforeEach(() => {
+    marketInterestRateService.getCurrentRate.mockResolvedValue(baseInterestRate);
+  });
+
   afterEach(() => {
     jest.clearAllMocks();
   });
@@ -355,6 +375,143 @@ describe('services/complex-detail.service', () => {
       expect(result.salePriceSource).toBe('transaction');
       expect(result.referenceTransactionDate).toBe('2026-08-25');
       expect(result.salePriceRequired).toBeUndefined();
+    });
+  });
+
+  describe('getAcquisitionCosts', () => {
+    it('존재하지 않는 단지면 null을 반환한다', async () => {
+      apartmentComplexesRepository.findById.mockResolvedValue(null);
+      expect(await getAcquisitionCosts(999, {})).toBeNull();
+    });
+
+    it('salePrice가 없고 유효한 실거래도 없으면 매매가 입력 필요 메시지를 반환한다', async () => {
+      apartmentComplexesRepository.findById.mockResolvedValue(baseComplexRow);
+      molitPriceHistoryService.fetchPriceHistoryForComplex.mockResolvedValue({
+        lookupPeriodType: '실거래 이력 없음',
+        firstTransactionMonth: null,
+        entries: [],
+      });
+
+      const result = await getAcquisitionCosts(10, {});
+
+      expect(result.message).toBe('매매가 입력 필요');
+      expect(result.effectiveSalePrice).toBeNull();
+    });
+
+    it('salePrice/exclusiveArea/homeCount 입력값 기준으로 취득세·중개보수·인지세를 계산한다', async () => {
+      apartmentComplexesRepository.findById.mockResolvedValue(baseComplexRow);
+      userProfileService.getProfile.mockResolvedValue({ housingOwnershipTier: '무주택' });
+
+      const result = await getAcquisitionCosts(10, { salePrice: 95000, exclusiveArea: 84.98, homeCount: 1 });
+
+      expect(result.effectiveSalePrice).toBe(95000);
+      expect(result.salePriceSource).toBe('user');
+      expect(result.homeCountAfterPurchase).toBe(1);
+      expect(result.acquisitionTax.amount).toBe(Math.round(95000 * 10000 * 0.03));
+      expect(result.ruralSpecialTax.amount).toBe(0);
+      expect(result.brokerageFee.estimateType).toBe('ESTIMATE');
+      expect(result.totalCost).toBe(
+        result.acquisitionTax.amount + result.localEducationTax.amount + result.ruralSpecialTax.amount + result.brokerageFee.amount + result.stampDuty.amount
+      );
+    });
+
+    it('homeCount 미지정이면 세대 주택 보유 구분에서 기본값을 추정한다', async () => {
+      apartmentComplexesRepository.findById.mockResolvedValue(baseComplexRow);
+      userProfileService.getProfile.mockResolvedValue({ housingOwnershipTier: '다주택' });
+
+      const result = await getAcquisitionCosts(10, { salePrice: 95000 });
+
+      expect(result.homeCountAfterPurchase).toBe(3);
+    });
+  });
+
+  describe('getLoanSchedule', () => {
+    it('존재하지 않는 단지면 null을 반환한다', async () => {
+      apartmentComplexesRepository.findById.mockResolvedValue(null);
+      expect(await getLoanSchedule(999, { principal: 30000, interestRatePercent: 4 })).toBeNull();
+    });
+
+    it('principal/interestRatePercent가 없으면 안내 메시지를 반환한다', async () => {
+      apartmentComplexesRepository.findById.mockResolvedValue(baseComplexRow);
+
+      const result = await getLoanSchedule(10, {});
+
+      expect(result.message).toBe('원금과 금리 입력 필요');
+      expect(result.schedule).toBeNull();
+    });
+
+    it('거치기간·상환기간을 반영한 월별 스케줄을 반환한다', async () => {
+      apartmentComplexesRepository.findById.mockResolvedValue(baseComplexRow);
+
+      const result = await getLoanSchedule(10, { principal: 30000, interestRatePercent: 4, graceMonths: 12, years: 10 });
+
+      expect(result.rows).toHaveLength(132);
+      expect(result.cliffMonth).toBe(13);
+      expect(result.cliffIncrease).toBeGreaterThan(0);
+    });
+
+    it('graceMonths/years 미지정 시 기본값(0개월 거치, 30년)을 사용한다', async () => {
+      apartmentComplexesRepository.findById.mockResolvedValue(baseComplexRow);
+
+      const result = await getLoanSchedule(10, { principal: 30000, interestRatePercent: 4 });
+
+      expect(result.graceMonths).toBe(0);
+      expect(result.years).toBe(30);
+      expect(result.rows).toHaveLength(360);
+    });
+  });
+
+  describe('getHoldingTaxEstimate', () => {
+    it('존재하지 않는 단지면 null을 반환한다', async () => {
+      apartmentComplexesRepository.findById.mockResolvedValue(null);
+      expect(await getHoldingTaxEstimate(999, {})).toBeNull();
+    });
+
+    it('publicPrice/salePrice가 모두 없고 유효한 실거래도 없으면 안내 메시지를 반환한다', async () => {
+      apartmentComplexesRepository.findById.mockResolvedValue(baseComplexRow);
+      userProfileService.getProfile.mockResolvedValue({ housingOwnershipTier: '무주택' });
+      molitPriceHistoryService.fetchPriceHistoryForComplex.mockResolvedValue({
+        lookupPeriodType: '실거래 이력 없음',
+        firstTransactionMonth: null,
+        entries: [],
+      });
+
+      const result = await getHoldingTaxEstimate(10, {});
+
+      expect(result.message).toBe('매매가 또는 공시가격 입력 필요');
+    });
+
+    it('publicPrice를 직접 입력하면 그 값을 그대로 사용하고 publicPriceSource는 user다', async () => {
+      apartmentComplexesRepository.findById.mockResolvedValue(baseComplexRow);
+      userProfileService.getProfile.mockResolvedValue({ housingOwnershipTier: '무주택' });
+
+      const result = await getHoldingTaxEstimate(10, { publicPrice: 90000, homeCount: 1 });
+
+      expect(result.publicPrice).toBe(90000);
+      expect(result.publicPriceSource).toBe('user');
+      expect(result.isOneHouse).toBe(true);
+      expect(result.comprehensiveTax.estimateType).toBe('ESTIMATE');
+      expect(result.totalAnnualHoldingTax).toBe(result.propertyTax.total + result.comprehensiveTax.total);
+    });
+
+    it('publicPrice 미지정 시 salePrice × publicRatio(기본 70%)로 추정하고 publicPriceSource는 estimated다', async () => {
+      apartmentComplexesRepository.findById.mockResolvedValue(baseComplexRow);
+      userProfileService.getProfile.mockResolvedValue({ housingOwnershipTier: '무주택' });
+
+      const result = await getHoldingTaxEstimate(10, { salePrice: 100000 });
+
+      expect(result.publicPrice).toBe(70000);
+      expect(result.publicPriceSource).toBe('estimated');
+    });
+
+    it('homeCount 미지정이면 세대 주택 보유 구분에서 기본값을 추정한다', async () => {
+      apartmentComplexesRepository.findById.mockResolvedValue(baseComplexRow);
+      userProfileService.getProfile.mockResolvedValue({ housingOwnershipTier: '다주택' });
+
+      const result = await getHoldingTaxEstimate(10, { publicPrice: 90000 });
+
+      expect(result.homeCountAfterPurchase).toBe(3);
+      expect(result.isOneHouse).toBe(false);
     });
   });
 });

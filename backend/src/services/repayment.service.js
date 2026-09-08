@@ -53,9 +53,60 @@ function calculateGraduatedRepaymentSchedule({ principal, annualInterestRate, ye
   };
 }
 
+// 거치기간(이자만 납부) 이후 원리금균등상환으로 전환되는 월별 스케줄이다.
+// graceMonths=0이면 1개월차부터 바로 원리금균등상환이 시작된다.
+function calculateAmortizationSchedule({ principal, annualInterestRate, years, graceMonths = 0 }) {
+  const amortMonths = years * 12;
+  const totalMonths = graceMonths + amortMonths;
+  const monthlyRate = annualInterestRate / 12;
+  const regularMonthlyPayment = calculateMonthlyPayment({ principal, annualInterestRate, years });
+
+  let balance = principal;
+  let cumulativeInterest = 0;
+  let cumulativePrincipal = 0;
+  const rows = [];
+
+  for (let month = 1; month <= totalMonths; month += 1) {
+    let interest = 0;
+    let principalPaid = 0;
+    let payment = 0;
+
+    if (balance > 0 && month <= graceMonths) {
+      interest = balance * monthlyRate;
+      payment = interest;
+    } else if (balance > 0) {
+      interest = balance * monthlyRate;
+      payment = Math.min(regularMonthlyPayment, balance + interest);
+      principalPaid = Math.max(0, payment - interest);
+      balance = Math.max(0, balance - principalPaid);
+    }
+
+    cumulativeInterest += interest;
+    cumulativePrincipal += principalPaid;
+    rows.push({ month, payment, interest, principal: principalPaid, balance });
+  }
+
+  const graceMonthlyPayment = rows[0]?.payment || 0;
+  const cliffMonth = graceMonths > 0 ? graceMonths + 1 : 1;
+  const postCliffMonthlyPayment = rows[cliffMonth - 1]?.payment || 0;
+
+  return {
+    rows,
+    regularMonthlyPayment,
+    graceMonthlyPayment,
+    cliffMonth,
+    postCliffMonthlyPayment,
+    cliffIncrease: postCliffMonthlyPayment - graceMonthlyPayment,
+    totalInterest: cumulativeInterest,
+    totalPrincipal: cumulativePrincipal,
+    endBalance: balance,
+  };
+}
+
 module.exports = {
   calculateMonthlyPayment,
   calculateRepaymentSchedule,
   calculatePrincipalFromAnnualPayment,
   calculateGraduatedRepaymentSchedule,
+  calculateAmortizationSchedule,
 };

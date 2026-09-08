@@ -13,6 +13,7 @@ jest.mock('../../src/services/loan-limit.service');
 jest.mock('../../src/services/loan-scenario.service');
 jest.mock('../../src/services/jeonse-history.service');
 jest.mock('../../src/services/elementary-school.service');
+jest.mock('../../src/services/market-interest-rate.service');
 
 const listingsRepository = require('../../src/repositories/listings.repository');
 const apartmentComplexesRepository = require('../../src/repositories/apartment-complexes.repository');
@@ -23,6 +24,7 @@ const loanLimitService = require('../../src/services/loan-limit.service');
 const loanScenarioService = require('../../src/services/loan-scenario.service');
 const jeonseHistoryService = require('../../src/services/jeonse-history.service');
 const elementarySchoolService = require('../../src/services/elementary-school.service');
+const marketInterestRateService = require('../../src/services/market-interest-rate.service');
 const { getLawdCdsByCity, getTargetRegionCodes } = require('../../src/config/target-regions');
 const {
   listListings,
@@ -57,7 +59,22 @@ const baseRow = {
   shuttle_commute_minutes: 42,
 };
 
+const baseInterestRate = {
+  ratePercent: 4.48,
+  referencePeriod: '2026-07',
+  sourceName: '한국은행 금융기관 가중평균금리',
+  sourceUrl: 'https://www.bok.or.kr',
+  checkedAt: '2026-09-08',
+  daysSinceChecked: 0,
+  isStale: false,
+  sourceLabel: '한국은행 금융기관 가중평균금리(2026-07 기준, 2026-09-08 확인).',
+};
+
 describe('services/listings.service', () => {
+  beforeEach(() => {
+    marketInterestRateService.getCurrentRate.mockResolvedValue(baseInterestRate);
+  });
+
   afterEach(() => {
     jest.clearAllMocks();
   });
@@ -671,6 +688,13 @@ describe('services/listings.service', () => {
         scenarios: dummyScenarios,
         recommendedScenario: '부부합산',
         policyMortgageNotice: POLICY_MORTGAGE_NOTICE,
+        interestRateMeta: {
+          ratePercent: baseInterestRate.ratePercent,
+          referencePeriod: baseInterestRate.referencePeriod,
+          checkedAt: baseInterestRate.checkedAt,
+          daysSinceChecked: baseInterestRate.daysSinceChecked,
+          isStale: baseInterestRate.isStale,
+        },
       });
     });
 

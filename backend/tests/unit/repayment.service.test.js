@@ -3,6 +3,7 @@ const {
   calculateRepaymentSchedule,
   calculatePrincipalFromAnnualPayment,
   calculateGraduatedRepaymentSchedule,
+  calculateAmortizationSchedule,
 } = require('../../src/services/repayment.service');
 
 describe('calculateMonthlyPayment', () => {
@@ -129,5 +130,63 @@ describe('calculateGraduatedRepaymentSchedule', () => {
 
     expect(result.initialMonthlyPayment).toBe(result.tiers[0].monthlyPayment);
     expect(result.finalMonthlyPayment).toBe(result.tiers[result.tiers.length - 1].monthlyPayment);
+  });
+});
+
+describe('calculateAmortizationSchedule', () => {
+  it('거치기간이 0이면 1개월차부터 원리금균등상환이 시작된다', () => {
+    const result = calculateAmortizationSchedule({
+      principal: 30000,
+      annualInterestRate: 0.04,
+      years: 10,
+      graceMonths: 0,
+    });
+
+    expect(result.rows).toHaveLength(120);
+    expect(result.rows[0].payment).toBeCloseTo(result.regularMonthlyPayment, 8);
+    expect(result.cliffMonth).toBe(1);
+    expect(result.cliffIncrease).toBeCloseTo(0, 8);
+  });
+
+  it('거치기간 동안은 이자만 납부하고, 거치 종료 후 원리금균등상환으로 전환되며 월부담이 증가한다', () => {
+    const result = calculateAmortizationSchedule({
+      principal: 30000,
+      annualInterestRate: 0.04,
+      years: 10,
+      graceMonths: 12,
+    });
+
+    expect(result.rows).toHaveLength(132);
+    const monthlyRate = 0.04 / 12;
+    expect(result.rows[0].interest).toBeCloseTo(30000 * monthlyRate, 8);
+    expect(result.rows[0].principal).toBe(0);
+    expect(result.rows[11].balance).toBeCloseTo(30000, 8);
+
+    expect(result.cliffMonth).toBe(13);
+    expect(result.postCliffMonthlyPayment).toBeCloseTo(result.regularMonthlyPayment, 8);
+    expect(result.cliffIncrease).toBeGreaterThan(0);
+  });
+
+  it('마지막 회차 잔액은 0에 수렴한다', () => {
+    const result = calculateAmortizationSchedule({
+      principal: 30000,
+      annualInterestRate: 0.04,
+      years: 10,
+      graceMonths: 0,
+    });
+
+    expect(result.endBalance).toBeCloseTo(0, 4);
+    expect(result.rows[result.rows.length - 1].balance).toBeCloseTo(0, 4);
+  });
+
+  it('누적 원금 상환액은 원금과 근사 일치한다', () => {
+    const result = calculateAmortizationSchedule({
+      principal: 30000,
+      annualInterestRate: 0.04,
+      years: 10,
+      graceMonths: 0,
+    });
+
+    expect(result.totalPrincipal).toBeCloseTo(30000, 2);
   });
 });

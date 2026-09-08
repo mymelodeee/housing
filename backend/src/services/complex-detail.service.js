@@ -11,6 +11,12 @@ const remodelingService = require('./remodeling.service');
 const remodelingRepository = require('../repositories/remodeling.repository');
 const developmentProjectsService = require('./development-projects.service');
 const academyService = require('./academy.service');
+const acquisitionTaxService = require('./acquisition-tax.service');
+const brokerageFeeService = require('./brokerage-fee.service');
+const stampDutyService = require('./stamp-duty.service');
+const repaymentService = require('./repayment.service');
+const holdingTaxService = require('./holding-tax.service');
+const marketInterestRateService = require('./market-interest-rate.service');
 
 const POLICY_MORTGAGE_NOTICE = '디딤돌대출·보금자리론 등 정책모기지는 계산 범위에서 제외되며, 필요 시 한국주택금융공사·주택도시기금 채널에서 별도 확인이 필요합니다.';
 const LOOKUP_WINDOW_NOTE = '실시간 연동 특성상 최근 3년(36개월) 범위만 조회합니다';
@@ -204,13 +210,15 @@ async function getRegulation(complexId, { salePrice } = {}) {
     if (effectiveSalePrice === null) {
       profileMessage = '매매가 입력 필요';
     } else {
+      const interestRate = await marketInterestRateService.getCurrentRate();
       const loanLimit = loanLimitService.calculateMaxLoanAmount({
         salePrice: effectiveSalePrice,
         housingOwnershipTier: profile.housingOwnershipTier,
         isFirstTimeBuyer: profile.isFirstTimeBuyer,
         isRegulatedArea: effectiveIsRegulatedAreaForLoan,
         annualIncome: profile.annualIncome,
-        annualBonus: profile.annualBonus
+        annualBonus: profile.annualBonus,
+        annualInterestRate: interestRate.ratePercent / 100
       });
       ltvPercent = loanLimit.ltvPercent;
       maxLoanAmount = loanLimit.maxLoanAmount;
@@ -278,13 +286,17 @@ async function getLoanSimulation(complexId, { salePrice } = {}) {
   const regulationConfirmationNeeded = complexRow.is_land_transaction_permission_zone === null;
   const effectiveIsRegulatedAreaForLoan = regulationConfirmationNeeded ? false : complexRow.is_regulated_area;
 
+  const interestRate = await marketInterestRateService.getCurrentRate();
+
   const scenarios = loanScenarioService.buildScenarios({
     salePrice: resolved.effectiveSalePrice,
     isRegulatedArea: effectiveIsRegulatedAreaForLoan,
     annualIncome: profile.annualIncome,
     annualBonus: profile.annualBonus,
     availableCapital: profile.availableCapital,
-    isLandTransactionPermissionZone: complexRow.is_land_transaction_permission_zone
+    isLandTransactionPermissionZone: complexRow.is_land_transaction_permission_zone,
+    annualInterestRate: interestRate.ratePercent / 100,
+    interestRateSource: interestRate.sourceLabel
   });
   const recommendedScenario = loanScenarioService.selectRecommendedScenario(scenarios);
 
@@ -296,7 +308,167 @@ async function getLoanSimulation(complexId, { salePrice } = {}) {
     policyMortgageNotice: POLICY_MORTGAGE_NOTICE,
     effectiveSalePrice: resolved.effectiveSalePrice,
     salePriceSource: resolved.salePriceSource,
-    referenceTransactionDate: resolved.referenceTransactionDate
+    referenceTransactionDate: resolved.referenceTransactionDate,
+    interestRateMeta: {
+      ratePercent: interestRate.ratePercent,
+      referencePeriod: interestRate.referencePeriod,
+      checkedAt: interestRate.checkedAt,
+      daysSinceChecked: interestRate.daysSinceChecked,
+      isStale: interestRate.isStale
+    }
+  };
+}
+
+// 세대 주택 보유 구분(무주택/1주택/다주택)만으로는 취득세 계산에 필요한 정확한 취득 후
+// 주택 수를 알 수 없어(다주택이 2채인지 3채 이상인지 구분 불가), 안전한 하한값을 기본값으로
+// 쓰고 query parameter(homeCount)로 사용자가 직접 조정할 수 있게 한다.
+const DEFAULT_HOME_COUNT_AFTER_PURCHASE = { 무주택: 1, '1주택': 2, 다주택: 3 };
+const DEFAULT_EXCLUSIVE_AREA = 85;
+
+function resolveDefaultHomeCountAfterPurchase(housingOwnershipTier) {
+  return DEFAULT_HOME_COUNT_AFTER_PURCHASE[housingOwnershipTier] || 1;
+}
+
+async function getAcquisitionCosts(complexId, { salePrice, exclusiveArea, homeCount, isHeavyTaxExempt, negotiatedRatePercent, buyerStampDutySharePercent } = {}) {
+  const complexRow = await apartmentComplexesRepository.findById(complexId);
+  if (!complexRow) return null;
+
+  const { effectiveSalePrice, salePriceSource, referenceTransactionDate } = await resolveEffectiveSalePrice(complexId, salePrice);
+
+  if (effectiveSalePrice === null) {
+    return {
+      complexId,
+      effectiveSalePrice: null,
+      salePriceSource: null,
+      referenceTransactionDate: null,
+      message: '매매가 입력 필요'
+    };
+  }
+
+  const profile = await userProfileService.getProfile();
+  const effectiveHomeCount = typeof homeCount === 'number' ? homeCount : resolveDefaultHomeCountAfterPurchase(profile.housingOwnershipTier);
+  const effectiveExclusiveArea = typeof exclusiveArea === 'number' ? exclusiveArea : DEFAULT_EXCLUSIVE_AREA;
+
+  const acquisition = acquisitionTaxService.calculateAcquisitionCosts({
+    salePrice: effectiveSalePrice,
+    isRegulatedArea: complexRow.is_regulated_area,
+    homeCountAfterPurchase: effectiveHomeCount,
+    exclusiveArea: effectiveExclusiveArea,
+    isHeavyTaxExempt: Boolean(isHeavyTaxExempt)
+  });
+  const brokerage = brokerageFeeService.calculateSaleBrokerageFee({ salePrice: effectiveSalePrice, negotiatedRatePercent });
+  const stampDutyAmount = stampDutyService.calculateBuyerStampDuty({
+    salePrice: effectiveSalePrice,
+    buyerSharePercent: typeof buyerStampDutySharePercent === 'number' ? buyerStampDutySharePercent : 100
+  });
+
+  return {
+    complexId,
+    effectiveSalePrice,
+    salePriceSource,
+    referenceTransactionDate,
+    homeCountAfterPurchase: effectiveHomeCount,
+    exclusiveArea: effectiveExclusiveArea,
+    acquisitionTax: {
+      amount: acquisition.acquisitionTax,
+      ratePercent: acquisition.acquisitionTaxRate * 100,
+      isHeavyTaxRate: acquisition.isHeavyTaxRate,
+      rateLabel: acquisition.rateLabel
+    },
+    localEducationTax: { amount: acquisition.localEducationTax, ratePercent: acquisition.localEducationTaxRate * 100 },
+    ruralSpecialTax: { amount: acquisition.ruralSpecialTax, ratePercent: acquisition.ruralSpecialTaxRate * 100 },
+    brokerageFee: {
+      amount: brokerage.totalFee,
+      appliedRatePercent: brokerage.appliedRatePercent,
+      capRatePercent: brokerage.capRatePercent,
+      isCapped: brokerage.isCapped,
+      // 표시 금액은 VAT 미포함(법정 상한액 자체에는 부가가치세가 포함되지 않으며, 개업
+      // 공인중개사가 일반과세자면 별도로 10%를 추가 청구할 수 있다 — 법제처 유권해석).
+      vatIncluded: false,
+      estimateType: 'ESTIMATE'
+    },
+    stampDuty: { amount: stampDutyAmount },
+    totalCost: acquisition.totalTax + brokerage.totalFee + stampDutyAmount
+  };
+}
+
+async function getLoanSchedule(complexId, { principal, interestRatePercent, graceMonths, years } = {}) {
+  const complexRow = await apartmentComplexesRepository.findById(complexId);
+  if (!complexRow) return null;
+
+  if (typeof principal !== 'number' || typeof interestRatePercent !== 'number') {
+    return { complexId, schedule: null, message: '원금과 금리 입력 필요' };
+  }
+
+  const effectiveGraceMonths = typeof graceMonths === 'number' ? graceMonths : 0;
+  const effectiveYears = typeof years === 'number' ? years : 30;
+
+  const schedule = repaymentService.calculateAmortizationSchedule({
+    principal,
+    annualInterestRate: interestRatePercent / 100,
+    years: effectiveYears,
+    graceMonths: effectiveGraceMonths
+  });
+
+  return {
+    complexId,
+    principal,
+    interestRatePercent,
+    years: effectiveYears,
+    graceMonths: effectiveGraceMonths,
+    ...schedule
+  };
+}
+
+const DEFAULT_PUBLIC_PRICE_RATIO_PERCENT = 70;
+
+async function getHoldingTaxEstimate(complexId, { salePrice, publicPrice, publicRatio, homeCount, includeUrbanAreaTax } = {}) {
+  const complexRow = await apartmentComplexesRepository.findById(complexId);
+  if (!complexRow) return null;
+
+  const { effectiveSalePrice, salePriceSource, referenceTransactionDate } = await resolveEffectiveSalePrice(complexId, salePrice);
+
+  const profile = await userProfileService.getProfile();
+  const effectiveHomeCount = typeof homeCount === 'number' ? homeCount : resolveDefaultHomeCountAfterPurchase(profile.housingOwnershipTier);
+
+  let effectivePublicPrice = typeof publicPrice === 'number' ? publicPrice : null;
+  let publicPriceSource = effectivePublicPrice !== null ? 'user' : null;
+
+  if (effectivePublicPrice === null) {
+    if (effectiveSalePrice === null) {
+      return {
+        complexId,
+        effectiveSalePrice: null,
+        salePriceSource: null,
+        referenceTransactionDate: null,
+        publicPrice: null,
+        publicPriceSource: null,
+        message: '매매가 또는 공시가격 입력 필요'
+      };
+    }
+    const ratio = typeof publicRatio === 'number' ? publicRatio : DEFAULT_PUBLIC_PRICE_RATIO_PERCENT;
+    effectivePublicPrice = Math.round(effectiveSalePrice * (ratio / 100));
+    publicPriceSource = 'estimated';
+  }
+
+  const estimate = holdingTaxService.calculateHoldingTaxEstimate({
+    publicPrice: effectivePublicPrice,
+    homeCount: effectiveHomeCount,
+    includeUrbanAreaTax: Boolean(includeUrbanAreaTax)
+  });
+
+  return {
+    complexId,
+    effectiveSalePrice,
+    salePriceSource,
+    referenceTransactionDate,
+    publicPrice: effectivePublicPrice,
+    publicPriceSource,
+    homeCountAfterPurchase: effectiveHomeCount,
+    isOneHouse: estimate.isOneHouse,
+    propertyTax: estimate.propertyTax,
+    comprehensiveTax: { ...estimate.comprehensiveTax, estimateType: 'ESTIMATE' },
+    totalAnnualHoldingTax: estimate.totalAnnualHoldingTax
   };
 }
 
@@ -307,5 +479,8 @@ module.exports = {
   getRemodeling,
   getDevelopmentProjects,
   getRegulation,
-  getLoanSimulation
+  getLoanSimulation,
+  getAcquisitionCosts,
+  getLoanSchedule,
+  getHoldingTaxEstimate
 };

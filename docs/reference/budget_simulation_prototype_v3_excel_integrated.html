@@ -1,0 +1,984 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>주택 매수 자금 시뮬레이션 v3 · Excel 기능 통합</title>
+<style>
+:root{
+  --bg:#f4f6fa;--panel:#fff;--text:#172033;--muted:#667085;--line:#dce2eb;
+  --soft:#f7f9fc;--blue:#245df5;--blue2:#1748c9;--green:#087443;--greenbg:#e9f7ef;
+  --amber:#945700;--amberbg:#fff4dc;--red:#b42318;--redbg:#feeceb;--graybg:#f2f4f7;
+  --shadow:0 10px 32px rgba(16,24,40,.07);--r:16px;
+}
+*{box-sizing:border-box} html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.45}
+button,input,select{font:inherit} button{cursor:pointer}
+.top{position:sticky;top:0;z-index:40;background:rgba(255,255,255,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.topin{max-width:1480px;margin:auto;padding:13px 18px;display:flex;gap:14px;align-items:center;justify-content:space-between}
+.brand{font-weight:900}.brand small{display:block;font-weight:500;color:var(--muted);font-size:12px}
+.tools,.tabs,.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:9px 12px;font-weight:750;color:var(--text)}
+.btn:hover{background:#f8fafc}.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}.btn.primary:hover{background:var(--blue2)}
+.btn.danger{color:var(--red)}
+.tabs{background:#eef2f7;border-radius:11px;padding:4px}.tab{border:0;background:transparent;border-radius:8px;padding:8px 12px;font-weight:800;color:var(--muted)}
+.tab.active{background:#fff;color:var(--text);box-shadow:0 1px 3px rgba(16,24,40,.08)}
+.wrap{max-width:1480px;margin:auto;padding:20px 18px 70px}
+.notice{border:1px solid #efdaa1;background:#fff9e9;color:#624d10;padding:13px 15px;border-radius:13px;font-size:13px;margin-bottom:17px}
+.workspace{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(355px,.8fr);gap:18px;align-items:start}
+.stack{display:flex;flex-direction:column;gap:15px}
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
+.ch{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:17px 19px;border-bottom:1px solid var(--line)}
+.ch h2,.ch h3{margin:0;font-size:18px}.cb{padding:18px 19px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.field{display:flex;flex-direction:column;gap:5px}.field label{font-size:13px;font-weight:800}.field small,.subtle{font-size:12px;color:var(--muted)}
+input,select{width:100%;border:1px solid #cdd5e1;border-radius:9px;background:#fff;padding:9px 10px;outline:none;color:var(--text)}
+input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(36,93,245,.11)}
+input[type=checkbox]{width:auto}.check{display:flex;align-items:center;gap:8px;padding:8px 0;font-size:13px;font-weight:700}
+.money{position:relative}.money:after{content:"원";position:absolute;right:10px;top:36px;font-size:12px;color:var(--muted);pointer-events:none}.money input{padding-right:31px}
+.details-title{font-weight:900;margin:3px 0 11px}
+details{border:1px solid var(--line);border-radius:12px;background:#fbfcfe}details+details{margin-top:10px}
+summary{cursor:pointer;padding:12px 13px;font-weight:850}.inside{padding:0 13px 13px}
+.hint{background:#f7f9fc;border-radius:10px;padding:10px 11px;color:var(--muted);font-size:12px;margin-top:10px}
+.pill{display:inline-flex;padding:5px 8px;border-radius:999px;font-size:11px;font-weight:900}
+.pill.ok{background:var(--greenbg);color:var(--green)}.pill.warn{background:var(--amberbg);color:var(--amber)}.pill.bad{background:var(--redbg);color:var(--red)}.pill.unknown{background:var(--graybg);color:#475467}
+.summary{position:sticky;top:78px}
+.verdict{padding:16px;border-radius:13px;background:var(--graybg);margin-bottom:12px}.verdict.ok{background:var(--greenbg)}.verdict.warn{background:var(--amberbg)}.verdict.bad{background:var(--redbg)}
+.big{font-size:24px;font-weight:950;margin:6px 0 3px}
+.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.metric{border:1px solid var(--line);border-radius:11px;padding:11px;background:#fff}.metric .lab{color:var(--muted);font-size:11px;font-weight:800}.metric .val{font-size:17px;font-weight:950;margin-top:3px}.metric .note{color:var(--muted);font-size:11px;margin-top:3px}
+.issues{display:flex;flex-direction:column;gap:7px;margin-top:12px}.issue{border:1px solid var(--line);background:#fff;border-radius:9px;padding:9px 10px;font-size:12px}
+.scens{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}.scen{border:1px solid var(--line);border-radius:11px;padding:10px;background:#fff}.scen.active{border-color:var(--blue);box-shadow:0 0 0 2px rgba(36,93,245,.08)}
+.scen button{border:0;background:transparent;padding:0;width:100%;text-align:left;color:inherit}.scen .name{font-size:12px;font-weight:850}.scen .v{font-size:16px;font-weight:950;margin-top:4px}
+.tablebox{overflow:auto;border:1px solid var(--line);border-radius:11px}table{width:100%;min-width:760px;border-collapse:collapse;background:#fff}
+th,td{padding:9px 10px;border-bottom:1px solid var(--line);font-size:12px;text-align:right;white-space:nowrap}th:first-child,td:first-child{text-align:left}th{background:#f7f9fc;color:#475467}
+.hidden{display:none!important}.save{font-size:11px;color:var(--muted);font-weight:750}
+#results{display:none}body.results #input{display:none}body.results #results{display:block}body.results .workspace{grid-template-columns:1fr}body.results #side{display:none}
+.modal{position:fixed;inset:0;background:rgba(16,24,40,.45);z-index:100;display:flex;align-items:center;justify-content:center;padding:18px}.modalbox{width:min(520px,100%);background:#fff;border-radius:16px;padding:20px;box-shadow:0 30px 80px rgba(16,24,40,.25)}.modalbox h2{margin-top:0}
+.rulebox{border-left:3px solid #98a2b3;padding-left:11px;margin:9px 0;font-size:12px;color:#475467}
+@media(max-width:1050px){.workspace{grid-template-columns:1fr}.summary{position:static}.grid4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.topin{flex-direction:column;align-items:flex-start}.tools,.tabs{width:100%}.tools .btn,.tab{flex:1}.wrap{padding-left:11px;padding-right:11px}.grid2,.grid3,.grid4,.metrics,.scens{grid-template-columns:1fr}.cb,.ch{padding:14px}}
+@media print{body{background:#fff}.top,.notice,#input,#side,.noprint{display:none!important}#results{display:block!important}.wrap{max-width:none;padding:0}.card{box-shadow:none;break-inside:avoid}.tablebox{overflow:visible}table{min-width:0}}
+
+/* v3: Excel 기능 통합 UI */
+.resultnav{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px;background:#e9edf5;padding:5px;border-radius:12px;position:sticky;top:78px;z-index:20}
+.rtab{border:0;background:transparent;color:var(--muted);font-weight:850;padding:9px 13px;border-radius:8px}.rtab.active{background:#fff;color:var(--text);box-shadow:0 1px 4px rgba(16,24,40,.12)}
+.subpanel{display:none}.subpanel.active{display:block}
+.quick-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.sliderbox{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fbfcfe}.slider-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px}.slider-head strong{font-size:13px}.slider-value{font-size:13px;font-weight:900;color:var(--blue)}
+input[type=range]{padding:0;border:0;box-shadow:none;accent-color:var(--blue)}input[type=range]:focus{box-shadow:none}
+.kpi5{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}.kpi3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.heat td{font-weight:800}.heatpos{background:#e7f6ed;color:#08643d}.heatneg{background:#fdebea;color:#9f1c13}.heatzero{background:#f2f4f7;color:#475467}
+.sectionbar{font-size:13px;font-weight:900;margin:14px 0 8px;padding:8px 10px;border-radius:9px;background:#eef2f7}
+.source-links a{color:var(--blue);text-decoration:none}.source-links a:hover{text-decoration:underline}
+.live-strip{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:12px}.live-strip .metric{background:#f9fbff}
+@media(max-width:1050px){.kpi5,.live-strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.quick-grid,.kpi5,.kpi3,.live-strip{grid-template-columns:1fr}.resultnav{top:134px}}
+@media print{.resultnav{display:none!important}.subpanel{display:block!important;margin-bottom:18px}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="topin">
+    <div class="brand">주택 매수 자금 시뮬레이션 v3<small>Excel 기능 통합 · 2026-09-08 기준 규정 · 단일 HTML</small></div>
+    <div class="tabs">
+      <button class="tab active" id="tabInput" type="button">입력</button>
+      <button class="tab" id="tabResult" type="button">결과·비교</button>
+    </div>
+    <div class="tools">
+      <span class="save" id="saveState">저장 준비</span>
+      <button class="btn" id="csvBtn" type="button">CSV</button>
+      <button class="btn" id="printBtn" type="button">인쇄/PDF</button>
+      <button class="btn danger" id="resetBtn" type="button">초기화</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="notice">
+    <strong>계산 기준:</strong> 2026년 9월 8일 현재 확인 가능한 법령·금융당국 기준을 반영합니다.
+    취득세·재산세·LTV·DSR·매매·임대차 중개보수 상한을 자동 계산하고, 업로드된 Excel의 대출스케줄·민감도·ROI·전세리스크 기능을 함께 제공합니다.
+    다만 실제 세액·대출한도는 예외규정, 금융회사 심사, 주택수 판정, 공시가격, 면적, 계약시점 등에 따라 달라질 수 있습니다.
+    미래 연도는 아래의 “2026 규정 고정 적용”을 선택한 경우에만 현재 규정을 그대로 연장하여 시뮬레이션합니다.
+  </div>
+
+  <section id="input" class="workspace">
+    <div class="stack">
+      <article class="card">
+        <div class="ch"><h2>1. 기본 조건</h2><span class="pill ok">자동 계산</span></div>
+        <div class="cb">
+          <div class="grid2">
+            <div class="field money"><label>초기 현금</label><input id="initialCash" type="number" min="0" step="1000000" value="300000000"></div>
+            <div class="field"><label>규정 기준일</label><input id="asOfDate" type="date" value="2026-09-08"></div>
+            <div class="field"><label>보유기간</label><select id="holdingMonths"><option value="36">3년</option><option value="60" selected>5년</option><option value="84">7년</option><option value="120">10년</option></select></div>
+            <div class="field"><label>평가일</label><input id="horizonDate" readonly></div>
+          </div>
+          <label class="check"><input id="freeze2026" type="checkbox" checked> 2026년 9월 8일 세법·대출규정을 이후 보유기간에도 고정 적용하여 추정</label>
+          <div class="hint">미래 세법은 확정되지 않았습니다. 체크를 끄면 2027년 이후 보유세는 UNKNOWN으로 남기고 2026년분만 계산합니다.</div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="ch"><h2>빠른 조정 · Live Slider</h2><span class="subtle">숫자 입력과 같은 모델을 사용하므로 결과가 즉시 동기화됩니다.</span></div>
+        <div class="cb">
+          <div id="quickTuner" class="quick-grid"></div>
+          <div class="live-strip">
+            <div class="metric"><div class="lab">Funding Gap</div><div class="val" id="qGap">0원</div></div>
+            <div class="metric"><div class="lab">거치 중 월부담</div><div class="val" id="qGrace">0원</div></div>
+            <div class="metric"><div class="lab">거치 종료 후</div><div class="val" id="qAfter">0원</div></div>
+            <div class="metric"><div class="lab">상환 절벽 증가폭</div><div class="val" id="qCliff">0원</div></div>
+            <div class="metric"><div class="lab">선택 Scenario ROI</div><div class="val" id="qRoi">0%</div></div>
+          </div>
+          <div class="hint">슬라이더는 빠른 가정 변경용입니다. 세금·LTV·DSR·Funding 계산은 아래의 상세 입력과 동일한 v2 계산 엔진을 그대로 사용합니다.</div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="ch"><h2>2. Person / 세대</h2><button class="btn" id="toggleP2" type="button">Person 2 추가</button></div>
+        <div class="cb">
+          <div class="details-title">Person 1</div>
+          <div class="grid2">
+            <div class="field money"><label>인정 연소득</label><input id="p1Income" type="number" min="0" step="1000000" value="90000000"></div>
+            <div class="field money"><label>기존 연간 원리금 상환액</label><input id="p1Debt" type="number" min="0" step="100000" value="0"></div>
+            <div class="field"><label>기존 주택 수</label><input id="p1Homes" type="number" min="0" step="1" value="0"></div>
+            <div class="field money"><label>기존 보유주택 공시가격 합계</label><input id="p1OfficialSum" type="number" min="0" step="1000000" value="0"><small>종부세 합산 추정용. 기존 주택이 없으면 0</small></div>
+          </div>
+          <div id="p2box" class="hidden" style="margin-top:18px">
+            <div class="details-title">Person 2</div>
+            <div class="grid2">
+              <div class="field money"><label>인정 연소득</label><input id="p2Income" type="number" min="0" step="1000000" value="70000000"></div>
+              <div class="field money"><label>기존 연간 원리금 상환액</label><input id="p2Debt" type="number" min="0" step="100000" value="0"></div>
+              <div class="field"><label>기존 주택 수</label><input id="p2Homes" type="number" min="0" step="1" value="0"></div>
+              <div class="field money"><label>기존 보유주택 공시가격 합계</label><input id="p2OfficialSum" type="number" min="0" step="1000000" value="0"></div>
+              <div class="field"><label>혼인신고 상태</label><select id="marital"><option value="NOT_REGISTERED">미신고 / 별도 세대 가정</option><option value="REGISTERED">신고 / 같은 세대 가정</option></select></div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <div id="units"></div>
+
+      <article class="card noprint"><div class="cb"><button class="btn primary" id="addUnit" type="button">두 번째 Purchase Unit 추가</button></div></article>
+
+      <article class="card">
+        <div class="ch"><h2>4. Scenario 가정</h2><span class="subtle">시장전망이 아닌 비교 입력값</span></div>
+        <div class="cb">
+          <div class="grid3">
+            <div class="field"><label>상승 연환산율 (%)</label><input id="rateUp" type="number" step="0.1" value="4"></div>
+            <div class="field"><label>보합 연환산율 (%)</label><input id="rateFlat" type="number" step="0.1" value="0"></div>
+            <div class="field"><label>하락 연환산율 (%)</label><input id="rateDown" type="number" step="0.1" value="-4"></div>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <aside class="summary card" id="side">
+      <div class="ch"><h2>Live Summary</h2><span class="subtle" id="calcState">완료</span></div>
+      <div class="cb">
+        <div class="verdict" id="verdict">
+          <span class="pill unknown" id="vPill">계산 중</span>
+          <div class="big" id="vText">계산 중</div>
+          <div class="subtle" id="bottleneck"></div>
+        </div>
+        <div class="metrics">
+          <div class="metric"><div class="lab">총 초기 부대비용</div><div class="val" id="mAnc">0원</div><div class="note">취득세·교육세·농특세·중개보수·인지세·기타</div></div>
+          <div class="metric"><div class="lab">예상 허용 대출</div><div class="val" id="mLoan">0원</div><div class="note">LTV·DSR·주담대 총액한도 중 최소</div></div>
+          <div class="metric"><div class="lab">월 원리금</div><div class="val" id="mMonthly">0원</div></div>
+          <div class="metric"><div class="lab">Peak Funding Gap</div><div class="val" id="mGap">0원</div></div>
+          <div class="metric"><div class="lab">누적 보유세 추정</div><div class="val" id="mHolding">0원</div><div class="note">재산세 + 지방교육세 + 선택 도시지역분 + 간이 종부세</div></div>
+          <div class="metric"><div class="lab">예상 순자산</div><div class="val" id="mEquity">0원</div><div class="note" id="eqNote">보합</div></div>
+        </div>
+        <div class="scens" id="scenMini"></div>
+        <div class="issues" id="issueMini"></div>
+        <button class="btn primary" id="viewResults" style="width:100%;margin-top:13px" type="button">상세 결과 보기</button>
+      </div>
+    </aside>
+  </section>
+
+  <section id="results">
+    <div class="resultnav noprint">
+      <button class="rtab active" data-rpanel="overview" type="button">요약·Scenario</button>
+      <button class="rtab" data-rpanel="loan" type="button">대출·현금흐름</button>
+      <button class="rtab" data-rpanel="sensitivity" type="button">민감도·규제</button>
+    </div>
+    <div id="resultOverview" class="subpanel active">
+    <div class="stack">
+      <article class="card">
+        <div class="ch"><h2>결과 요약</h2><button class="btn noprint" id="backBtn" type="button">입력 조정</button></div>
+        <div class="cb"><div id="resultVerdict" class="verdict"></div><div id="resultMetrics" class="metrics"></div></div>
+      </article>
+
+      <article class="card">
+        <div class="ch"><h2>Scenario 비교</h2><span id="resultHorizon" class="subtle"></span></div>
+        <div class="cb" id="scenarioResults"></div>
+      </article>
+
+      <article class="card">
+        <div class="ch"><h2>Excel 호환 현금투입·손익 View</h2><span class="subtle">v2 순자산 계산은 유지하고 별도 보조지표로 계산</span></div>
+        <div class="cb" id="excelScenarioResults"></div>
+      </article>
+
+      <article class="card">
+        <div class="ch"><h2>Purchase Unit별 상세 계산</h2></div>
+        <div class="cb" id="unitResults"></div>
+      </article>
+
+      <article class="card">
+        <div class="ch"><h2>연도별 보유세 추정</h2></div>
+        <div class="cb">
+          <div class="tablebox"><table>
+            <thead><tr><th>연도</th><th>재산세</th><th>재산세 지방교육세</th><th>도시지역분</th><th>기타 보유세</th><th>간이 종부세</th><th>종부세 농특세</th><th>합계</th></tr></thead>
+            <tbody id="holdingRows"></tbody>
+          </table></div>
+          <div class="hint">종부세는 기본공제·공정시장가액비율·누진세율을 적용한 간이 본세 추정입니다. 실제 신고세액에 필요한 재산세 상당액 공제, 세부 세액공제·세부담상한 등은 이 버전에서 제외합니다.</div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="ch"><h2>Funding Timeline</h2></div>
+        <div class="cb"><div class="tablebox"><table>
+          <thead><tr><th>일자</th><th>이벤트</th><th>대상</th><th>유입/유출</th><th>현금잔액</th></tr></thead>
+          <tbody id="fundingRows"></tbody>
+        </table></div></div>
+      </article>
+
+      <article class="card">
+        <div class="ch"><h2>적용 규정 / 제한사항</h2></div>
+        <div class="cb" id="rules"></div>
+      </article>
+    </div>
+    </div>
+
+    <div id="resultLoan" class="subpanel">
+      <div class="stack">
+        <article class="card"><div class="ch"><h2>초기 포지션 · 레버리지</h2></div><div class="cb" id="positionMetrics"></div></article>
+        <article class="card"><div class="ch"><h2>월 상환 부담</h2><span class="subtle">거치기간 이자만 납부 → 원리금균등 전환</span></div><div class="cb" id="loanBurden"></div></article>
+        <article class="card"><div class="ch"><h2>월별 대출 스케줄</h2><span class="subtle" id="loanScheduleCaption"></span></div><div class="cb"><div class="tablebox"><table id="loanScheduleTable"></table></div></div></article>
+      </div>
+    </div>
+
+    <div id="resultSensitivity" class="subpanel">
+      <div class="stack">
+        <article class="card"><div class="ch"><h2>금리 × 시장변동률 민감도</h2><span class="subtle">셀 값: Excel 호환 순손익</span></div><div class="cb" id="sensitivityMatrix"></div></article>
+        <article class="card"><div class="ch"><h2>금리별 월 부담</h2></div><div class="cb" id="rateSensitivity"></div></article>
+        <article class="card"><div class="ch"><h2>전세가율별 자금·담보 여력</h2></div><div class="cb" id="leaseSensitivity"></div></article>
+        <article class="card"><div class="ch"><h2>규제·전세 리스크 체크</h2></div><div class="cb" id="regulationChecks"></div></article>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="modal hidden" id="restore">
+  <div class="modalbox">
+    <h2>이전 입력 복원</h2>
+    <p>브라우저 Local Storage에 저장된 이전 입력이 있습니다. v2 입력도 자동 마이그레이션합니다.</p>
+    <div class="row"><button class="btn primary" id="restoreYes">복원</button><button class="btn" id="restoreNo">새로 시작</button></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const KEY="budget_simulation_html_v3_20260908";
+const OLD_KEY="budget_simulation_html_v2_20260908";
+const LAW_DATE="2026-09-08";
+
+const LAW={
+  ltv:{regulated:.40,nonregulated:.70,source:"금융위원회 2026-08-13"},
+  dsr:{bank:.40,nonbank:.50,source:"금융위원회 2026-08-13"},
+  stress:{metroReg:.030,localNonReg:.0075,source:"금융위원회 스트레스 DSR"},
+  compFMV:.60,
+  propertyGeneralFMV:.60,
+  brokerSource:"공인중개사법 시행규칙 별표 1",
+  taxSource:"지방세법 제11조·제13조의2·제151조",
+  propSource:"지방세법 제110조·제111조·제111조의2, 지방세법 시행령 제109조",
+  roomDeduction:{SEOUL:55000000,CONGESTED:48000000,METRO_CITY:28000000,OTHER:25000000},
+  hug:{collateralRatio:.90,seniorMaxRatio:.60}
+};
+
+let model={
+  person2:false,
+  units:[{
+    id:1,type:"GENERAL",purpose:"OWNER_OCCUPIED",owner:"P1",
+    locationScope:"METRO",regulated:false,price:800000000,kbPrice:0,appraisal:0,exclusiveArea:84.9,
+    contractDate:"2026-09-10",settlementDate:"2026-11-10",
+    taxHomeOverride:0,taxSurchargeException:false,
+    brokerMode:"CAP",brokerRate:0.4,brokerVat:false,stampBuyerShare:100,
+    legalFee:0,bondCost:0,otherInitial:0,loanInitialCost:0,leaseBrokerMode:"CAP",leaseBrokerRate:0.3,leaseBrokerVat:true,
+    publicPrice:0,publicRatio:70,publicGrowth:0,fmvAuto:true,fmvOverride:60,urbanArea:false,otherAnnualHolding:0,
+    requestedLoan:400000000,interest:4.0,loanDate:"2026-11-10",grace:0,amort:360,sector:"BANK",rateType:"VARIABLE",applyRoomDeduction:false,roomRegion:"SEOUL",maxClaimRatio:120,beta:1.0,
+    leaseType:"JEONSE",deposit:0,depositRatio:0,depositDate:"2026-11-10"
+  }],
+  selectedScenario:"flat"
+};
+let last=null,timer=null;
+const $=id=>document.getElementById(id);
+const N=v=>Number(v||0);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));
+function money(v){
+  if(!Number.isFinite(v))return"확인 필요";
+  const sign=v<0?"-":"";const n=Math.abs(Math.round(v));
+  if(n>=100000000){const x=n/100000000;return sign+(Number.isInteger(x)?x.toFixed(0):x.toFixed(2).replace(/0+$/,"").replace(/\.$/,""))+"억원";}
+  if(n>=10000)return sign+Math.round(n/10000).toLocaleString("ko-KR")+"만원";
+  return sign+n.toLocaleString("ko-KR")+"원";
+}
+const pct=v=>(v*100).toFixed(2).replace(/0+$/,"").replace(/\.$/,"")+"%";
+function addMonths(s,m){const d=new Date(s+"T00:00:00");if(isNaN(d))return"";const day=d.getDate();d.setDate(1);d.setMonth(d.getMonth()+Number(m));const last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();d.setDate(Math.min(day,last));return d.toISOString().slice(0,10)}
+function yearsBetween(a,b){const x=new Date(a+"T00:00:00"),y=new Date(b+"T00:00:00");return Math.max(0,(y-x)/(365.2425*86400000))}
+function pmt(P,annualPct,n){if(P<=0||n<=0)return 0;const r=annualPct/100/12;if(!r)return P/n;return P*r*Math.pow(1+r,n)/(Math.pow(1+r,n)-1)}
+function pvFromPayment(pay,annualPct,n){if(pay<=0||n<=0)return 0;const r=annualPct/100/12;if(!r)return pay*n;return pay*(Math.pow(1+r,n)-1)/(r*Math.pow(1+r,n))}
+function balance(P,annualPct,n,k){if(P<=0)return 0;k=clamp(Math.floor(k),0,n);const r=annualPct/100/12;if(!r)return Math.max(0,P*(1-k/n));const pay=pmt(P,annualPct,n);let b=P;for(let i=0;i<k;i++){const interest=b*r;b-=Math.min(b,pay-interest)}return Math.max(0,b)}
+
+function acqBaseRate(price){
+  if(price<=600000000)return .01;
+  if(price<=900000000){
+    // 지방세법 제11조: ((취득가액 × 2 / 3억원) - 3) × 1%
+    const percent=(price*2/300000000)-3;
+    return Math.round(percent*10000)/10000/100; // 법정 세율 %를 소수점 넷째자리까지
+  }
+  return .03;
+}
+function acquisitionRates(price,regulated,homeCount,exception){
+  if(exception)return{acq:acqBaseRate(price),heavy:false,label:"중과 예외 선택 → 기본세율"};
+  if((regulated&&homeCount>=3)||(!regulated&&homeCount>=4))return{acq:.12,heavy:true,label:"다주택 중과 12%"};
+  if((regulated&&homeCount>=2)||(!regulated&&homeCount>=3))return{acq:.08,heavy:true,label:"다주택 중과 8%"};
+  return{acq:acqBaseRate(price),heavy:false,label:"주택 유상취득 기본세율"};
+}
+function ruralRate(acqRate,heavy,area){
+  if(area<=85)return 0;
+  if(heavy&&Math.abs(acqRate-.12)<1e-9)return .01;
+  if(heavy&&Math.abs(acqRate-.08)<1e-9)return .006;
+  return .002;
+}
+function brokerageCap(price){
+  if(price<50000000)return{rate:.006,limit:250000};
+  if(price<200000000)return{rate:.005,limit:800000};
+  if(price<900000000)return{rate:.004,limit:Infinity};
+  if(price<1200000000)return{rate:.005,limit:Infinity};
+  if(price<1500000000)return{rate:.006,limit:Infinity};
+  return{rate:.007,limit:Infinity};
+}
+function leaseBrokerageCap(amount){
+  if(amount<50000000)return{rate:.005,limit:200000};
+  if(amount<100000000)return{rate:.004,limit:300000};
+  if(amount<600000000)return{rate:.003,limit:Infinity};
+  if(amount<1200000000)return{rate:.004,limit:Infinity};
+  if(amount<1500000000)return{rate:.005,limit:Infinity};
+  return{rate:.006,limit:Infinity};
+}
+function roomDeductionAmount(region){return LAW.roomDeduction[region]||0}
+function loanScheduleFor(result,months,overrideRatePct=null){
+  const P=result.allowed, rate=overrideRatePct==null?result.u.interest:overrideRatePct;
+  const grace=Math.max(0,Math.round(result.u.grace||0)), amort=Math.max(1,Math.round(result.u.amort||1));
+  const r=rate/100/12, regular=pmt(P,rate,amort);let bal=P,cumInterest=0,cumPrincipal=0;const rows=[];
+  for(let m=1;m<=months;m++){
+    const begin=bal;let interest=0,principal=0,payment=0;
+    if(bal>0&&m<=grace){interest=bal*r;payment=interest;}
+    else if(bal>0&&m<=grace+amort){interest=bal*r;payment=Math.min(regular,bal+interest);principal=Math.max(0,payment-interest);bal=Math.max(0,bal-principal);}
+    cumInterest+=interest;cumPrincipal+=principal;
+    rows.push({month:m,begin,interest,principal,payment,end:bal,cumInterest,cumPrincipal});
+  }
+  return{unitId:result.u.id,rate,grace,amort,regular,rows,endBalance:bal,cumInterest,cumPrincipal,
+    gracePayment:rows[0]?.payment||0,firstAmortPayment:rows[Math.min(grace,rows.length-1)]?.payment||0,cliffMonth:grace>0?grace+1:1};
+}
+function aggregateLoanSchedule(results,months,overrideRatePct=null){
+  const units=results.map(r=>loanScheduleFor(r,months,overrideRatePct));const rows=[];
+  for(let m=1;m<=months;m++){
+    let payment=0,interest=0,principal=0,balance=0;
+    const perUnit={};
+    for(const u of units){const row=u.rows[m-1];payment+=row.payment;interest+=row.interest;principal+=row.principal;balance+=row.end;perUnit[u.unitId]=row;}
+    rows.push({month:m,payment,interest,principal,balance,perUnit});
+  }
+  const cliffCandidates=units.filter(u=>u.grace>0).map(u=>u.cliffMonth);const cliffMonth=cliffCandidates.length?Math.min(...cliffCandidates):1;
+  const before=cliffMonth>1?(rows[cliffMonth-2]?.payment||0):0,after=rows[cliffMonth-1]?.payment||0;
+  return{units,rows,cumInterest:units.reduce((s,u)=>s+u.cumInterest,0),cumPrincipal:units.reduce((s,u)=>s+u.cumPrincipal,0),
+    endBalance:units.reduce((s,u)=>s+u.endBalance,0),cliffMonth,beforeCliff:before,afterCliff:after,cliffIncrease:after-before,
+    firstMonth:rows[0]?.payment||0};
+}
+function fmtX(v){return Number.isFinite(v)?v.toFixed(2).replace(/0+$/,'').replace(/\.$/,'')+'x':'확인 필요'}
+function stampDuty(price){
+  if(price<=10000000)return 0;
+  if(price<=30000000)return 20000;
+  if(price<=50000000)return 40000;
+  if(price<=100000000)return 70000;
+  if(price<=1000000000)return 150000;
+  return 350000;
+}
+function mortgageCap(price,applies){
+  if(!applies)return Infinity;
+  if(price<=1500000000)return 600000000;
+  if(price<=2500000000)return 400000000;
+  return 200000000;
+}
+function collateralValue(u){
+  if(u.kbPrice>0)return{value:u.kbPrice,label:"공신력 시세 입력"};
+  if(u.appraisal>0)return{value:u.appraisal,label:"감정가 입력"};
+  return{value:u.price,label:"매매가 대체"};
+}
+function propertyTaxCore(base,special){
+  if(special){
+    if(base<=60000000)return base*.0005;
+    if(base<=150000000)return 30000+(base-60000000)*.001;
+    if(base<=300000000)return 120000+(base-150000000)*.002;
+    return 420000+(base-300000000)*.0035;
+  }
+  if(base<=60000000)return base*.001;
+  if(base<=150000000)return 60000+(base-60000000)*.0015;
+  if(base<=300000000)return 195000+(base-150000000)*.0025;
+  return 570000+(base-300000000)*.004;
+}
+function autoPropertyFMV(publicPrice,oneHouse){
+  if(!oneHouse)return .60;
+  if(publicPrice<=300000000)return .43;
+  if(publicPrice<=600000000)return .44;
+  return .45;
+}
+function comprehensiveCore(base,homeCount){
+  const multi=homeCount>=3;
+  if(base<=300000000)return base*.005;
+  if(base<=600000000)return 1500000+(base-300000000)*.007;
+  if(base<=1200000000)return 3600000+(base-600000000)*.010;
+  if(!multi){
+    if(base<=2500000000)return 9600000+(base-1200000000)*.013;
+    if(base<=5000000000)return 26500000+(base-2500000000)*.015;
+    if(base<=9400000000)return 64000000+(base-5000000000)*.020;
+    return 152000000+(base-9400000000)*.027;
+  }else{
+    if(base<=2500000000)return 9600000+(base-1200000000)*.020;
+    if(base<=5000000000)return 35600000+(base-2500000000)*.030;
+    if(base<=9400000000)return 110600000+(base-5000000000)*.040;
+    return 286600000+(base-9400000000)*.050;
+  }
+}
+
+function globalData(){
+  return{
+    initialCash:N($("initialCash").value),asOfDate:$("asOfDate").value,holdingMonths:N($("holdingMonths").value),freeze:$("freeze2026").checked,
+    p1:{income:N($("p1Income").value),debt:N($("p1Debt").value),homes:N($("p1Homes").value),official:N($("p1OfficialSum").value)},
+    p2:model.person2?{income:N($("p2Income").value),debt:N($("p2Debt").value),homes:N($("p2Homes").value),official:N($("p2OfficialSum").value)}:null,
+    marital:model.person2?$("marital").value:null,
+    rates:{up:N($("rateUp").value)/100,flat:N($("rateFlat").value)/100,down:N($("rateDown").value)/100}
+  }
+}
+function person(owner,g){return owner==="P2"&&g.p2?g.p2:g.p1}
+function sameHousehold(a,b,g){
+  if(!model.person2)return true;
+  if(g.marital==="REGISTERED")return true;
+  return a===b;
+}
+function homeCountAfter(u,idx,g){
+  if(u.taxHomeOverride>0)return u.taxHomeOverride;
+  let c=0;
+  if(model.person2&&g.marital==="REGISTERED")c=g.p1.homes+(g.p2?.homes||0);
+  else c=person(u.owner,g).homes;
+  for(let i=0;i<idx;i++)if(sameHousehold(model.units[i].owner,u.owner,g))c++;
+  return c+1;
+}
+function publicPriceFor(u,year,asOfYear){
+  const base=u.publicPrice>0?u.publicPrice:u.price*(u.publicRatio/100);
+  return base*Math.pow(1+u.publicGrowth/100,year-asOfYear);
+}
+
+function calcUnit(u,idx,g,years){
+  const issues=[],rules=[];
+  const hc=homeCountAfter(u,idx,g);
+  const ar=acquisitionRates(u.price,u.regulated,hc,u.taxSurchargeException);
+  const rural=ruralRate(ar.acq,ar.heavy,u.exclusiveArea);
+  const edu=ar.heavy?.004:ar.acq*.10;
+  const acq=u.price*ar.acq, eduTax=u.price*edu, ruralTax=u.price*rural;
+
+  let deposit=0;
+  if(u.purpose==="INVESTMENT")deposit=u.deposit>0?u.deposit:u.price*(u.depositRatio/100);
+
+  const bc=brokerageCap(u.price);
+  let brokerRate=bc.rate;
+  if(u.brokerMode==="CUSTOM")brokerRate=Math.max(0,u.brokerRate/100);
+  let broker=Math.min(u.price*brokerRate,bc.limit);
+  if(u.brokerMode==="CUSTOM"&&brokerRate>bc.rate+1e-12){
+    issues.push({status:"WARN",unit:u.id,text:`입력 중개보수율 ${pct(brokerRate)}이 법정 상한 ${pct(bc.rate)}보다 높아 상한요율로 제한 계산함`});
+    broker=Math.min(u.price*bc.rate,bc.limit);brokerRate=bc.rate;
+  }
+  const brokerVat=u.brokerVat?broker*.10:0;
+
+  let leaseBrokerRate=0,leaseBroker=0,leaseBrokerVat=0;
+  if(u.purpose==="INVESTMENT"&&deposit>0){
+    const lc=leaseBrokerageCap(deposit);leaseBrokerRate=lc.rate;
+    if(u.leaseBrokerMode==="CUSTOM")leaseBrokerRate=Math.max(0,u.leaseBrokerRate/100);
+    if(u.leaseBrokerMode==="CUSTOM"&&leaseBrokerRate>lc.rate+1e-12){
+      issues.push({status:"WARN",unit:u.id,text:`임대차 중개보수율 ${pct(leaseBrokerRate)}이 법정 상한 ${pct(lc.rate)}보다 높아 상한으로 제한함`});leaseBrokerRate=lc.rate;
+    }
+    leaseBroker=Math.min(deposit*leaseBrokerRate,lc.limit);leaseBrokerVat=u.leaseBrokerVat?leaseBroker*.10:0;
+  }
+  const stamp=stampDuty(u.price)*(u.stampBuyerShare/100);
+  const ancillary=acq+eduTax+ruralTax+broker+brokerVat+leaseBroker+leaseBrokerVat+stamp+u.legalFee+u.bondCost+u.otherInitial+u.loanInitialCost;
+  rules.push("취득세","지방교육세","농어촌특별세","주택 매매·임대차 중개보수 상한","인지세");
+
+  const coll=collateralValue(u);
+  let ltvRatio=u.regulated?LAW.ltv.regulated:LAW.ltv.nonregulated;
+  const buyerExisting=model.person2&&g.marital==="REGISTERED"?g.p1.homes+(g.p2?.homes||0):person(u.owner,g).homes;
+  if(u.locationScope==="METRO"&&buyerExisting>=1)ltvRatio=0;
+  const roomDeduction=u.applyRoomDeduction?roomDeductionAmount(u.roomRegion):0;
+  let ltvAllowed=Math.max(0,coll.value*ltvRatio-roomDeduction);
+  const capApplies=u.locationScope==="METRO"||u.regulated;
+  const totalCap=mortgageCap(coll.value,capApplies);
+  ltvAllowed=Math.min(ltvAllowed,totalCap);
+  rules.push("LTV","주택가격별 주담대 총액한도");if(u.applyRoomDeduction)rules.push("방공제 시뮬레이션");
+
+  const p=person(u.owner,g);
+  const dsrRatio=u.sector==="BANK"?LAW.dsr.bank:LAW.dsr.nonbank;
+  const annualRoom=Math.max(0,p.income*dsrRatio-p.debt);
+  let stress=0;
+  if(u.rateType==="VARIABLE")stress=(u.locationScope==="METRO"||u.regulated)?LAW.stress.metroReg:LAW.stress.localNonReg;
+  const stressRate=u.interest+stress*100;
+  const dsrAllowed=pvFromPayment(annualRoom/12,stressRate,u.amort);
+  const requestedAnnualDebt=pmt(u.requestedLoan,stressRate,u.amort)*12+p.debt;
+  const requiredIncome=requestedAnnualDebt/dsrRatio,currentDsr=p.income>0?requestedAnnualDebt/p.income:Infinity;
+  rules.push("DSR","스트레스 DSR");
+
+  const allowed=Math.max(0,Math.min(u.requestedLoan,ltvAllowed,dsrAllowed));
+  let binding="희망대출액";const min=Math.min(u.requestedLoan,ltvAllowed,dsrAllowed);
+  if(Math.abs(min-ltvAllowed)<1)binding=ltvRatio===0?"LTV 0%":(u.applyRoomDeduction?"LTV/방공제/총액한도":"LTV/주담대 총액한도");
+  if(Math.abs(min-dsrAllowed)<1)binding="DSR";
+  const monthly=pmt(allowed,u.interest,u.amort),graceMonthly=allowed*u.interest/100/12;
+  if(allowed+1<u.requestedLoan)issues.push({status:"WARN",unit:u.id,text:`희망대출 ${money(u.requestedLoan)} 중 ${money(allowed)}만 허용 추정 (${binding})`});
+
+  const elapsed=Math.max(0,Math.floor(years*12-u.grace));
+  const loanBal=balance(allowed,u.interest,u.amort,elapsed);
+  const maxClaim=allowed*(u.maxClaimRatio/100),securityResidual=u.price-maxClaim-deposit,securityRatio=u.price>0?(maxClaim+deposit)/u.price:Infinity;
+  const hugValue=coll.value*LAW.hug.collateralRatio,hugMaxDeposit=Math.max(0,hugValue-maxClaim);
+  const hugSeniorPass=maxClaim<=hugValue*LAW.hug.seniorMaxRatio;
+  const hugIndicativePass=u.purpose!=="INVESTMENT"||deposit<=0?null:(hugSeniorPass&&deposit<=hugMaxDeposit);
+
+  if(u.publicPrice<=0&&u.publicRatio<=0)issues.push({status:"UNKNOWN",unit:u.id,text:"공시가격 또는 공시가격 추정비율이 없어 보유세 계산 불가"});
+  if(u.type==="REMODELING")issues.push({status:"UNKNOWN",unit:u.id,text:"리모델링 분담금·이주비·조합원 지위 관련 별도 비용은 이번 버전의 자동 법규 계산 범위 밖"});
+  if(u.purpose==="INVESTMENT"&&deposit>0&&!u.depositDate)issues.push({status:"UNKNOWN",unit:u.id,text:"전세보증금 수령일이 없어 Funding 시점 반영 불가"});
+  if(person(u.owner,g).homes>0&&person(u.owner,g).official<=0)issues.push({status:"UNKNOWN",unit:u.id,text:"기존 주택이 있으나 기존 공시가격 합계가 0이어서 종부세가 과소 추정될 수 있음"});
+  if(u.purpose==="INVESTMENT"&&securityResidual<0)issues.push({status:"WARN",unit:u.id,text:`채권최고액 ${u.maxClaimRatio}% 가정 + 전세보증금이 매매가를 ${money(-securityResidual)} 초과`});
+  if(u.purpose==="INVESTMENT"&&hugIndicativePass===false)issues.push({status:"WARN",unit:u.id,text:"HUG 일반 보증한도 공식에 넣은 간이 점검에서 보증 여력이 부족할 수 있음"});
+  if(u.grace>0)issues.push({status:"UNKNOWN",unit:u.id,text:`거치기간 ${u.grace}개월은 금융회사·상품별 취급 가능 여부 확인 필요`});
+
+  return{u,idx,hc,ar,acqRate:ar.acq,eduRate:edu,ruralRate:rural,acq,eduTax,ruralTax,brokerRate,broker,brokerVat,
+    leaseBrokerRate,leaseBroker,leaseBrokerVat,stamp,ancillary,coll,ltvRatio,roomDeduction,ltvAllowed,totalCap,dsrRatio,stress,stressRate,dsrAllowed,requiredIncome,currentDsr,
+    allowed,binding,monthly,graceMonthly,deposit,loanBal,maxClaim,securityResidual,securityRatio,hugValue,hugMaxDeposit,hugSeniorPass,hugIndicativePass,issues,rules};
+}
+
+function annualHolding(g,unitResults,horizon){
+  const asYear=Number(g.asOfDate.slice(0,4)),endYear=Number(horizon.slice(0,4));
+  const years=[],events=[],issues=[];
+  let accrued=0;
+
+  for(let yr=asYear;yr<=endYear;yr++){
+    const june=`${yr}-06-01`;
+    if(june<g.asOfDate||june>horizon)continue;
+    if(yr>2026&&!g.freeze){
+      years.push({year:yr,unknown:true,property:0,edu:0,urban:0,other:0,comp:0,compRural:0,total:0});
+      issues.push({status:"UNKNOWN",unit:null,text:`${yr}년 보유세: 미래 법규 고정 적용이 꺼져 있어 계산하지 않음`});
+      continue;
+    }
+
+    const owned=unitResults.filter(r=>r.u.settlementDate<=june);
+    let prop=0,edu=0,urban=0,other=0;
+
+    for(const r of owned){
+      let householdCount=0;
+      if(model.person2&&g.marital==="REGISTERED")householdCount=g.p1.homes+(g.p2?.homes||0);
+      else householdCount=person(r.u.owner,g).homes;
+      for(const x of owned)if(sameHousehold(x.u.owner,r.u.owner,g))householdCount++;
+
+      const oneHouse=householdCount===1;
+      const pub=publicPriceFor(r.u,yr,asYear);
+      const fmv=r.u.fmvAuto?autoPropertyFMV(pub,oneHouse):clamp(r.u.fmvOverride/100,0,1);
+      const base=pub*fmv;
+      const special=oneHouse&&pub<=900000000;
+      const core=propertyTaxCore(base,special);
+      const localEdu=core*.20;
+      const city=r.u.urbanArea?base*.0014:0;
+      const oth=r.u.otherAnnualHolding;
+      prop+=core;edu+=localEdu;urban+=city;other+=oth;
+      const payDate=`${yr}-09-30`;
+      if(payDate<=horizon)events.push({date:payDate,type:"PROPERTY_TAX",unit:`Unit ${r.u.id}`,amount:-(core+localEdu+city+oth)});
+    }
+
+    // 종부세: Person별 공시가격 합산 간이 추정
+    let comp=0,compRural=0;
+    const owners=model.person2?["P1","P2"]:["P1"];
+    for(const owner of owners){
+      const p=person(owner,g);
+      let sum=p.official;
+      let ownedCount=p.homes;
+      for(const r of owned){
+        if(r.u.owner===owner){sum+=publicPriceFor(r.u,yr,asYear);ownedCount++}
+      }
+      if(sum<=0||ownedCount<=0)continue;
+
+      let householdCount=ownedCount;
+      if(model.person2&&g.marital==="REGISTERED"){
+        const other=owner==="P1"?g.p2:g.p1;
+        householdCount+=other?.homes||0;
+        for(const r of owned)if(r.u.owner!==owner)householdCount++;
+      }
+      const oneHouse=ownedCount===1&&householdCount===1;
+      const deduction=oneHouse?1200000000:900000000;
+      const taxable=Math.max(0,sum-deduction)*LAW.compFMV;
+      const c=comprehensiveCore(taxable,ownedCount);
+      const cr=c*.20;
+      comp+=c;compRural+=cr;
+      const payDate=`${yr}-12-15`;
+      if(payDate<=horizon&&c+cr>0)events.push({date:payDate,type:"COMPREHENSIVE_TAX",unit:owner,amount:-(c+cr)});
+    }
+
+    const total=prop+edu+urban+other+comp+compRural;
+    accrued+=total;
+    years.push({year:yr,unknown:false,property:prop,edu,urban,other,comp,compRural,total});
+  }
+  return{years,events,issues,accrued};
+}
+
+function sensitivityProfit(urs,g,holding,acqGap,acqFinalCash,ratePct,marketCum){
+  const agg=aggregateLoanSchedule(urs,g.holdingMonths,ratePct);let totalAsset=Math.max(0,acqFinalCash),totalDebt=0;
+  for(const r of urs){const sch=agg.units.find(x=>x.unitId===r.u.id);const fv=Math.max(0,r.u.price*(1+marketCum*(r.u.beta||1)));totalAsset+=fv;totalDebt+=sch.endBalance+r.deposit;}
+  const netWorth=totalAsset-totalDebt,cashInvested=g.initialCash+acqGap+agg.cumInterest+agg.cumPrincipal+holding.accrued;
+  return{netProfit:netWorth-cashInvested,netWorth,cashInvested,agg};
+}
+function calculate(){
+  const g=globalData(),horizon=addMonths(g.asOfDate,g.holdingMonths);$("horizonDate").value=horizon;
+  const yrs=yearsBetween(g.asOfDate,horizon);
+  const urs=model.units.map((u,i)=>calcUnit(u,i,g,yrs));
+  const holding=annualHolding(g,urs,horizon);
+  const issues=[...urs.flatMap(r=>r.issues),...holding.issues];
+
+  const acquisitionEvents=[{date:g.asOfDate,type:"INITIAL_CASH",unit:"공통",amount:g.initialCash}];
+  for(const r of urs){
+    if(r.allowed>0)acquisitionEvents.push({date:r.u.loanDate||r.u.settlementDate,type:"LOAN_EXECUTION",unit:`Unit ${r.u.id}`,amount:r.allowed});
+    if(r.u.purpose==="INVESTMENT"&&r.deposit>0&&r.u.depositDate)acquisitionEvents.push({date:r.u.depositDate,type:"JEONSE_DEPOSIT",unit:`Unit ${r.u.id}`,amount:r.deposit});
+    acquisitionEvents.push({date:r.u.settlementDate,type:"PURCHASE_SETTLEMENT",unit:`Unit ${r.u.id}`,amount:-(r.u.price+r.ancillary)});
+  }
+  acquisitionEvents.sort((a,b)=>a.date.localeCompare(b.date)||(b.amount-a.amount));let acqCash=0,acqMin=Infinity;
+  const acquisitionTimeline=acquisitionEvents.map(e=>{acqCash+=e.amount;acqMin=Math.min(acqMin,acqCash);return{...e,balance:acqCash}});
+  const acqGap=Math.max(0,-acqMin),acqFinalCash=acqCash;
+
+  const events=[...acquisitionEvents,...holding.events];events.sort((a,b)=>a.date.localeCompare(b.date)||(b.amount-a.amount));
+  let cash=0,min=Infinity;const timeline=events.map(e=>{cash+=e.amount;min=Math.min(min,cash);return{...e,balance:cash}});const gap=Math.max(0,-min);
+  if(gap>0){const worst=timeline.reduce((a,b)=>b.balance<a.balance?b:a,timeline[0]);issues.push({status:"WARN",unit:null,text:`${worst.date} 기준 Peak Funding Gap ${money(gap)}`});}
+
+  const totalAnc=urs.reduce((s,r)=>s+r.ancillary,0),totalLoan=urs.reduce((s,r)=>s+r.allowed,0),monthly=urs.reduce((s,r)=>s+r.monthly,0);
+  const loanAgg=aggregateLoanSchedule(urs,g.holdingMonths);
+  const initialAsset=urs.reduce((s,r)=>s+r.u.price,0)+Math.max(0,acqFinalCash),initialDebt=totalLoan+urs.reduce((s,r)=>s+r.deposit,0);
+  const initialNetWorth=initialAsset-initialDebt,initialDebtRatio=initialAsset>0?initialDebt/initialAsset:0,leverage=initialNetWorth>0?initialAsset/initialNetWorth:Infinity;
+
+  const scenarios={};
+  for(const k of ["up","flat","down"]){
+    const annual=g.rates[k],cum=Math.pow(1+annual,yrs)-1;let equity=0;
+    const us=urs.map(r=>{const value=r.u.price*(1+cum),dep=r.u.purpose==="INVESTMENT"?r.deposit:0,net=value-r.loanBal-dep;equity+=net;return{id:r.u.id,value,loan:r.loanBal,deposit:dep,net};});
+    equity-=holding.accrued;
+    let excelAssets=Math.max(0,acqFinalCash),excelDebt=0;const excelUnits=[];
+    for(const r of urs){const sch=loanAgg.units.find(x=>x.unitId===r.u.id);const betaCum=cum*(r.u.beta||1),value=Math.max(0,r.u.price*(1+betaCum));const dep=r.u.purpose==="INVESTMENT"?r.deposit:0;
+      excelAssets+=value;excelDebt+=sch.endBalance+dep;excelUnits.push({id:r.u.id,value,betaCum,loan:sch.endBalance,deposit:dep,ltvJeonse:value>0?(sch.endBalance+dep)/value:Infinity,shortfall:Math.max(0,sch.endBalance+dep-value)});}
+    const excelNetWorth=excelAssets-excelDebt,excelCashInvested=g.initialCash+acqGap+loanAgg.cumInterest+loanAgg.cumPrincipal+holding.accrued;
+    const netProfit=excelNetWorth-excelCashInvested,roi=excelCashInvested>0?netProfit/excelCashInvested:0,annualSimple=yrs>0?roi/yrs:0;
+    scenarios[k]={annual,cum,equity,units:us,excel:{assets:excelAssets,debt:excelDebt,netWorth:excelNetWorth,cashInvested:excelCashInvested,netProfit,roi,annualSimple,units:excelUnits}};
+  }
+  const firstInv=urs.find(r=>r.u.purpose==="INVESTMENT");
+
+  const sensRates=[3,3.5,4,4.3,5,5.5,6,7],sensMarket=[-.3,-.2,-.1,0,.1,.2,.3,.4];
+  const sensitivity=sensRates.map(rate=>({rate,values:sensMarket.map(m=>sensitivityProfit(urs,g,holding,acqGap,acqFinalCash,rate,m))}));
+  const rateTable=sensRates.map(rate=>{const a=aggregateLoanSchedule(urs,g.holdingMonths,rate);return{rate,grace:a.beforeCliff||a.firstMonth,after:a.afterCliff,increase:a.cliffIncrease,interest:a.cumInterest}});
+  let leaseTable=[];
+  if(firstInv){
+    for(const ratio of [.4,.45,.5,.55,.6,.65,.7,.75,.8]){const dep=firstInv.u.price*ratio,lc=leaseBrokerageCap(dep),leaseFee=dep*lc.rate*(firstInv.u.leaseBrokerVat?1.1:1),baseAnc=firstInv.ancillary-firstInv.leaseBroker-firstInv.leaseBrokerVat,anc=baseAnc+leaseFee;
+      const funding=firstInv.allowed+dep,left=funding-firstInv.u.price-anc,residual=firstInv.u.price-firstInv.maxClaim-dep,hugMax=Math.max(0,firstInv.hugValue-firstInv.maxClaim);
+      leaseTable.push({ratio,deposit:dep,funding,fundingRatio:funding/firstInv.u.price,left,residual,hugMax,feasible:residual>=0,hug:dep<=hugMax&&firstInv.hugSeniorPass});}
+  }
+
+  let verdict="PASS";if(issues.some(x=>x.status==="WARN"||x.status==="UNKNOWN"))verdict="WARN";if(model.units.some(u=>u.price<=0||!u.settlementDate))verdict="BLOCKED";
+  const bottleneck=issues.find(x=>x.status==="WARN")?.text||issues.find(x=>x.status==="UNKNOWN")?.text||"현재 입력 기준 명시적 경고 없음";
+  last={g,horizon,yrs,urs,holding,issues,timeline,acquisitionTimeline,gap,acqGap,acqFinalCash,totalAnc,totalLoan,monthly,loanAgg,
+    initialAsset,initialDebt,initialNetWorth,initialDebtRatio,leverage,scenarios,sensitivity,sensRates,sensMarket,rateTable,leaseTable,firstInv,verdict,bottleneck};
+  render(last);
+}
+
+function render(r){
+  const vm={PASS:{text:"매수 가능",cls:"ok"},WARN:{text:"주의",cls:"warn"},BLOCKED:{text:"불가",cls:"bad"}}[r.verdict];
+  $("verdict").className="verdict "+vm.cls;$("vPill").className="pill "+vm.cls;$("vPill").textContent=vm.text;$("vText").textContent=vm.text;$("bottleneck").textContent=r.bottleneck;
+  $("mAnc").textContent=money(r.totalAnc);$("mLoan").textContent=money(r.totalLoan);$("mMonthly").textContent=money(r.monthly);$("mGap").textContent=money(r.gap);$("mHolding").textContent=money(r.holding.accrued);
+  $("mEquity").textContent=money(r.scenarios[model.selectedScenario].equity);$("eqNote").textContent=({up:"상승",flat:"보합",down:"하락"})[model.selectedScenario]+" Scenario · 누적 보유세 차감";
+
+  $("scenMini").innerHTML=["up","flat","down"].map(k=>`<div class="scen ${model.selectedScenario===k?"active":""}"><button onclick="selectScenario('${k}')"><div class="name">${({up:"상승",flat:"보합",down:"하락"})[k]} · 누적 ${pct(r.scenarios[k].cum)}</div><div class="v">${money(r.scenarios[k].equity)}</div></button></div>`).join("");
+  $("issueMini").innerHTML=r.issues.length?r.issues.slice(0,6).map(i=>`<div class="issue"><span class="pill ${i.status==="WARN"?"warn":"unknown"}">${i.status}</span> ${i.unit?`Unit ${i.unit} · `:""}${esc(i.text)}</div>`).join(""):`<div class="issue"><span class="pill ok">PASS</span> 확인된 경고 없음</div>`;
+
+  $("resultVerdict").className="verdict "+vm.cls;$("resultVerdict").innerHTML=`<span class="pill ${vm.cls}">${vm.text}</span><div class="big">${vm.text}</div><div>${esc(r.bottleneck)}</div>`;
+  $("resultMetrics").innerHTML=[
+    ["총 초기 부대비용",money(r.totalAnc),"취득·중개·등기 관련"],
+    ["예상 허용 대출",money(r.totalLoan),"LTV·DSR·총액한도"],
+    ["월 원리금",money(r.monthly),""],
+    ["Peak Funding Gap",money(r.gap),""],
+    ["누적 보유세",money(r.holding.accrued),"간이 종부세 포함"],
+    ["평가일",r.horizon,r.g.freeze?"2026 규정 고정 가정":"미래법 미적용"]
+  ].map(x=>`<div class="metric"><div class="lab">${x[0]}</div><div class="val">${x[1]}</div><div class="note">${x[2]}</div></div>`).join("");
+
+  $("resultHorizon").textContent=`평가일 ${r.horizon}`;
+  $("scenarioResults").innerHTML=`<div class="grid3">`+["up","flat","down"].map(k=>{
+    const s=r.scenarios[k],nm={up:"상승",flat:"보합",down:"하락"}[k];
+    return `<div class="metric"><div class="lab">${nm} · 연 ${pct(s.annual)} · 누적 ${pct(s.cum)}</div><div class="val">${money(s.equity)}</div><div class="note">주택가치 − 대출잔액 − 반환보증금 − 누적보유세</div>${s.units.map(u=>`<div class="subtle" style="margin-top:6px">Unit ${u.id}: 가치 ${money(u.value)} / 대출 ${money(u.loan)} / 보증금 ${money(u.deposit)}</div>`).join("")}</div>`;
+  }).join("")+`</div>`;
+
+  $("unitResults").innerHTML=r.urs.map(x=>`
+    <details open><summary>Unit ${x.u.id} · ${money(x.u.price)} · ${x.u.regulated?"규제지역":"비규제지역"} / ${x.u.locationScope==="METRO"?"수도권":"지방"}</summary>
+    <div class="inside">
+      <div class="grid4">
+        <div class="metric"><div class="lab">취득세</div><div class="val">${money(x.acq)}</div><div class="note">${pct(x.acqRate)} · ${esc(x.ar.label)}</div></div>
+        <div class="metric"><div class="lab">지방교육세</div><div class="val">${money(x.eduTax)}</div><div class="note">${pct(x.eduRate)}</div></div>
+        <div class="metric"><div class="lab">농어촌특별세</div><div class="val">${money(x.ruralTax)}</div><div class="note">${pct(x.ruralRate)} · 전용 ${x.u.exclusiveArea}㎡</div></div>
+        <div class="metric"><div class="lab">중개보수</div><div class="val">${money(x.broker)}</div><div class="note">${pct(x.brokerRate)}${x.u.brokerMode==="CAP"?" 상한":" 입력"}</div></div>
+        <div class="metric"><div class="lab">중개보수 VAT</div><div class="val">${money(x.brokerVat)}</div><div class="note">${x.u.brokerVat?"10% 별도 선택":"미포함"}</div></div>
+        <div class="metric"><div class="lab">임대차 중개보수</div><div class="val">${money(x.leaseBroker+x.leaseBrokerVat)}</div><div class="note">${x.u.purpose==='INVESTMENT'?pct(x.leaseBrokerRate):'해당없음'}</div></div>
+        <div class="metric"><div class="lab">인지세 부담분</div><div class="val">${money(x.stamp)}</div><div class="note">매수인 부담 ${x.u.stampBuyerShare}% 가정</div></div>
+        <div class="metric"><div class="lab">법무/등기 수수료</div><div class="val">${money(x.u.legalFee)}</div><div class="note">사용자 입력</div></div>
+        <div class="metric"><div class="lab">국민주택채권 할인비용</div><div class="val">${money(x.u.bondCost)}</div><div class="note">사용자 입력</div></div>
+        <div class="metric"><div class="lab">기타 초기비용</div><div class="val">${money(x.u.otherInitial)}</div></div>
+        <div class="metric"><div class="lab">대출 부대비용</div><div class="val">${money(x.u.loanInitialCost||0)}</div></div>
+        <div class="metric"><div class="lab">초기 부대비용 합계</div><div class="val">${money(x.ancillary)}</div></div>
+        <div class="metric"><div class="lab">담보가치</div><div class="val">${money(x.coll.value)}</div><div class="note">${x.coll.label}</div></div>
+        <div class="metric"><div class="lab">LTV</div><div class="val">${pct(x.ltvRatio)}</div><div class="note">LTV측 한도 ${money(x.ltvAllowed)}</div></div>
+        <div class="metric"><div class="lab">DSR</div><div class="val">${pct(x.dsrRatio)}</div><div class="note">스트레스 +${pct(x.stress)} / 역산 ${money(x.dsrAllowed)}</div></div>
+        <div class="metric"><div class="lab">필요 최소 연소득</div><div class="val">${money(x.requiredIncome)}</div><div class="note">희망대출 + 기존 원리금 기준</div></div>
+        <div class="metric"><div class="lab">최종 허용대출</div><div class="val">${money(x.allowed)}</div><div class="note">${x.binding}</div></div>
+        <div class="metric"><div class="lab">월 원리금</div><div class="val">${money(x.monthly)}</div></div>
+        <div class="metric"><div class="lab">공시가격 기준값</div><div class="val">${money(x.u.publicPrice>0?x.u.publicPrice:x.u.price*x.u.publicRatio/100)}</div><div class="note">${x.u.publicPrice>0?"직접입력":`매수가×${x.u.publicRatio}% 추정`}</div></div>
+      </div>
+    </div></details>`).join("");
+
+  $("holdingRows").innerHTML=r.holding.years.map(y=>y.unknown?
+    `<tr><td>${y.year}</td><td colspan="7" style="text-align:center">미래 법규 미확정 · 계산하지 않음</td></tr>`:
+    `<tr><td>${y.year}</td><td>${money(y.property)}</td><td>${money(y.edu)}</td><td>${money(y.urban)}</td><td>${money(y.other)}</td><td>${money(y.comp)}</td><td>${money(y.compRural)}</td><td><strong>${money(y.total)}</strong></td></tr>`
+  ).join("")||`<tr><td colspan="8" style="text-align:center">보유기간 중 6월 1일 납세기준일 해당 없음</td></tr>`;
+
+  $("fundingRows").innerHTML=r.timeline.map(e=>`<tr><td>${e.date}</td><td>${e.type}</td><td>${e.unit}</td><td>${money(e.amount)}</td><td>${money(e.balance)}</td></tr>`).join("");
+
+  $("rules").innerHTML=`
+    <div class="rulebox"><strong>LTV·DSR:</strong> 규제지역 LTV 40%, 비규제지역 70%, DSR 은행권 40%·제2금융권 50%, 수도권·규제지역 구입목적 주담대 가격구간별 총액한도 6억/4억/2억을 반영. 변동금리 스트레스 DSR은 수도권·규제지역 +3.0%p, 지방 비규제 +0.75%p로 계산.</div>
+    <div class="rulebox"><strong>취득세:</strong> 6억원 이하 1%, 6억 초과~9억원 이하 법정 산식, 9억원 초과 3%. 다주택 중과 조건은 규제지역 2주택/비규제 3주택 8%, 규제 3주택 이상/비규제 4주택 이상 12%로 계산. 중과 예외는 Unit별 체크 가능.</div>
+    <div class="rulebox"><strong>중개보수:</strong> 공인중개사법 시행규칙 별표1의 주택 매매 상한요율 및 저가구간 한도액을 자동 적용. 실제 보수는 상한 이내 협의금액이므로 직접요율 입력도 가능.</div>
+    <div class="rulebox"><strong>재산세:</strong> 일반 주택 공정시장가액비율 60%. 2026년 1세대 1주택은 공시가격 3억원 이하 43%, 3억 초과~6억원 이하 44%, 6억원 초과 45% 자동 적용. 1세대1주택 공시가격 9억원 이하의 특례세율도 반영.</div>
+    <div class="rulebox"><strong>종부세:</strong> 공시가격 합계에서 1세대1주택 12억원, 그 외 9억원을 공제하고 공정시장가액비율 60% 및 주택 수별 누진세율을 적용하는 간이 계산. 재산세 상당액 공제·고령자/장기보유 세액공제·세부담상한 등 실제 신고단계 요소는 미구현.</div>
+    <div class="rulebox"><strong>방공제 테스트:</strong> 2026-09-08 시행 주택임대차보호법 시행령 제10조의 최우선변제금 서울 5,500만원 / 과밀억제권역·세종·용인·화성·김포 4,800만원 / 광역시 등 2,800만원 / 기타 2,500만원을 선택값으로 사용. 실제 대출한도 차감은 금융상품에 따라 다름.</div>
+    <div class="rulebox"><strong>HUG 간이 전세보증 점검:</strong> HUG 공개 기준의 주택가격×90%−선순위채권 공식과 선순위채권 60% 요건을 단순 적용. 주택유형·다른 선순위 보증금 등 실제 심사조건은 별도 확인.</div>
+    <div class="rulebox source-links"><strong>공식 참고:</strong> <a target="_blank" href="https://www.law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1023847897">주택임대차보호법 시행령</a> · <a target="_blank" href="https://www.law.go.kr/LSW/lsInfoP.do?lsId=007292&urlMode=lsInfoP">공인중개사법 시행규칙</a> · <a target="_blank" href="https://www.khug.or.kr/hug/web/ig/dl/igdl000001.jsp">HUG 전세금안심대출보증</a></div>
+    <div class="rulebox"><strong>법규 기준일:</strong> ${LAW_DATE}. 이후 규정 변경은 이 오프라인 HTML에 자동 반영되지 않습니다.</div>`;
+  renderExcelScenario(r);renderLoanAnalysis(r);renderSensitivity(r);renderQuickSummary(r);
+
+}
+
+function renderQuickSummary(r){
+  $("qGap").textContent=money(r.gap);$("qGrace").textContent=money(r.loanAgg.beforeCliff||r.loanAgg.firstMonth);$("qAfter").textContent=money(r.loanAgg.afterCliff);$("qCliff").textContent=money(r.loanAgg.cliffIncrease);
+  $("qRoi").textContent=pct(r.scenarios[model.selectedScenario].excel.roi);
+}
+function renderExcelScenario(r){
+  const inv=r.firstInv;let reverse='';if(inv){const du=r.scenarios.down.excel.units.find(x=>x.id===inv.u.id);const newDeposit=Math.max(0,inv.deposit*(1+(du?.betaCum||0)));const need=Math.max(0,inv.deposit-newDeposit);reverse=`<div class="hint"><strong>하락장 전세 재계약 필요자금 추정:</strong> ${money(need)} · 전세보증금이 해당 Unit의 Beta 반영 가격변동률만큼 조정된다고 단순 가정한 Excel 호환 스트레스 지표입니다.</div>`;}
+  $("excelScenarioResults").innerHTML='<div class="grid3">'+["up","flat","down"].map(k=>{const x=r.scenarios[k].excel,n={up:"상승",flat:"보합",down:"하락"}[k];return `<div class="metric"><div class="lab">${n} · Unit별 Beta 반영</div><div class="val">순손익 ${money(x.netProfit)}</div><div class="note">총자산 ${money(x.assets)} / 총부채 ${money(x.debt)} / 평가시점 순자산 ${money(x.netWorth)}</div><div class="sectionbar">현금 투입 ${money(x.cashInvested)}</div><div>ROI <strong>${pct(x.roi)}</strong> · 단순 연환산 <strong>${pct(x.annualSimple)}</strong></div>${x.units.map(u=>`<div class="subtle" style="margin-top:6px">Unit ${u.id}: Beta변동 ${pct(u.betaCum)} · LTV+전세 ${pct(u.ltvJeonse)}${u.shortfall>0?` · 담보부족 ${money(u.shortfall)}`:''}</div>`).join('')}</div>`}).join('')+'</div>'+reverse;
+}
+function renderLoanAnalysis(r){
+  $("positionMetrics").innerHTML=`<div class="kpi5"><div class="metric"><div class="lab">초기 총자산</div><div class="val">${money(r.initialAsset)}</div></div><div class="metric"><div class="lab">초기 총부채</div><div class="val">${money(r.initialDebt)}</div></div><div class="metric"><div class="lab">초기 순자산</div><div class="val">${money(r.initialNetWorth)}</div></div><div class="metric"><div class="lab">부채비율</div><div class="val">${pct(r.initialDebtRatio)}</div></div><div class="metric"><div class="lab">레버리지</div><div class="val">${fmtX(r.leverage)}</div></div></div><div class="hint">초기 포지션은 취득가 기준 주택가치 + 잔여현금, 대출 + 반환의무 전세보증금을 사용합니다.</div>`;
+  $("loanBurden").innerHTML=`<div class="kpi5"><div class="metric"><div class="lab">거치 전/초기 월부담</div><div class="val">${money(r.loanAgg.beforeCliff||r.loanAgg.firstMonth)}</div></div><div class="metric"><div class="lab">전환 후 월부담</div><div class="val">${money(r.loanAgg.afterCliff)}</div></div><div class="metric"><div class="lab">상환 절벽 증가폭</div><div class="val">${money(r.loanAgg.cliffIncrease)}</div><div class="note">약 ${r.loanAgg.cliffMonth}개월차</div></div><div class="metric"><div class="lab">누적 이자</div><div class="val">${money(r.loanAgg.cumInterest)}</div></div><div class="metric"><div class="lab">누적 원금상환</div><div class="val">${money(r.loanAgg.cumPrincipal)}</div></div></div>`;
+  const ids=r.urs.map(x=>x.u.id);$("loanScheduleCaption").textContent=`${r.g.holdingMonths}개월까지 · 허용대출 기준`;
+  let head='<thead><tr><th>개월</th><th>총 납입</th><th>이자</th><th>원금</th><th>총 잔액</th>'+ids.map(id=>`<th>U${id} 납입</th><th>U${id} 잔액</th>`).join('')+'</tr></thead>';
+  let body='<tbody>'+r.loanAgg.rows.map(row=>`<tr><td>${row.month}</td><td>${money(row.payment)}</td><td>${money(row.interest)}</td><td>${money(row.principal)}</td><td>${money(row.balance)}</td>${ids.map(id=>`<td>${money(row.perUnit[id].payment)}</td><td>${money(row.perUnit[id].end)}</td>`).join('')}</tr>`).join('')+'</tbody>';
+  $("loanScheduleTable").innerHTML=head+body;
+}
+function heatClass(v){if(Math.abs(v)<1000000)return'heatzero';return v>0?'heatpos':'heatneg'}
+function renderSensitivity(r){
+  $("sensitivityMatrix").innerHTML=`<div class="tablebox"><table class="heat"><thead><tr><th>금리 \\ 시장</th>${r.sensMarket.map(m=>`<th>${pct(m)}</th>`).join('')}</tr></thead><tbody>${r.sensitivity.map(row=>`<tr><td>${row.rate.toFixed(1)}%</td>${row.values.map(x=>`<td class="${heatClass(x.netProfit)}">${money(x.netProfit)}</td>`).join('')}</tr>`).join('')}</tbody></table></div><div class="hint">시장 누적 변동률에 Unit별 Beta를 곱하고, 현재 법규로 계산된 허용대출 원금을 고정한 채 금리별 상환부담을 재계산한 민감도입니다.</div>`;
+  $("rateSensitivity").innerHTML=`<div class="tablebox"><table><thead><tr><th>금리</th><th>거치/전환 전 월부담</th><th>전환 후 월부담</th><th>증가폭</th><th>기간 누적 이자</th></tr></thead><tbody>${r.rateTable.map(x=>`<tr><td>${x.rate.toFixed(1)}%</td><td>${money(x.grace)}</td><td>${money(x.after)}</td><td>${money(x.increase)}</td><td>${money(x.interest)}</td></tr>`).join('')}</tbody></table></div>`;
+  $("leaseSensitivity").innerHTML=r.firstInv?`<div class="tablebox"><table><thead><tr><th>전세가율</th><th>보증금</th><th>대출+보증금</th><th>매매가 대비</th><th>매수 후 여유</th><th>채권최고액 반영 잔여가치</th><th>HUG 간이</th></tr></thead><tbody>${r.leaseTable.map(x=>`<tr><td>${pct(x.ratio)}</td><td>${money(x.deposit)}</td><td>${money(x.funding)}</td><td>${pct(x.fundingRatio)}</td><td>${money(x.left)}</td><td>${money(x.residual)}</td><td>${x.hug?'가능권':'확인/부족'}</td></tr>`).join('')}</tbody></table></div>`:`<div class="hint">투자 목적 Unit을 추가하거나 보유 목적을 투자로 바꾸면 전세가율 민감도 표가 표시됩니다.</div>`;
+  const rows=[];for(const x of r.urs){rows.push([`Unit ${x.u.id} LTV`,`허용 ${pct(x.ltvRatio)}`,pct(x.allowed/x.coll.value),x.allowed<=x.ltvAllowed?'통과':'초과']);rows.push([`Unit ${x.u.id} 주담대 총액한도`,money(x.totalCap),money(x.allowed),x.allowed<=x.totalCap?'통과':'초과']);rows.push([`Unit ${x.u.id} 스트레스 DSR`,`한도 ${pct(x.dsrRatio)}`,pct(x.currentDsr),x.currentDsr<=x.dsrRatio?'통과':'초과']);rows.push([`Unit ${x.u.id} 필요 최소 연소득`,money(x.requiredIncome),money(person(x.u.owner,r.g).income),person(x.u.owner,r.g).income>=x.requiredIncome?'통과':'부족']);if(x.u.applyRoomDeduction)rows.push([`Unit ${x.u.id} 방공제`,money(x.roomDeduction),money(x.ltvAllowed),'반영']);if(x.u.purpose==='INVESTMENT'){rows.push([`Unit ${x.u.id} 담보 여력`,`채권최고액 ${x.u.maxClaimRatio}% + 보증금 ≤ 매매가`,pct(x.securityRatio),x.securityResidual>=0?'통과':'위험']);rows.push([`Unit ${x.u.id} HUG 간이 보증여력`,`90% 주택가액 - 선순위채권`,money(x.hugMaxDeposit),x.hugIndicativePass?'가능권':'확인/부족']);}}
+  rows.push(['자금 충족','Peak Funding Gap = 0',money(r.gap),r.gap<=0?'통과':'부족']);
+  $("regulationChecks").innerHTML=`<div class="tablebox"><table><thead><tr><th>항목</th><th>기준</th><th>현재 값</th><th>판정</th></tr></thead><tbody>${rows.map(x=>`<tr><td>${x[0]}</td><td>${x[1]}</td><td>${x[2]}</td><td>${x[3]}</td></tr>`).join('')}</tbody></table></div><div class="hint">방공제는 법정 최우선변제금액을 이용한 스트레스 테스트이며 실제 대출에서의 차감 여부는 MCI/MCG·상품·금융회사에 따라 달라질 수 있습니다. HUG 점검 역시 주택유형·선순위 권리 등 상세 심사 전 단계의 간이 계산입니다.</div>`;
+}
+window.selectScenario=k=>{model.selectedScenario=k;if(last)render(last);schedule()};
+
+function unitHTML(u,idx){
+  const inv=u.purpose==="INVESTMENT";
+  return `<article class="card unit" data-id="${u.id}">
+    <div class="ch"><div><h2>3.${idx+1} Purchase Unit ${u.id}</h2><div class="subtle">${idx?"두 번째 거래":"첫 번째 거래"}</div></div>${idx?`<button class="btn danger" onclick="removeUnit(${u.id})">삭제</button>`:""}</div>
+    <div class="cb">
+      <div class="grid3">
+        <div class="field"><label>유형</label><select data-k="type"><option value="GENERAL" ${u.type==="GENERAL"?"selected":""}>일반주택</option><option value="REMODELING" ${u.type==="REMODELING"?"selected":""}>리모델링</option></select></div>
+        <div class="field"><label>보유 목적</label><select data-k="purpose"><option value="OWNER_OCCUPIED" ${u.purpose==="OWNER_OCCUPIED"?"selected":""}>실거주</option><option value="INVESTMENT" ${u.purpose==="INVESTMENT"?"selected":""}>투자</option></select></div>
+        <div class="field"><label>소유자 / 차주</label><select data-k="owner"><option value="P1" ${u.owner==="P1"?"selected":""}>Person 1</option>${model.person2?`<option value="P2" ${u.owner==="P2"?"selected":""}>Person 2</option>`:""}</select></div>
+        <div class="field"><label>권역</label><select data-k="locationScope"><option value="METRO" ${u.locationScope==="METRO"?"selected":""}>수도권</option><option value="LOCAL" ${u.locationScope==="LOCAL"?"selected":""}>지방</option></select></div>
+        <div class="field"><label>규제지역 여부</label><select data-k="regulated"><option value="false" ${!u.regulated?"selected":""}>비규제지역</option><option value="true" ${u.regulated?"selected":""}>규제지역</option></select></div>
+        <div class="field money"><label>매수가</label><input data-k="price" type="number" min="1" step="1000000" value="${u.price}"></div>
+        <div class="field money"><label>공신력 시세 / KB 등</label><input data-k="kbPrice" type="number" min="0" step="1000000" value="${u.kbPrice}"><small>0이면 감정가 → 매매가 순 사용</small></div>
+        <div class="field money"><label>감정가</label><input data-k="appraisal" type="number" min="0" step="1000000" value="${u.appraisal}"></div>
+        <div class="field"><label>전용면적 (㎡)</label><input data-k="exclusiveArea" type="number" min="0" step="0.1" value="${u.exclusiveArea}"><small>농특세 85㎡ 기준</small></div>
+        <div class="field"><label>계약일</label><input data-k="contractDate" type="date" value="${u.contractDate}"></div>
+        <div class="field"><label>잔금일</label><input data-k="settlementDate" type="date" value="${u.settlementDate}"></div>
+      </div>
+
+      <details open style="margin-top:12px"><summary>취득세 · 중개보수 · 초기 부대비용</summary><div class="inside">
+        <div class="grid3">
+          <div class="field"><label>취득세 주택 수 수동 Override</label><input data-k="taxHomeOverride" type="number" min="0" step="1" value="${u.taxHomeOverride}"><small>0이면 세대/거래 순서로 자동</small></div>
+          <label class="check"><input data-k="taxSurchargeException" type="checkbox" ${u.taxSurchargeException?"checked":""}> 다주택 취득세 중과 예외를 적용</label>
+          <div class="field"><label>중개보수 방식</label><select data-k="brokerMode"><option value="CAP" ${u.brokerMode==="CAP"?"selected":""}>법정 상한으로 계산</option><option value="CUSTOM" ${u.brokerMode==="CUSTOM"?"selected":""}>협의 요율 직접입력</option></select></div>
+          <div class="field"><label>협의 중개보수율 (%)</label><input data-k="brokerRate" type="number" min="0" step="0.01" value="${u.brokerRate}"><small>법정 상한 초과 시 상한으로 제한</small></div>
+          <label class="check"><input data-k="brokerVat" type="checkbox" ${u.brokerVat?"checked":""}> 중개보수 VAT 10%를 별도 비용으로 포함</label>
+          <div class="field"><label>인지세 매수인 부담비율 (%)</label><input data-k="stampBuyerShare" type="number" min="0" max="100" step="1" value="${u.stampBuyerShare}"></div>
+          <div class="field money"><label>법무/등기 수수료</label><input data-k="legalFee" type="number" min="0" step="10000" value="${u.legalFee}"></div>
+          <div class="field money"><label>국민주택채권 할인비용</label><input data-k="bondCost" type="number" min="0" step="10000" value="${u.bondCost}"><small>채권 할인율·시가표준액에 따라 달라 사용자 입력</small></div>
+          <div class="field money"><label>기타 초기 부대비용</label><input data-k="otherInitial" type="number" min="0" step="10000" value="${u.otherInitial}"></div>
+          <div class="field money"><label>대출 부대비용</label><input data-k="loanInitialCost" type="number" min="0" step="10000" value="${u.loanInitialCost||0}"><small>인지·근저당 등 사용자 확인값</small></div>
+        </div>
+      </div></details>
+
+      <details open><summary>Loan · LTV / DSR</summary><div class="inside">
+        <div class="grid3">
+          <div class="field money"><label>희망 대출액</label><input data-k="requestedLoan" type="number" min="0" step="1000000" value="${u.requestedLoan}"></div>
+          <div class="field"><label>금융권</label><select data-k="sector"><option value="BANK" ${u.sector==="BANK"?"selected":""}>은행권 DSR 40%</option><option value="NONBANK" ${u.sector==="NONBANK"?"selected":""}>제2금융권 DSR 50%</option></select></div>
+          <div class="field"><label>금리 유형</label><select data-k="rateType"><option value="VARIABLE" ${u.rateType==="VARIABLE"?"selected":""}>변동 / 스트레스금리 반영</option><option value="FIXED" ${u.rateType==="FIXED"?"selected":""}>전기간 고정 / 스트레스 가산 0 가정</option></select></div>
+          <div class="field"><label>실제 연이율 (%)</label><input data-k="interest" type="number" min="0" step="0.1" value="${u.interest}"></div>
+          <div class="field"><label>대출 실행일</label><input data-k="loanDate" type="date" value="${u.loanDate}"></div>
+          <div class="field"><label>거치기간 (개월)</label><input data-k="grace" type="number" min="0" step="1" value="${u.grace}"></div>
+          <div class="field"><label>상환기간 (개월)</label><input data-k="amort" type="number" min="1" step="12" value="${u.amort}"></div>
+          <div class="field"><label>가격 Beta</label><input data-k="beta" type="number" min="0" step="0.05" value="${u.beta||1}"><small>Excel Scenario/민감도에서 시장변동률에 곱함</small></div>
+          <label class="check"><input data-k="applyRoomDeduction" type="checkbox" ${u.applyRoomDeduction?'checked':''}> 방공제 스트레스 테스트 적용</label>
+          <div class="field"><label>방공제 지역</label><select data-k="roomRegion"><option value="SEOUL" ${u.roomRegion==='SEOUL'?'selected':''}>서울 5,500만원</option><option value="CONGESTED" ${u.roomRegion==='CONGESTED'?'selected':''}>과밀·세종·용인·화성·김포 4,800만원</option><option value="METRO_CITY" ${u.roomRegion==='METRO_CITY'?'selected':''}>광역시 등 2,800만원</option><option value="OTHER" ${u.roomRegion==='OTHER'?'selected':''}>기타 2,500만원</option></select></div>
+          <div class="field"><label>채권최고액 가정 (%)</label><input data-k="maxClaimRatio" type="number" min="100" max="150" step="1" value="${u.maxClaimRatio||120}"><small>Excel의 120% 가정 기본값</small></div>
+        </div>
+        <div class="hint">수도권·규제지역 구입목적 주담대의 주택가격별 총액한도 15억원 이하 6억원, 15억원 초과~25억원 이하 4억원, 25억원 초과 2억원을 LTV와 함께 제한합니다.</div>
+      </div></details>
+
+      <details open><summary>공시가격 · 재산세 · 종부세 입력</summary><div class="inside">
+        <div class="grid3">
+          <div class="field money"><label>공시가격 직접입력</label><input data-k="publicPrice" type="number" min="0" step="1000000" value="${u.publicPrice}"><small>0이면 아래 추정비율 사용</small></div>
+          <div class="field"><label>공시가격 추정비율 (%)</label><input data-k="publicRatio" type="number" min="0" max="150" step="0.1" value="${u.publicRatio}"><small>법정 비율이 아니라 사용자가 조정하는 시뮬레이션 가정</small></div>
+          <div class="field"><label>공시가격 연간 변화율 (%)</label><input data-k="publicGrowth" type="number" step="0.1" value="${u.publicGrowth}"></div>
+          <label class="check"><input data-k="fmvAuto" type="checkbox" ${u.fmvAuto?"checked":""}> 공정시장가액비율을 2026 법정값으로 자동 적용</label>
+          <div class="field"><label>수동 공정시장가액비율 (%)</label><input data-k="fmvOverride" type="number" min="0" max="100" step="0.1" value="${u.fmvOverride}"><small>자동 체크를 끈 경우만 사용</small></div>
+          <label class="check"><input data-k="urbanArea" type="checkbox" ${u.urbanArea?"checked":""}> 재산세 도시지역분 0.14%를 포함</label>
+          <div class="field money"><label>기타 연간 보유세/비용</label><input data-k="otherAnnualHolding" type="number" min="0" step="10000" value="${u.otherAnnualHolding}"></div>
+        </div>
+        <div class="hint">2026 재산세 공정시장가액비율: 일반주택 60%. 1세대1주택은 공시가격 3억원 이하 43%, 3억 초과~6억원 이하 44%, 6억원 초과 45%를 자동 적용합니다.</div>
+      </div></details>
+
+      <details ${inv?"open":""} class="${inv?"":"hidden"}" data-lease><summary>전세 / 투자 Funding</summary><div class="inside">
+        <div class="grid3">
+          <div class="field money"><label>전세보증금 직접입력</label><input data-k="deposit" type="number" min="0" step="1000000" value="${u.deposit}"></div>
+          <div class="field"><label>전세가율 (%)</label><input data-k="depositRatio" type="number" min="0" max="100" step="0.1" value="${u.depositRatio}"><small>직접입력 0일 때 사용</small></div>
+          <div class="field"><label>보증금 수령일</label><input data-k="depositDate" type="date" value="${u.depositDate}"></div>
+          <div class="field"><label>임대차 중개보수</label><select data-k="leaseBrokerMode"><option value="CAP" ${u.leaseBrokerMode==='CAP'?'selected':''}>법정 상한 자동</option><option value="CUSTOM" ${u.leaseBrokerMode==='CUSTOM'?'selected':''}>협의요율 직접입력</option></select></div>
+          <div class="field"><label>임대차 협의요율 (%)</label><input data-k="leaseBrokerRate" type="number" min="0" step="0.01" value="${u.leaseBrokerRate||0.3}"></div>
+          <label class="check"><input data-k="leaseBrokerVat" type="checkbox" ${u.leaseBrokerVat?'checked':''}> 임대차 중개보수 VAT 10% 포함</label>
+        </div>
+      </div></details>
+    </div>
+  </article>`;
+}
+
+function sliderBox(label,value,min,max,step,kind,unitId,key,formatter='money'){
+  const display=formatter==='pct'?(Number(value).toFixed(1)+'%'):formatter==='beta'?Number(value).toFixed(2):money(Number(value));
+  return `<div class="sliderbox"><div class="slider-head"><strong>${label}</strong><span class="slider-value" data-qdisplay="${kind}:${unitId||''}:${key}">${display}</span></div><input type="range" min="${min}" max="${max}" step="${step}" value="${value}" data-qkind="${kind}" data-qunit="${unitId||''}" data-qkey="${key}" data-qfmt="${formatter}"></div>`;
+}
+function renderQuickTuner(){
+  if(!$("quickTuner"))return;let html=sliderBox('초기 현금',N($("initialCash").value),0,Math.max(1500000000,N($("initialCash").value)*1.5),10000000,'global','', 'initialCash','money');
+  html+=sliderBox('상승 Scenario 연율',N($("rateUp").value),-5,12,.1,'global','', 'rateUp','pct');html+=sliderBox('하락 Scenario 연율',N($("rateDown").value),-12,3,.1,'global','', 'rateDown','pct');
+  for(const u of model.units){html+=sliderBox(`Unit ${u.id} 매수가`,u.price,100000000,Math.max(3000000000,u.price*1.5),10000000,'unit',u.id,'price','money');html+=sliderBox(`Unit ${u.id} 희망 대출`,u.requestedLoan,0,Math.max(u.price,u.requestedLoan*1.4),10000000,'unit',u.id,'requestedLoan','money');html+=sliderBox(`Unit ${u.id} 금리`,u.interest,1,10,.1,'unit',u.id,'interest','pct');html+=sliderBox(`Unit ${u.id} 가격 Beta`,u.beta||1,.3,2,.05,'unit',u.id,'beta','beta');if(u.purpose==='INVESTMENT')html+=sliderBox(`Unit ${u.id} 전세가율`,u.depositRatio,0,90,1,'unit',u.id,'depositRatio','pct');}
+  $("quickTuner").innerHTML=html;$("quickTuner").querySelectorAll('input[type=range]').forEach(el=>el.addEventListener('input',()=>quickChange(el)));
+}
+function quickChange(el){const kind=el.dataset.qkind,key=el.dataset.qkey,v=Number(el.value),fmt=el.dataset.qfmt;const disp=$("quickTuner").querySelector(`[data-qdisplay="${kind}:${el.dataset.qunit||''}:${key}"]`);if(disp)disp.textContent=fmt==='pct'?v.toFixed(1)+'%':fmt==='beta'?v.toFixed(2):money(v);
+  if(kind==='global'){const target=$(key);if(target)target.value=v;}else{const id=Number(el.dataset.qunit),u=model.units.find(x=>x.id===id);if(u){u[key]=v;const target=document.querySelector(`.unit[data-id="${id}"] [data-k="${key}"]`);if(target)target.value=v;}}
+  schedule();
+}
+function renderUnits(){
+  $("units").innerHTML=model.units.map(unitHTML).join("");
+  document.querySelectorAll(".unit").forEach(card=>{
+    const id=Number(card.dataset.id);
+    card.querySelectorAll("[data-k]").forEach(el=>{
+      const fn=()=>updateUnit(id,el);
+      el.addEventListener("input",fn);el.addEventListener("change",fn);
+    });
+  });
+  $("addUnit").classList.toggle("hidden",model.units.length>=2);
+  renderQuickTuner();
+}
+function updateUnit(id,el){
+  const u=model.units.find(x=>x.id===id),k=el.dataset.k;
+  let v=el.type==="checkbox"?el.checked:el.value;
+  if(["price","kbPrice","appraisal","exclusiveArea","taxHomeOverride","brokerRate","stampBuyerShare","legalFee","bondCost","otherInitial","loanInitialCost","leaseBrokerRate","publicPrice","publicRatio","publicGrowth","fmvOverride","otherAnnualHolding","requestedLoan","interest","grace","amort","maxClaimRatio","beta","deposit","depositRatio"].includes(k))v=N(v);
+  if(k==="regulated")v=v==="true";
+  u[k]=v;
+  if(k==="purpose")renderUnits();
+  schedule();
+}
+window.removeUnit=id=>{model.units=model.units.filter(x=>x.id!==id);renderUnits();schedule()};
+
+function addUnit(){
+  if(model.units.length>=2)return;
+  model.units.push({
+    id:2,type:"GENERAL",purpose:"INVESTMENT",owner:model.person2?"P2":"P1",
+    locationScope:"METRO",regulated:false,price:600000000,kbPrice:0,appraisal:0,exclusiveArea:84.9,
+    contractDate:"2027-01-10",settlementDate:"2027-03-10",taxHomeOverride:0,taxSurchargeException:false,
+    brokerMode:"CAP",brokerRate:.4,brokerVat:false,stampBuyerShare:100,legalFee:0,bondCost:0,otherInitial:0,loanInitialCost:0,leaseBrokerMode:"CAP",leaseBrokerRate:0.3,leaseBrokerVat:true,
+    publicPrice:0,publicRatio:70,publicGrowth:0,fmvAuto:true,fmvOverride:60,urbanArea:false,otherAnnualHolding:0,
+    requestedLoan:250000000,interest:4,loanDate:"2027-03-10",grace:0,amort:360,sector:"BANK",rateType:"VARIABLE",applyRoomDeduction:false,roomRegion:"SEOUL",maxClaimRatio:120,beta:0.8,
+    leaseType:"JEONSE",deposit:0,depositRatio:60,depositDate:"2027-03-10"
+  });
+  renderUnits();schedule();
+}
+function normalizeModel(){
+  for(const u of model.units){
+    const d={loanInitialCost:0,leaseBrokerMode:'CAP',leaseBrokerRate:.3,leaseBrokerVat:true,applyRoomDeduction:false,roomRegion:'SEOUL',maxClaimRatio:120,beta:u.purpose==='INVESTMENT'?.8:1};
+    for(const [k,v] of Object.entries(d))if(u[k]===undefined)u[k]=v;
+  }
+}
+function serialize(){return{model,g:globalData()}}
+function save(){localStorage.setItem(KEY,JSON.stringify(serialize()));$("saveState").textContent="로컬 저장 완료"}
+function applySaved(s){
+  if(!s?.model||!s?.g)return;model=s.model;normalizeModel();const g=s.g;
+  $("initialCash").value=g.initialCash;$("asOfDate").value=g.asOfDate;$("holdingMonths").value=g.holdingMonths;$("freeze2026").checked=g.freeze;
+  $("p1Income").value=g.p1.income;$("p1Debt").value=g.p1.debt;$("p1Homes").value=g.p1.homes;$("p1OfficialSum").value=g.p1.official||0;
+  $("rateUp").value=g.rates.up*100;$("rateFlat").value=g.rates.flat*100;$("rateDown").value=g.rates.down*100;
+  $("p2box").classList.toggle("hidden",!model.person2);$("toggleP2").textContent=model.person2?"Person 2 삭제":"Person 2 추가";
+  if(model.person2&&g.p2){$("p2Income").value=g.p2.income;$("p2Debt").value=g.p2.debt;$("p2Homes").value=g.p2.homes;$("p2OfficialSum").value=g.p2.official||0;$("marital").value=g.marital}
+  renderUnits();
+}
+function schedule(){
+  $("calcState").textContent="계산 중…";$("saveState").textContent="저장 중…";clearTimeout(timer);
+  timer=setTimeout(()=>{calculate();save();$("calcState").textContent="완료"},250);
+}
+function switchResultPanel(name){document.querySelectorAll('.subpanel').forEach(p=>p.classList.remove('active'));const p=$('result'+name[0].toUpperCase()+name.slice(1));if(p)p.classList.add('active');document.querySelectorAll('.rtab').forEach(b=>b.classList.toggle('active',b.dataset.rpanel===name));}
+function mode(result){document.body.classList.toggle("results",result);$("tabInput").classList.toggle("active",!result);$("tabResult").classList.toggle("active",result);if(result)switchResultPanel('overview');window.scrollTo({top:0,behavior:"smooth"})}
+function csv(){
+  if(!last)return;
+  const rows=[["section","date/year","item","amount","detail"]];
+  last.timeline.forEach(e=>rows.push(["funding",e.date,e.type,Math.round(e.amount),e.unit]));
+  last.holding.years.forEach(y=>rows.push(["holding",y.year,"holding_tax_total",Math.round(y.total),y.unknown?"UNKNOWN":""]));
+  last.urs.forEach(r=>{
+    rows.push(["unit",r.u.id,"ancillary_total",Math.round(r.ancillary),""]);
+    rows.push(["unit",r.u.id,"allowed_loan",Math.round(r.allowed),r.binding]);
+  });
+  ["up","flat","down"].forEach(k=>rows.push(["scenario",k,"net_equity",Math.round(last.scenarios[k].equity),""],["scenario",k,"excel_net_profit",Math.round(last.scenarios[k].excel.netProfit),"roi="+last.scenarios[k].excel.roi]));
+  const text=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const blob=new Blob(["\ufeff"+text],{type:"text/csv;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="budget_simulation_v3_result.csv";a.click();URL.revokeObjectURL(a.href);
+}
+function bind(){
+  ["initialCash","asOfDate","holdingMonths","freeze2026","p1Income","p1Debt","p1Homes","p1OfficialSum","p2Income","p2Debt","p2Homes","p2OfficialSum","marital","rateUp","rateFlat","rateDown"].forEach(id=>{$(id).addEventListener("input",schedule);$(id).addEventListener("change",schedule)});
+  $("toggleP2").onclick=()=>{model.person2=!model.person2;$("p2box").classList.toggle("hidden",!model.person2);$("toggleP2").textContent=model.person2?"Person 2 삭제":"Person 2 추가";if(!model.person2)model.units.forEach(u=>{if(u.owner==="P2")u.owner="P1"});renderUnits();schedule()};
+  $("addUnit").onclick=addUnit;$("tabInput").onclick=()=>mode(false);$("tabResult").onclick=()=>mode(true);$("viewResults").onclick=()=>mode(true);$("backBtn").onclick=()=>mode(false);
+  document.querySelectorAll('.rtab').forEach(b=>b.onclick=()=>switchResultPanel(b.dataset.rpanel));
+  $("csvBtn").onclick=csv;$("printBtn").onclick=()=>{mode(true);setTimeout(()=>window.print(),50)};
+  $("resetBtn").onclick=()=>{if(confirm("v3 로컬 입력을 초기화할까요?")){localStorage.removeItem(KEY);location.reload()}};
+}
+function boot(){
+  bind();renderUnits();
+  const raw=localStorage.getItem(KEY)||localStorage.getItem(OLD_KEY);
+  if(raw){
+    $("restore").classList.remove("hidden");
+    $("restoreYes").onclick=()=>{try{applySaved(JSON.parse(raw))}catch(e){};$("restore").classList.add("hidden");calculate()};
+    $("restoreNo").onclick=()=>{localStorage.removeItem(KEY);$("restore").classList.add("hidden");calculate();save()};
+  }else{calculate();save()}
+}
+boot();
+</script>
+</body>
+</html>

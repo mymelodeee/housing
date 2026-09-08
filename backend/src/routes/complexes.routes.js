@@ -12,5 +12,8 @@ router.get('/:id/remodeling', complexesController.getRemodeling);
 router.get('/:id/development-projects', complexesController.getDevelopmentProjects);
 router.get('/:id/regulation', complexesController.getRegulation);
 router.get('/:id/loan-simulation', complexesController.getLoanSimulation);
+router.get('/:id/acquisition-costs', complexesController.getAcquisitionCosts);
+router.get('/:id/loan-schedule', complexesController.getLoanSchedule);
+router.get('/:id/holding-tax-estimate', complexesController.getHoldingTaxEstimate);
 
 module.exports = router;

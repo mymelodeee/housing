@@ -12,6 +12,7 @@ const userProfileService = require('./user-profile.service');
 const loanScenarioService = require('./loan-scenario.service');
 const remodelingService = require('./remodeling.service');
 const remodelingRepository = require('../repositories/remodeling.repository');
+const marketInterestRateService = require('./market-interest-rate.service');
 
 const DEFAULT_MIN_PRICE = 70000;
 const DEFAULT_MAX_PRICE = 150000;
@@ -233,13 +234,15 @@ async function getListingRegulation(id) {
   let isMortgageInRegulatedArea = false;
 
   if (profileComplete) {
+    const interestRate = await marketInterestRateService.getCurrentRate();
     const loanLimit = loanLimitService.calculateMaxLoanAmount({
       salePrice: listingRow.sale_price,
       housingOwnershipTier: profile.housingOwnershipTier,
       isFirstTimeBuyer: profile.isFirstTimeBuyer,
       isRegulatedArea: effectiveIsRegulatedAreaForLoan,
       annualIncome: profile.annualIncome,
-      annualBonus: profile.annualBonus
+      annualBonus: profile.annualBonus,
+      annualInterestRate: interestRate.ratePercent / 100
     });
     ltvPercent = loanLimit.ltvPercent;
     maxLoanAmount = loanLimit.maxLoanAmount;
@@ -287,13 +290,17 @@ async function getListingLoanSimulation(id) {
   const regulationConfirmationNeeded = listingRow.is_land_transaction_permission_zone === null;
   const effectiveIsRegulatedAreaForLoan = regulationConfirmationNeeded ? false : listingRow.is_regulated_area;
 
+  const interestRate = await marketInterestRateService.getCurrentRate();
+
   const scenarios = loanScenarioService.buildScenarios({
     salePrice: listingRow.sale_price,
     isRegulatedArea: effectiveIsRegulatedAreaForLoan,
     annualIncome: profile.annualIncome,
     annualBonus: profile.annualBonus,
     availableCapital: profile.availableCapital,
-    isLandTransactionPermissionZone: listingRow.is_land_transaction_permission_zone
+    isLandTransactionPermissionZone: listingRow.is_land_transaction_permission_zone,
+    annualInterestRate: interestRate.ratePercent / 100,
+    interestRateSource: interestRate.sourceLabel
   });
   const recommendedScenario = loanScenarioService.selectRecommendedScenario(scenarios);
 
@@ -302,7 +309,14 @@ async function getListingLoanSimulation(id) {
     profileIncomplete: false,
     scenarios,
     recommendedScenario,
-    policyMortgageNotice: POLICY_MORTGAGE_NOTICE
+    policyMortgageNotice: POLICY_MORTGAGE_NOTICE,
+    interestRateMeta: {
+      ratePercent: interestRate.ratePercent,
+      referencePeriod: interestRate.referencePeriod,
+      checkedAt: interestRate.checkedAt,
+      daysSinceChecked: interestRate.daysSinceChecked,
+      isStale: interestRate.isStale
+    }
   };
 }
 

@@ -115,6 +115,57 @@ async function getLoanSimulation(req, res, next) {
   }
 }
 
+async function getAcquisitionCosts(req, res, next) {
+  try {
+    const id = Number(req.params.id);
+    const result = await complexDetailService.getAcquisitionCosts(id, {
+      salePrice: parseNumberOrUndefined(req.query.salePrice),
+      exclusiveArea: parseNumberOrUndefined(req.query.exclusiveArea),
+      homeCount: parseNumberOrUndefined(req.query.homeCount),
+      isHeavyTaxExempt: req.query.isHeavyTaxExempt === 'true',
+      negotiatedRatePercent: parseNumberOrUndefined(req.query.negotiatedRatePercent),
+      buyerStampDutySharePercent: parseNumberOrUndefined(req.query.buyerStampDutySharePercent)
+    });
+    if (!result) return notFound(next);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function getLoanSchedule(req, res, next) {
+  try {
+    const id = Number(req.params.id);
+    const result = await complexDetailService.getLoanSchedule(id, {
+      principal: parseNumberOrUndefined(req.query.principal),
+      interestRatePercent: parseNumberOrUndefined(req.query.interestRatePercent),
+      graceMonths: parseNumberOrUndefined(req.query.graceMonths),
+      years: parseNumberOrUndefined(req.query.years)
+    });
+    if (!result) return notFound(next);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function getHoldingTaxEstimate(req, res, next) {
+  try {
+    const id = Number(req.params.id);
+    const result = await complexDetailService.getHoldingTaxEstimate(id, {
+      salePrice: parseNumberOrUndefined(req.query.salePrice),
+      publicPrice: parseNumberOrUndefined(req.query.publicPrice),
+      publicRatio: parseNumberOrUndefined(req.query.publicRatio),
+      homeCount: parseNumberOrUndefined(req.query.homeCount),
+      includeUrbanAreaTax: req.query.includeUrbanAreaTax === 'true'
+    });
+    if (!result) return notFound(next);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   listComplexes,
   getComplex,
@@ -124,5 +175,8 @@ module.exports = {
   getRemodeling,
   getDevelopmentProjects,
   getRegulation,
-  getLoanSimulation
+  getLoanSimulation,
+  getAcquisitionCosts,
+  getLoanSchedule,
+  getHoldingTaxEstimate
 };

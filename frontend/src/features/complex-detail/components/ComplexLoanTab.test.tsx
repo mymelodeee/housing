@@ -5,12 +5,25 @@ import { MemoryRouter } from 'react-router-dom'
 import { ComplexLoanTab } from './ComplexLoanTab'
 import { useComplexRegulation } from '../hooks/useComplexRegulation'
 import { useComplexLoanSimulation } from '../hooks/useComplexLoanSimulation'
+import { useComplexAcquisitionCosts } from '../hooks/useComplexAcquisitionCosts'
+import { useComplexLoanSchedule } from '../hooks/useComplexLoanSchedule'
+import { useComplexHoldingTaxEstimate } from '../hooks/useComplexHoldingTaxEstimate'
 
 vi.mock('../hooks/useComplexRegulation', () => ({ useComplexRegulation: vi.fn() }))
 vi.mock('../hooks/useComplexLoanSimulation', () => ({ useComplexLoanSimulation: vi.fn() }))
+vi.mock('../hooks/useComplexAcquisitionCosts', () => ({ useComplexAcquisitionCosts: vi.fn() }))
+vi.mock('../hooks/useComplexLoanSchedule', () => ({
+  useComplexLoanSchedule: vi.fn(),
+  complexLoanScheduleQueryKey: (complexId: string, params: unknown) => ['complex-loan-schedule', complexId, params],
+  fetchComplexLoanSchedule: vi.fn(),
+}))
+vi.mock('../hooks/useComplexHoldingTaxEstimate', () => ({ useComplexHoldingTaxEstimate: vi.fn() }))
 
 const mockedRegulation = vi.mocked(useComplexRegulation)
 const mockedLoanSimulation = vi.mocked(useComplexLoanSimulation)
+const mockedAcquisitionCosts = vi.mocked(useComplexAcquisitionCosts)
+const mockedLoanSchedule = vi.mocked(useComplexLoanSchedule)
+const mockedHoldingTaxEstimate = vi.mocked(useComplexHoldingTaxEstimate)
 
 function regulationResult(overrides = {}) {
   return {
@@ -57,8 +70,26 @@ describe('ComplexLoanTab', () => {
   beforeEach(() => {
     mockedRegulation.mockReset()
     mockedLoanSimulation.mockReset()
+    mockedAcquisitionCosts.mockReset()
+    mockedLoanSchedule.mockReset()
+    mockedHoldingTaxEstimate.mockReset()
     mockedRegulation.mockReturnValue(regulationResult())
     mockedLoanSimulation.mockReturnValue(loanResult({ salePriceRequired: true }))
+    mockedAcquisitionCosts.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useComplexAcquisitionCosts>)
+    mockedLoanSchedule.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useComplexLoanSchedule>)
+    mockedHoldingTaxEstimate.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useComplexHoldingTaxEstimate>)
   })
 
   it('매매가 미입력 시 profileMessage("매매가 입력 필요")를 보여주고 시나리오는 렌더링하지 않는다', () => {

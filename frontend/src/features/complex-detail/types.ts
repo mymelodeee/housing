@@ -81,6 +81,9 @@ export interface DevelopmentProject {
   status: DevelopmentProjectStatus
   effectiveDate: string | null
   checkedAt: string
+  confidence: 'high' | 'medium' | 'low'
+  isStale: boolean
+  isConflicted: boolean
   note: string | null
   sources: DevelopmentProjectSource[]
 }
@@ -108,6 +111,14 @@ export interface ComplexRegulationInfo {
   regionalLoanCapAmount: number | null
 }
 
+export interface InterestRateMeta {
+  ratePercent: number
+  referencePeriod: string
+  checkedAt: string
+  daysSinceChecked: number
+  isStale: boolean
+}
+
 export interface ComplexLoanSimulationResult {
   complexId: number
   profileIncomplete: boolean
@@ -118,4 +129,105 @@ export interface ComplexLoanSimulationResult {
   effectiveSalePrice: number | null
   salePriceSource: SalePriceSource
   referenceTransactionDate: string | null
+  interestRateMeta?: InterestRateMeta
 }
+
+export interface AcquisitionCostsResponse {
+  complexId: number
+  effectiveSalePrice: number | null
+  salePriceSource: SalePriceSource
+  referenceTransactionDate: string | null
+  message?: string
+  homeCountAfterPurchase: number
+  exclusiveArea: number
+  acquisitionTax: { amount: number; ratePercent: number; isHeavyTaxRate: boolean; rateLabel: string }
+  localEducationTax: { amount: number; ratePercent: number }
+  ruralSpecialTax: { amount: number; ratePercent: number }
+  brokerageFee: {
+    amount: number
+    appliedRatePercent: number
+    capRatePercent: number
+    isCapped: boolean
+    vatIncluded: boolean
+    estimateType: 'ESTIMATE'
+  }
+  stampDuty: { amount: number }
+  totalCost: number
+}
+
+export interface LoanScheduleRow {
+  month: number
+  payment: number
+  interest: number
+  principal: number
+  balance: number
+}
+
+interface LoanScheduleUnavailableResponse {
+  complexId: number
+  schedule: null
+  message: string
+}
+
+interface LoanScheduleAvailableResponse {
+  complexId: number
+  principal: number
+  interestRatePercent: number
+  years: number
+  graceMonths: number
+  message?: undefined
+  rows: LoanScheduleRow[]
+  regularMonthlyPayment: number
+  graceMonthlyPayment: number
+  cliffMonth: number
+  postCliffMonthlyPayment: number
+  cliffIncrease: number
+  totalInterest: number
+  totalPrincipal: number
+  endBalance: number
+}
+
+export type LoanScheduleResponse = LoanScheduleUnavailableResponse | LoanScheduleAvailableResponse
+
+export type PublicPriceSource = 'user' | 'estimated' | null
+
+interface HoldingTaxEstimateUnavailableResponse {
+  complexId: number
+  effectiveSalePrice: null
+  salePriceSource: null
+  referenceTransactionDate: null
+  publicPrice: null
+  publicPriceSource: null
+  message: string
+}
+
+interface HoldingTaxEstimateAvailableResponse {
+  complexId: number
+  effectiveSalePrice: number | null
+  salePriceSource: SalePriceSource
+  referenceTransactionDate: string | null
+  message?: undefined
+  publicPrice: number
+  publicPriceSource: PublicPriceSource
+  homeCountAfterPurchase: number
+  isOneHouse: boolean
+  propertyTax: {
+    fairMarketValueRatio: number
+    isSpecialOneHouse: boolean
+    propertyTax: number
+    localEducationTax: number
+    urbanAreaTax: number
+    total: number
+  }
+  comprehensiveTax: {
+    deduction: number
+    taxableBase: number
+    comprehensiveTax: number
+    ruralSpecialTax: number
+    total: number
+    estimateType: 'ESTIMATE'
+  }
+  totalAnnualHoldingTax: number
+}
+
+export type HoldingTaxEstimateResponse = HoldingTaxEstimateUnavailableResponse | HoldingTaxEstimateAvailableResponse

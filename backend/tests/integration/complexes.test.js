@@ -201,4 +201,61 @@ describe('GET /api/complexes', () => {
       }
     });
   });
+
+  describe('GET /api/complexes/:id/acquisition-costs', () => {
+    it('salePrice를 query로 넘기면 취득세·중개보수·인지세 합계를 계산한다', async () => {
+      const res = await request(app).get(`/api/complexes/${dongtanId}/acquisition-costs`).query({ salePrice: 95000, exclusiveArea: 84.98 });
+
+      expect(res.status).toBe(200);
+      expect(res.body.effectiveSalePrice).toBe(95000);
+      expect(res.body.salePriceSource).toBe('user');
+      expect(res.body.acquisitionTax.amount).toBeGreaterThan(0);
+      expect(res.body.brokerageFee.estimateType).toBe('ESTIMATE');
+      expect(res.body.totalCost).toBeGreaterThan(0);
+    });
+
+    it('존재하지 않는 단지는 404를 반환한다', async () => {
+      const res = await request(app).get('/api/complexes/999999/acquisition-costs').query({ salePrice: 95000 });
+
+      expect(res.status).toBe(404);
+    });
+  });
+
+  describe('GET /api/complexes/:id/loan-schedule', () => {
+    it('principal/interestRatePercent를 넘기면 월별 상환 스케줄을 계산한다', async () => {
+      const res = await request(app)
+        .get(`/api/complexes/${dongtanId}/loan-schedule`)
+        .query({ principal: 38000, interestRatePercent: 4.5, graceMonths: 12, years: 30 });
+
+      expect(res.status).toBe(200);
+      expect(res.body.rows).toHaveLength(372);
+      expect(res.body.cliffMonth).toBe(13);
+      expect(res.body.cliffIncrease).toBeGreaterThan(0);
+    });
+
+    it('principal/interestRatePercent가 없으면 안내 메시지를 반환한다', async () => {
+      const res = await request(app).get(`/api/complexes/${dongtanId}/loan-schedule`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.message).toBe('원금과 금리 입력 필요');
+    });
+  });
+
+  describe('GET /api/complexes/:id/holding-tax-estimate', () => {
+    it('publicPrice를 query로 넘기면 재산세·종부세 추정치를 계산한다', async () => {
+      const res = await request(app).get(`/api/complexes/${dongtanId}/holding-tax-estimate`).query({ publicPrice: 90000, homeCount: 1 });
+
+      expect(res.status).toBe(200);
+      expect(res.body.publicPrice).toBe(90000);
+      expect(res.body.publicPriceSource).toBe('user');
+      expect(res.body.comprehensiveTax.estimateType).toBe('ESTIMATE');
+      expect(res.body.totalAnnualHoldingTax).toBeGreaterThanOrEqual(0);
+    });
+
+    it('존재하지 않는 단지는 404를 반환한다', async () => {
+      const res = await request(app).get('/api/complexes/999999/holding-tax-estimate').query({ publicPrice: 90000 });
+
+      expect(res.status).toBe(404);
+    });
+  });
 });

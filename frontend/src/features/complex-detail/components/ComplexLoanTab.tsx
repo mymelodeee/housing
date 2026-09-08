@@ -4,6 +4,10 @@ import { useComplexRegulation } from '../hooks/useComplexRegulation'
 import { useComplexLoanSimulation } from '../hooks/useComplexLoanSimulation'
 import { Badge } from '../../../shared/components/Badge'
 import { ScenarioCard } from '../../loan-simulation/components/ScenarioCard'
+import { ComplexAcquisitionCostSection } from './ComplexAcquisitionCostSection'
+import { ComplexHoldingTaxSection } from './ComplexHoldingTaxSection'
+import { ComplexFundingGapSection } from './ComplexFundingGapSection'
+import { ComplexScenarioSection } from './ComplexScenarioSection'
 import { formatPriceKorean } from '../../../shared/utils/formatPrice'
 import '../../listing-detail/regulation/components/RegulationTab.css'
 import '../../loan-simulation/components/LoanSimulationTab.css'
@@ -19,6 +23,16 @@ export function ComplexLoanTab({ complexId }: ComplexLoanTabProps) {
 
   const regulation = useComplexRegulation(complexId, salePrice)
   const loanSimulation = useComplexLoanSimulation(complexId, salePrice)
+
+  const effectiveSalePrice = regulation.data?.effectiveSalePrice ?? salePrice
+  const recommendedScenario = loanSimulation.data?.scenarios?.find(
+    (s) => s.ownershipStructure === loanSimulation.data?.recommendedScenario,
+  )
+  // recommendedScenario는 두 시나리오 모두 자금 조달이 불가능하면 null일 수 있다. 이 경우에도
+  // 대출한도/금리 자체는 이미 계산돼 있으므로 첫 번째 시나리오로 대체해 Scenario·자금 섹션에 반영한다.
+  const referenceScenario = recommendedScenario ?? loanSimulation.data?.scenarios?.[0]
+  const maxLoanAmount = referenceScenario?.maxLoanAmount ?? regulation.data?.maxLoanAmount ?? null
+  const interestRatePercent = referenceScenario?.interestRatePercent ?? null
 
   return (
     <div className="complex-loan-tab">
@@ -86,6 +100,16 @@ export function ComplexLoanTab({ complexId }: ComplexLoanTabProps) {
         </div>
       )}
 
+      <ComplexAcquisitionCostSection complexId={complexId} salePrice={effectiveSalePrice} />
+      <ComplexHoldingTaxSection complexId={complexId} salePrice={effectiveSalePrice} />
+      <ComplexFundingGapSection complexId={complexId} salePrice={effectiveSalePrice} maxLoanAmount={maxLoanAmount} />
+      <ComplexScenarioSection
+        complexId={complexId}
+        salePrice={effectiveSalePrice}
+        maxLoanAmount={maxLoanAmount}
+        interestRatePercent={interestRatePercent}
+      />
+
       {loanSimulation.data?.profileIncomplete && (
         <div className="loan-simulation-tab__incomplete">
           <p>내 정보를 입력해주세요</p>
@@ -95,10 +119,18 @@ export function ComplexLoanTab({ complexId }: ComplexLoanTabProps) {
 
       {loanSimulation.data && !loanSimulation.data.profileIncomplete && loanSimulation.data.scenarios && (
         <div className="loan-simulation-tab">
+          {loanSimulation.data.interestRateMeta && (
+            <p className="loan-simulation-tab__rate-meta">
+              기준금리 연 {loanSimulation.data.interestRateMeta.ratePercent}% ({loanSimulation.data.interestRateMeta.referencePeriod} 기준,{' '}
+              {loanSimulation.data.interestRateMeta.checkedAt} 확인)
+              {loanSimulation.data.interestRateMeta.isStale && <Badge variant="needs-confirmation">재확인 필요</Badge>}
+            </p>
+          )}
           <div className="loan-simulation-tab__scenarios">
             {loanSimulation.data.scenarios?.map((scenario) => (
               <ScenarioCard
                 key={scenario.ownershipStructure}
+                complexId={complexId}
                 scenario={scenario}
                 recommended={scenario.ownershipStructure === loanSimulation.data?.recommendedScenario}
               />

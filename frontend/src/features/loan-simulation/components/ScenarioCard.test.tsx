@@ -1,8 +1,13 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ScenarioCard } from './ScenarioCard'
+import { useComplexLoanSchedule } from '../../complex-detail/hooks/useComplexLoanSchedule'
 import type { LoanScenarioResult } from '../types'
+
+vi.mock('../../complex-detail/hooks/useComplexLoanSchedule', () => ({ useComplexLoanSchedule: vi.fn() }))
+
+const mockedLoanSchedule = vi.mocked(useComplexLoanSchedule)
 
 function makeScenario(overrides: Partial<LoanScenarioResult> = {}): LoanScenarioResult {
   return {
@@ -108,5 +113,49 @@ describe('ScenarioCard', () => {
     expect(screen.getByText('초기 200만원 → 최종 400만원')).toBeInTheDocument()
     expect(screen.getByText('초기 150만원 → 최종 300만원')).toBeInTheDocument()
     expect(screen.queryByText('500만원')).not.toBeInTheDocument()
+  })
+
+  describe('월별 상환 스케줄 (complexId 제공 시)', () => {
+    beforeEach(() => {
+      mockedLoanSchedule.mockReset()
+    })
+
+    it('complexId가 없으면 스케줄 버튼을 렌더링하지 않는다', () => {
+      render(<ScenarioCard scenario={makeScenario()} recommended={false} />)
+
+      expect(screen.queryByRole('button', { name: '월별 상환 스케줄 보기' })).not.toBeInTheDocument()
+      expect(mockedLoanSchedule).not.toHaveBeenCalled()
+    })
+
+    it('버튼을 클릭하면 스케줄 테이블을 렌더링한다', async () => {
+      mockedLoanSchedule.mockReturnValue({
+        data: {
+          complexId: 1,
+          principal: 57000,
+          interestRatePercent: 4.5,
+          years: 30,
+          graceMonths: 0,
+          rows: [{ month: 1, payment: 289, interest: 213, principal: 76, balance: 56924 }],
+          regularMonthlyPayment: 289,
+          graceMonthlyPayment: 289,
+          cliffMonth: 1,
+          postCliffMonthlyPayment: 289,
+          cliffIncrease: 0,
+          totalInterest: 45000,
+          totalPrincipal: 57000,
+          endBalance: 0,
+        },
+        isLoading: false,
+        isError: false,
+      } as unknown as ReturnType<typeof useComplexLoanSchedule>)
+
+      const user = userEvent.setup()
+      render(<ScenarioCard scenario={makeScenario()} recommended={false} complexId="1" />)
+
+      await user.click(screen.getByRole('button', { name: '월별 상환 스케줄 보기' }))
+
+      expect(mockedLoanSchedule).toHaveBeenCalled()
+      expect(screen.getByText('289')).toBeInTheDocument()
+    })
   })
 })
