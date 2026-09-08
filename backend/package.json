@@ -10,7 +10,9 @@
     "migrate": "node-pg-migrate --migrations-dir src/db/migrations --database-url-var POSTGRES_CONNECTION_STRING --envPath .env",
     "collect-transactions": "node scripts/collect-regional-transactions.js",
     "remodeling:list": "node scripts/refresh-remodeling-data.js --list",
-    "remodeling:apply": "node scripts/refresh-remodeling-data.js --apply"
+    "remodeling:apply": "node scripts/refresh-remodeling-data.js --apply",
+    "development:list-stale": "node scripts/seed-development-projects.js --list",
+    "development:apply": "node scripts/seed-development-projects.js --apply"
   },
   "jest": {
     "testEnvironment": "node",

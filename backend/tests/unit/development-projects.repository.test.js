@@ -66,12 +66,37 @@ describe('repositories/development-projects.repository', () => {
       status: '착공',
       effectiveDate: '2025-11-18',
       checkedAt: '2026-09-08',
+      confidence: 'high',
       note: null
     });
 
     expect(lastSql()).toContain('INSERT INTO development_projects');
-    expect(lastParams()).toEqual([null, '41590', '화성시', 'GTX-A 동탄역', '철도', '착공', '2025-11-18', '2026-09-08', null]);
+    expect(lastParams()).toEqual([null, '41590', '화성시', 'GTX-A 동탄역', '철도', '착공', '2025-11-18', '2026-09-08', 'high', null]);
     expect(result).toEqual({ id: 1, project_name: 'GTX-A 동탄역' });
+  });
+
+  it('findStaleProjects는 기준 일수를 SQL 파라미터로 전달한다', async () => {
+    mockRows([{ id: 1 }]);
+    await expect(repository.findStaleProjects(30)).resolves.toEqual([{ id: 1 }]);
+    expect(lastSql()).toContain('checked_at < CURRENT_DATE - $1::integer');
+    expect(lastParams()).toEqual([30]);
+  });
+
+  it('replaceProjectWithHistory는 이전 값과 출처 snapshot을 보존한 뒤 current를 갱신한다', async () => {
+    mockRows([{ id: 1, status: '완료' }]);
+    await repository.replaceProjectWithHistory({
+      projectId: 1,
+      regionName: '화성시',
+      category: '철도',
+      status: '완료',
+      effectiveDate: '2024-03-30',
+      checkedAt: '2026-09-08',
+      confidence: 'high',
+      note: null,
+    });
+    expect(lastSql()).toContain('INSERT INTO development_project_history');
+    expect(lastSql()).toContain('sources_snapshot');
+    expect(lastParams()).toEqual([1, '화성시', '철도', '완료', '2024-03-30', '2026-09-08', 'high', null]);
   });
 
   it('insertSource는 출처 행을 생성한다', async () => {

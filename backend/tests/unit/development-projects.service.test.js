@@ -26,6 +26,8 @@ describe('services/development-projects.service', () => {
         status: '착공',
         effective_date: new Date(2025, 10, 18),
         checked_at: new Date(2026, 8, 1),
+        confidence: 'high',
+        is_conflicted: false,
         note: null,
       },
     ]);
@@ -55,6 +57,9 @@ describe('services/development-projects.service', () => {
           status: '착공',
           effectiveDate: '2025-11-18',
           checkedAt: '2026-09-01',
+          confidence: 'high',
+          isStale: false,
+          isConflicted: false,
           note: null,
           sources: [
             {

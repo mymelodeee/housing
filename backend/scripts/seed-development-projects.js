@@ -1,68 +1,65 @@
 /**
- * 개발호재 수동 조사 결과를 development_projects/development_project_sources에 적재하는 스크립트.
+ * 공식·신뢰 가능한 출처 기반 개발호재 curated dataset을 적재·재검증한다.
  *
- * 개발호재는 단일 공식 API가 없어(§10) 수동 리서치에 의존한다. 리모델링(refresh-remodeling-data.js)과
- * 달리 아직 값 버전 관리(facts/history) 테이블이 없으므로, 여기서는 (lawd_cd, project_name) 기준으로
- * 이미 있으면 건너뛰고 없으면 새로 추가하는 단순 적재만 수행한다.
- *
- *   node scripts/seed-development-projects.js [data/development-projects-seed.json]
+ *   node scripts/seed-development-projects.js --list [--stale-days=30]
+ *   node scripts/seed-development-projects.js --apply [data/development-projects-seed.json]
  */
 require('dotenv').config();
 
 const fs = require('fs');
 const path = require('path');
-
-const developmentProjectsRepository = require('../src/repositories/development-projects.repository');
+const {
+  DEFAULT_STALE_DAYS,
+  listStaleProjects,
+  refreshCuratedProject,
+} = require('../src/services/development-projects-maintenance.service');
 const pool = require('../src/db/pool');
 
-async function seedProject(entry) {
-  const existing = await developmentProjectsRepository.findProjectByLawdCdAndName(entry.lawdCd, entry.projectName);
-  if (existing) {
-    console.log(`[SKIP] 이미 존재: ${entry.regionName} / ${entry.projectName}`);
+function parseArguments(args) {
+  const staleDaysArgument = args.find((argument) => argument.startsWith('--stale-days='));
+  const staleDays = staleDaysArgument ? Number(staleDaysArgument.split('=')[1]) : DEFAULT_STALE_DAYS;
+  const filePath = args.find((argument) => !argument.startsWith('--')) || 'data/development-projects-seed.json';
+  return { mode: args.includes('--list') ? 'list' : 'apply', staleDays, filePath };
+}
+
+async function listStale(staleDays) {
+  const projects = await listStaleProjects(staleDays);
+  if (projects.length === 0) {
+    console.log(`[OK] ${staleDays}일 초과 미검증 개발호재 없음`);
     return;
   }
+  for (const project of projects) {
+    const checkedAt = project.checked_at instanceof Date
+      ? `${project.checked_at.getFullYear()}-${String(project.checked_at.getMonth() + 1).padStart(2, '0')}-${String(project.checked_at.getDate()).padStart(2, '0')}`
+      : String(project.checked_at).slice(0, 10);
+    console.log(`[STALE] ${checkedAt} ${project.region_name} / ${project.project_name}`);
+  }
+}
 
-  const project = await developmentProjectsRepository.insertProject({
-    lawdCd: entry.lawdCd,
-    regionName: entry.regionName,
-    projectName: entry.projectName,
-    category: entry.category,
-    status: entry.status,
-    effectiveDate: entry.effectiveDate ?? null,
-    checkedAt: entry.checkedAt,
-    note: entry.note ?? null
-  });
+async function applyDataset(filePath) {
+  const absolutePath = path.resolve(process.cwd(), filePath);
+  const entries = JSON.parse(fs.readFileSync(absolutePath, 'utf8'));
+  const counts = { inserted: 0, verified: 0, updated: 0, conflicted: 0 };
 
-  for (const source of entry.sources ?? []) {
-    await developmentProjectsRepository.insertSource({
-      projectId: project.id,
-      sourceUrl: source.sourceUrl ?? null,
-      sourceName: source.sourceName ?? null,
-      sourceType: source.sourceType,
-      sourceDate: source.sourceDate ?? null,
-      checkedAt: entry.checkedAt,
-      reliability: source.reliability
-    });
+  for (const entry of entries) {
+    const result = await refreshCuratedProject(entry);
+    counts[result.action] += 1;
+    console.log(`[${result.action.toUpperCase()}] ${entry.regionName} / ${entry.projectName}`);
   }
 
-  console.log(`[ADD] ${entry.regionName} / ${entry.projectName} (출처 ${entry.sources?.length ?? 0}건)`);
+  console.log(JSON.stringify(counts));
 }
 
 async function main() {
-  const filePath = process.argv[2] || 'data/development-projects-seed.json';
-  const absolutePath = path.resolve(process.cwd(), filePath);
-  const entries = JSON.parse(fs.readFileSync(absolutePath, 'utf8'));
-
-  for (const entry of entries) {
-    await seedProject(entry);
-  }
-
-  console.log(`총 ${entries.length}건 처리 완료`);
+  const { mode, staleDays, filePath } = parseArguments(process.argv.slice(2));
+  if (!Number.isInteger(staleDays) || staleDays < 1) throw new Error('--stale-days는 1 이상의 정수여야 합니다.');
+  if (mode === 'list') await listStale(staleDays);
+  else await applyDataset(filePath);
 }
 
 main()
-  .catch((err) => {
-    console.error('[ERROR] 개발호재 시드 실패:', err.message);
+  .catch((error) => {
+    console.error('[ERROR] 개발호재 유지보수 실패:', error.message);
     process.exitCode = 1;
   })
   .finally(() => pool.end());

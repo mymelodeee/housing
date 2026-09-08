@@ -24,13 +24,20 @@ function mapSource(row) {
 }
 
 function mapProject(row, sources) {
+  const checkedAt = formatLocalDate(row.checked_at);
+  const staleCutoff = new Date();
+  staleCutoff.setDate(staleCutoff.getDate() - 30);
+  staleCutoff.setHours(0, 0, 0, 0);
   return {
     id: row.id,
     projectName: row.project_name,
     category: row.category,
     status: row.status,
     effectiveDate: formatLocalDate(row.effective_date),
-    checkedAt: formatLocalDate(row.checked_at),
+    checkedAt,
+    confidence: row.confidence ?? 'medium',
+    isStale: row.checked_at ? new Date(row.checked_at) < staleCutoff : true,
+    isConflicted: row.is_conflicted ?? false,
     note: row.note,
     sources: sources.map(mapSource)
   };
