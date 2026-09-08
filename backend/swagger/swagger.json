@@ -106,8 +106,8 @@
     "/api/complexes/{id}/development-projects": {
       "get": {
         "tags": ["development-projects"],
-        "summary": "단지 상세 - 개발호재 (complex-anchor, 신규, Phase 4 스캐폴드)",
-        "description": "단지에 연결된 개발호재(철도/도로/택지개발 등) 목록을 조회한다. 실제 데이터는 아직 수동 조사로 입력된 건이 없어(2026-09-08) 항상 빈 배열을 반환하며, API/응답 구조만 먼저 마련한 상태다.",
+        "summary": "단지 상세 - 개발호재 (complex-anchor)",
+        "description": "단지에 직접 연결되거나 같은 법정동코드 지역에 등록된 개발호재(철도/도로/택지개발 등)와 출처를 조회한다.",
         "parameters": [ { "$ref": "#/components/parameters/ComplexIdPath" } ],
         "responses": {
           "200": { "description": "개발호재 목록", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DevelopmentProjectsResponse" } } } },
@@ -141,6 +141,63 @@
         ],
         "responses": {
           "200": { "description": "대출 시뮬레이션 결과", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ComplexLoanSimulationResult" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/complexes/{id}/acquisition-costs": {
+      "get": {
+        "tags": ["loan-simulation"],
+        "summary": "단지 상세 - 취득 초기비용 (complex-anchor, 신규)",
+        "description": "query로 전달한 `salePrice` 기준(미지정 시 최신 유효 매매 실거래가 자동 사용)으로 취득세·지방교육세·농어촌특별세·매매 중개보수·인지세를 계산한다. 취득세/지방교육세/농어촌특별세/인지세는 지방세법·인지세법 기준 확정값(OFFICIAL_RULE)이며, 중개보수는 공인중개사법 시행규칙 별표1 및 서울특별시 주택 중개보수 등에 관한 조례 별표1(2026-09-08 land.seoul.go.kr 공식 페이지로 재확인) 기준 상한요율 × 취득가액으로 계산한다. 저가 구간(2억원 미만)의 법정 정액 한도액은 이 서비스가 다루는 7~15억원대 매물에는 적용될 일이 없어 반영하지 않는다. 고정 수수료가 아니라 이 금액 이내에서 협의되므로 `estimateType: ESTIMATE`로 표시하고, `negotiatedRatePercent`로 사용자가 직접 협의 요율을 입력할 수 있다.",
+        "parameters": [
+          { "$ref": "#/components/parameters/ComplexIdPath" },
+          { "name": "salePrice", "in": "query", "description": "분석 대상 매매가(만원). 미지정 시 최신 실거래가를 자동으로 사용한다.", "required": false, "schema": { "type": "integer", "example": 95000 } },
+          { "name": "exclusiveArea", "in": "query", "description": "전용면적(m^2). 85㎡ 초과 시에만 농어촌특별세가 부과된다. 미지정 시 85(농특세 0원)로 계산한다.", "required": false, "schema": { "type": "number", "example": 84.98 } },
+          { "name": "homeCount", "in": "query", "description": "이 주택 취득 후 기준 총 보유주택 수. 미지정 시 내 정보의 세대 주택 보유 구분(무주택→1/1주택→2/다주택→3)에서 추정한다.", "required": false, "schema": { "type": "integer", "example": 1 } },
+          { "name": "isHeavyTaxExempt", "in": "query", "description": "다주택 취득세 중과 예외 적용 여부", "required": false, "schema": { "type": "boolean", "default": false } },
+          { "name": "negotiatedRatePercent", "in": "query", "description": "협의된 중개보수율(%). 법정 상한을 초과하면 상한으로 제한한다.", "required": false, "schema": { "type": "number", "example": 0.4 } },
+          { "name": "buyerStampDutySharePercent", "in": "query", "description": "인지세 매수인 부담비율(%). 미지정 시 100.", "required": false, "schema": { "type": "integer", "default": 100, "example": 100 } }
+        ],
+        "responses": {
+          "200": { "description": "취득 초기비용 breakdown", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AcquisitionCostsResponse" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/complexes/{id}/loan-schedule": {
+      "get": {
+        "tags": ["loan-simulation"],
+        "summary": "단지 상세 - 월별 대출 상환 스케줄 (complex-anchor, 신규)",
+        "description": "원금(`principal`)과 연이율(`interestRatePercent`)을 기준으로 거치기간·상환기간을 반영한 월별 원금/이자/잔액 상환 스케줄을 계산한다(원리금균등상환). `principal`/`interestRatePercent` 중 하나라도 없으면 `schedule: null`과 안내 메시지를 반환한다.",
+        "parameters": [
+          { "$ref": "#/components/parameters/ComplexIdPath" },
+          { "name": "principal", "in": "query", "description": "대출 원금(만원)", "required": false, "schema": { "type": "integer", "example": 38000 } },
+          { "name": "interestRatePercent", "in": "query", "description": "연이율(%)", "required": false, "schema": { "type": "number", "example": 4.5 } },
+          { "name": "graceMonths", "in": "query", "description": "거치기간(개월, 이자만 납부). 미지정 시 0.", "required": false, "schema": { "type": "integer", "default": 0, "example": 12 } },
+          { "name": "years", "in": "query", "description": "거치 이후 원리금균등상환 기간(년). 미지정 시 30.", "required": false, "schema": { "type": "integer", "default": 30, "example": 30 } }
+        ],
+        "responses": {
+          "200": { "description": "월별 상환 스케줄", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LoanScheduleResponse" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/complexes/{id}/holding-tax-estimate": {
+      "get": {
+        "tags": ["loan-simulation"],
+        "summary": "단지 상세 - 보유세(재산세·종합부동산세) 추정 (complex-anchor, 신규)",
+        "description": "공시가격(`publicPrice`, 미지정 시 매매가×`publicRatio`로 추정) 기준 연간 재산세와 종합부동산세 간이추정을 계산한다. 재산세는 지방세법 기준 확정값(OFFICIAL_RULE)이다. 종합부동산세는 종합부동산세법(2026-01-01 시행, 1세대1주택 12억원/그 외 9억원 기본공제, 공정시장가액비율 60%)을 근거로 하되 재산세 상당액 공제·세액공제·세부담상한 등 실제 신고 요소를 생략한 간이 계산이므로 항상 `estimateType: ESTIMATE`로 표시하고 확정 세액으로 오해되지 않게 한다. 이 서비스는 단일 단지 평가 도구이므로 종부세 계산의 공시가격 합계는 이 단지 하나만 반영하는 단순화를 적용한다(다주택 포트폴리오 합산 미지원).",
+        "parameters": [
+          { "$ref": "#/components/parameters/ComplexIdPath" },
+          { "name": "salePrice", "in": "query", "description": "publicPrice 추정에 사용할 매매가(만원). 미지정 시 최신 실거래가를 자동으로 사용한다.", "required": false, "schema": { "type": "integer", "example": 95000 } },
+          { "name": "publicPrice", "in": "query", "description": "공시가격 직접입력(만원). 미지정 시 salePrice × publicRatio로 추정한다.", "required": false, "schema": { "type": "integer", "example": 65000 } },
+          { "name": "publicRatio", "in": "query", "description": "공시가격 추정비율(%). 법정 비율이 아닌 사용자 조정 가정. 미지정 시 70.", "required": false, "schema": { "type": "number", "default": 70, "example": 70 } },
+          { "name": "homeCount", "in": "query", "description": "이 주택 취득 후 기준 총 보유주택 수. 미지정 시 내 정보의 세대 주택 보유 구분에서 추정한다.", "required": false, "schema": { "type": "integer", "example": 1 } },
+          { "name": "includeUrbanAreaTax", "in": "query", "description": "재산세 도시지역분(0.14%) 포함 여부", "required": false, "schema": { "type": "boolean", "default": false } }
+        ],
+        "responses": {
+          "200": { "description": "보유세 추정 결과", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HoldingTaxEstimateResponse" } } } },
           "404": { "$ref": "#/components/responses/NotFound" }
         }
       }
@@ -266,7 +323,7 @@
       "get": {
         "tags": ["locality"],
         "summary": "매물 상세 - 입지 정보 (F5)",
-        "description": "매물이 속한 단지 기준의 입지 축(교통/상권/학군/강남 접근성/유흥·공원/개발호재/주변일자리)과 단지 기본정보(연식/리모델링/재건축/주변 재개발 정보)를 조회한다(도메인 §3.5, PRD F5). 소속 단지의 `locality_attributes`에 값이 없는 축은 \"정보 없음\"으로 반환한다.",
+        "description": "매물이 속한 단지 기준의 입지 축(교통/상권/강남 접근성/유흥·공원/주변일자리)과 단지 기본정보(연식/리모델링/재건축/주변 재개발 정보)를 조회한다(도메인 §3.5, PRD F5). 소속 단지의 `locality_attributes`에 값이 없는 축은 \"정보 없음\"으로 반환한다. 학군과 개발호재는 단지 상세 전용 API에서 제공한다.",
         "parameters": [ { "$ref": "#/components/parameters/ListingIdPath" } ],
         "responses": {
           "200": { "description": "입지 정보", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LocalityInfo" } } } },
@@ -355,6 +412,17 @@
         "responses": {
           "200": { "description": "재조사 대상 목록", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RemodelingStaleResponse" } } } },
           "400": { "description": "staleAfterDays가 숫자가 아닌 경우", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/api/admin/market-interest-rate": {
+      "get": {
+        "tags": ["loan-simulation"],
+        "summary": "관리용 - 대출 시뮬레이션 기준금리 현재값 및 재조사 필요 여부",
+        "description": "market_interest_rates 테이블의 현재 기준금리(한국은행 금융기관 가중평균금리, 예금은행 신규취급액 기준 주택담보대출)와 마지막 확인일·경과일·재조사 필요 여부(isStale, 30일 기준)를 반환한다. scripts/refresh-market-interest-rate.js --check 와 동일한 결과를 낸다. 갱신은 이 API가 아니라 그 스크립트의 --apply 옵션으로만 수행한다(공식 API가 없어 사람이 매월 발표를 확인해 반영).",
+        "responses": {
+          "200": { "description": "현재 기준금리", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/InterestRateMeta" } } } },
+          "404": { "description": "등록된 기준금리 정보가 없음(마이그레이션 시드 누락)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
         }
       }
     },
@@ -593,7 +661,7 @@
       },
       "DevelopmentProjectsResponse": {
         "type": "object",
-        "description": "단지에 연결된 개발호재 목록(Phase 4 스캐폴드). 현재는 항상 빈 배열.",
+        "description": "단지에 직접 연결되거나 같은 법정동코드 지역에 등록된 개발호재와 검증 출처 목록. checkedAt이 30일을 넘으면 isStale=true이며, 출처 충돌 시 isConflicted=true로 표시하고 자동 덮어쓰지 않는다.",
         "properties": {
           "complexId": { "type": "integer", "example": 5 },
           "projects": {
@@ -607,6 +675,9 @@
                 "status": { "type": "string", "enum": ["계획", "확정", "착공", "공사중", "완료", "취소"], "example": "착공" },
                 "effectiveDate": { "type": "string", "format": "date", "nullable": true },
                 "checkedAt": { "type": "string", "format": "date" },
+                "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+                "isStale": { "type": "boolean" },
+                "isConflicted": { "type": "boolean" },
                 "note": { "type": "string", "nullable": true },
                 "sources": {
                   "type": "array",
@@ -926,22 +997,24 @@
       },
       "LocalityAttributes": {
         "type": "object",
-        "description": "입지 속성. 값이 없는 축은 \"정보 없음\"으로 채워 반환한다(도메인 §4.1, 실행계획 BE-5/BE-8). schoolDistrict/entertainmentAndParks는 단지에 수동 입력된 값이 있으면 그 값을 그대로 우선 반환하고, 값이 없을 때만(즉 \"정보 없음\"일 때만) 공공데이터 API로 700m 반경을 실시간 조회해 채운다.",
+        "description": "입지 속성. 값이 없는 축은 \"정보 없음\"으로 채워 반환한다(도메인 §4.1, 실행계획 BE-5/BE-8). commercialArea/gangnamAccessibility/entertainmentAndParks는 단지에 수동 입력된 값이 있으면 그 값을 그대로 우선 반환하고, 값이 없을 때만(즉 \"정보 없음\"일 때만) 자동 산정한다(2026-09-08). 원래 있던 schoolDistrict/developmentProspects는 각각 전용 탭(단지 상세 \"학군\"/\"개발호재\")과 완전히 중복돼 2026-09-08 제거했다(docs/search-architecture-refactor-plan.md §6/§18).",
         "properties": {
           "transportation": { "type": "string", "example": "지하철 SRT 동탄역 도보 10분, 광역버스 다수" },
-          "commercialArea": { "type": "string", "example": "정보 없음" },
-          "schoolDistrict": {
+          "commercialArea": {
             "type": "string",
-            "description": "단지 좌표 기준 700m 이내 가장 가까운 초등학교명과 거리. 수동 입력 값이 없을 때 전국초중등학교위치표준데이터(data.go.kr 15021148)로 실시간 계산한다. 700m 이내 학교가 없으면 \"정보 없음\".",
-            "example": "동탄중앙초등학교 (350m 이내)"
+            "description": "단지 좌표 기준 700m 이내 음식점/카페/마트·편의점/병원 대표 업종 건수 집계(2026-09-08). 수동 입력 값이 없을 때 소상공인시장진흥공단 상가(상권)정보 API(B553077 storeListInRadius)로 실시간 조회한다.",
+            "example": "음식점 12 · 카페 5 · 마트/편의점 3 · 병원 4 (700m 이내)"
           },
-          "gangnamAccessibility": { "type": "string", "example": "SRT 이용 시 강남 접근 30분대" },
+          "gangnamAccessibility": {
+            "type": "string",
+            "description": "단지 좌표와 강남역 좌표 간 haversine 직선거리(2026-09-08 자동 계산, 외부 API 미사용). 대중교통 소요시간은 범위 밖이다.",
+            "example": "강남역 직선 18.4km"
+          },
           "entertainmentAndParks": {
             "type": "string",
-            "description": "단지 좌표 기준 700m 이내 일반유흥주점업 존재 여부. 수동 입력 값이 없을 때 소상공인시장진흥공단 상가(상권)정보 API(B553077 storeListInRadius)로 실시간 조회한다. 공원 정보는 이 필드에서 다루지 않는다(범위 제외).",
+            "description": "단지 좌표 기준 700m 이내 일반유흥주점업 존재 여부. 수동 입력 값이 없을 때 소상공인시장진흥공단 상가(상권)정보 API(B553077 storeListInRadius)로 실시간 조회한다. 공원 정보는 이 필드에서 다루지 않는다(범위 제외, 전국도시공원정보표준데이터는 별도 활용신청 필요).",
             "example": "유흥주점 없음 (700m 이내)"
           },
-          "developmentProspects": { "type": "string", "example": "GTX-A 동탄역 개통 예정" },
           "nearbyJobs": { "type": "string", "example": "삼성전자 화성캠퍼스" }
         }
       },
@@ -1167,7 +1240,134 @@
           "salePriceRequired": { "type": "boolean", "description": "유효한 매매 실거래가 없고 salePrice도 미지정일 때만 true", "example": true },
           "effectiveSalePrice": { "type": "integer", "nullable": true, "example": 95000 },
           "salePriceSource": { "$ref": "#/components/schemas/SalePriceSource" },
-          "referenceTransactionDate": { "type": "string", "nullable": true, "example": "2026-08-25" }
+          "referenceTransactionDate": { "type": "string", "nullable": true, "example": "2026-08-25" },
+          "interestRateMeta": { "$ref": "#/components/schemas/InterestRateMeta" }
+        }
+      },
+      "InterestRateMeta": {
+        "type": "object",
+        "description": "대출 시뮬레이션에 적용된 기준금리의 출처 메타데이터. market_interest_rates 테이블 값이며, 한국은행이 매월 발표하는 금융기관 가중평균금리(예금은행 신규취급액 기준 주택담보대출)를 사람이 30일 주기로 확인해 갱신한다.",
+        "properties": {
+          "ratePercent": { "type": "number", "format": "double", "example": 4.48 },
+          "referencePeriod": { "type": "string", "description": "통계 기준월(YYYY-MM)", "example": "2026-07" },
+          "sourceName": { "type": "string", "nullable": true, "example": "한국은행 금융기관 가중평균금리(예금은행 신규취급액 기준 주택담보대출)" },
+          "sourceUrl": { "type": "string", "nullable": true, "example": "https://www.bok.or.kr/portal/main/main.do" },
+          "checkedAt": { "type": "string", "format": "date", "description": "이 값을 마지막으로 확인·반영한 날짜", "example": "2026-09-08" },
+          "daysSinceChecked": { "type": "integer", "example": 12 },
+          "isStale": { "type": "boolean", "description": "checkedAt으로부터 30일 이상 경과 시 true — 재확인 필요", "example": false },
+          "sourceLabel": { "type": "string", "description": "출처·기준월·확인일을 합친 표시용 문구. 30일 이상 경과 시 재확인 안내가 덧붙는다.", "example": "한국은행 금융기관 가중평균금리(예금은행 신규취급액 기준 주택담보대출)(2026-07 기준, 2026-09-08 확인)." }
+        }
+      },
+      "AcquisitionCostsResponse": {
+        "type": "object",
+        "description": "단지 기준 취득 초기비용(complex-anchor, 신규). 취득세·지방교육세·농어촌특별세·인지세는 지방세법/인지세법 기준 확정값(OFFICIAL_RULE)이며, 중개보수는 상한요율 × 취득가액(ESTIMATE — 실제 금액은 이 이내에서 협의)이다.",
+        "properties": {
+          "complexId": { "type": "integer", "example": 1 },
+          "effectiveSalePrice": { "type": "integer", "nullable": true, "example": 95000 },
+          "salePriceSource": { "$ref": "#/components/schemas/SalePriceSource" },
+          "referenceTransactionDate": { "type": "string", "nullable": true, "example": "2026-08-25" },
+          "message": { "type": "string", "description": "effectiveSalePrice가 null일 때만 존재", "example": "매매가 입력 필요" },
+          "homeCountAfterPurchase": { "type": "integer", "example": 1 },
+          "exclusiveArea": { "type": "number", "example": 84.98 },
+          "acquisitionTax": {
+            "type": "object",
+            "properties": {
+              "amount": { "type": "integer", "description": "원", "example": 2850000 },
+              "ratePercent": { "type": "number", "example": 3 },
+              "isHeavyTaxRate": { "type": "boolean", "example": false },
+              "rateLabel": { "type": "string", "example": "주택 유상취득 기본세율" }
+            }
+          },
+          "localEducationTax": { "type": "object", "properties": { "amount": { "type": "integer" }, "ratePercent": { "type": "number" } } },
+          "ruralSpecialTax": { "type": "object", "properties": { "amount": { "type": "integer" }, "ratePercent": { "type": "number" } } },
+          "brokerageFee": {
+            "type": "object",
+            "description": "공인중개사법 시행규칙 별표1 및 서울특별시 주택 중개보수 등에 관한 조례 별표1 기준 상한요율 × 취득가액(아파트=주택 기준, 오피스텔 등은 별도 요율이라 이 계산에 포함하지 않음 — brokerage-fee.service.js의 calculateOfficetelBrokerageFee 참고). 저가 구간 법정 정액 한도액은 이 서비스가 다루는 7~15억원대 매물에 적용될 일이 없어 반영하지 않는다. 고정 수수료가 아니라 이 금액 이내에서 협의되므로 estimateType: ESTIMATE로 표시한다.",
+            "properties": {
+              "amount": { "type": "integer" },
+              "appliedRatePercent": { "type": "number" },
+              "capRatePercent": { "type": "number" },
+              "isCapped": { "type": "boolean" },
+              "vatIncluded": { "type": "boolean", "description": "표시 금액에 부가가치세 포함 여부. 법정 상한액 자체에는 VAT가 포함되지 않으며, 개업공인중개사가 일반과세자면 별도로 10%를 추가 청구할 수 있다(법제처 유권해석). 이 서비스는 항상 false(VAT 별도)로 계산한다." },
+              "estimateType": { "type": "string", "enum": ["ESTIMATE"] }
+            }
+          },
+          "stampDuty": { "type": "object", "properties": { "amount": { "type": "integer" } } },
+          "totalCost": { "type": "integer", "description": "취득세+지방교육세+농특세+중개보수+인지세 합계(원)" }
+        }
+      },
+      "LoanScheduleResponse": {
+        "type": "object",
+        "description": "월별 원리금균등상환 스케줄(complex-anchor, 신규). 거치기간 동안은 이자만 납부하고 이후 원리금균등상환으로 전환된다.",
+        "properties": {
+          "complexId": { "type": "integer", "example": 1 },
+          "principal": { "type": "integer", "example": 38000 },
+          "interestRatePercent": { "type": "number", "example": 4.5 },
+          "years": { "type": "integer", "example": 30 },
+          "graceMonths": { "type": "integer", "example": 12 },
+          "schedule": { "type": "null", "description": "principal/interestRatePercent 미지정 시에만 null" },
+          "message": { "type": "string", "description": "schedule이 null일 때만 존재", "example": "원금과 금리 입력 필요" },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "month": { "type": "integer", "example": 13 },
+                "payment": { "type": "number", "example": 192.3 },
+                "interest": { "type": "number", "example": 142.5 },
+                "principal": { "type": "number", "example": 49.8 },
+                "balance": { "type": "number", "example": 37950.2 }
+              }
+            }
+          },
+          "regularMonthlyPayment": { "type": "number", "example": 192.3 },
+          "graceMonthlyPayment": { "type": "number", "example": 142.5 },
+          "cliffMonth": { "type": "integer", "description": "거치 종료 후 상환액이 증가하는 첫 회차", "example": 13 },
+          "postCliffMonthlyPayment": { "type": "number", "example": 192.3 },
+          "cliffIncrease": { "type": "number", "description": "거치 종료 전후 월 상환액 증가폭", "example": 49.8 },
+          "totalInterest": { "type": "number" },
+          "totalPrincipal": { "type": "number" },
+          "endBalance": { "type": "number", "example": 0 }
+        }
+      },
+      "HoldingTaxEstimateResponse": {
+        "type": "object",
+        "description": "단지 기준 연간 보유세 추정(complex-anchor, 신규). 재산세는 OFFICIAL_RULE, 종합부동산세는 ESTIMATE(간이 계산)이다.",
+        "properties": {
+          "complexId": { "type": "integer", "example": 1 },
+          "effectiveSalePrice": { "type": "integer", "nullable": true, "example": 95000 },
+          "salePriceSource": { "$ref": "#/components/schemas/SalePriceSource" },
+          "referenceTransactionDate": { "type": "string", "nullable": true, "example": "2026-08-25" },
+          "message": { "type": "string", "description": "publicPrice/effectiveSalePrice가 모두 없을 때만 존재", "example": "매매가 또는 공시가격 입력 필요" },
+          "publicPrice": { "type": "integer", "nullable": true, "description": "만원", "example": 65000 },
+          "publicPriceSource": { "type": "string", "nullable": true, "enum": ["user", "estimated", null], "description": "user: 직접입력, estimated: salePrice×publicRatio 추정", "example": "estimated" },
+          "homeCountAfterPurchase": { "type": "integer", "example": 1 },
+          "isOneHouse": { "type": "boolean", "example": true },
+          "propertyTax": {
+            "type": "object",
+            "description": "재산세(OFFICIAL_RULE). 지방세법 제110조·제111조·제111조의2, 지방세법 시행령 제109조 기준.",
+            "properties": {
+              "fairMarketValueRatio": { "type": "number", "description": "공정시장가액비율. 1세대1주택 공시가격 3억↓0.43/6억↓0.44/6억초과0.45, 그 외 0.6", "example": 0.45 },
+              "isSpecialOneHouse": { "type": "boolean", "description": "1세대1주택 특례세율 적용 여부(공시가격 9억원 이하)", "example": true },
+              "propertyTax": { "type": "integer", "description": "원" },
+              "localEducationTax": { "type": "integer", "description": "원, 재산세의 20%" },
+              "urbanAreaTax": { "type": "integer", "description": "원, includeUrbanAreaTax=true일 때만 0 초과" },
+              "total": { "type": "integer", "description": "원" }
+            }
+          },
+          "comprehensiveTax": {
+            "type": "object",
+            "description": "종합부동산세 간이추정(ESTIMATE). 재산세 상당액 공제·세액공제·세부담상한 등 실제 신고 요소는 생략됐다.",
+            "properties": {
+              "deduction": { "type": "integer", "description": "기본공제(만원). 1세대1주택 120000/그 외 90000", "example": 120000 },
+              "taxableBase": { "type": "integer", "description": "과세표준(만원)" },
+              "comprehensiveTax": { "type": "integer", "description": "원" },
+              "ruralSpecialTax": { "type": "integer", "description": "원, 종부세 본세의 20%" },
+              "total": { "type": "integer", "description": "원" },
+              "estimateType": { "type": "string", "enum": ["ESTIMATE"] }
+            }
+          },
+          "totalAnnualHoldingTax": { "type": "integer", "description": "재산세+종부세 합계(원)" }
         }
       },
       "LocalityInfo": {
@@ -1197,11 +1397,11 @@
           "monthlyRepayment20y": { "type": "integer", "example": 310 },
           "monthlyRepayment30y": { "type": "integer", "example": 230 },
           "occupancyRequirementMonths": { "type": "integer", "nullable": true, "example": 6 },
-          "interestRatePercent": { "type": "number", "format": "double", "description": "대출 시뮬레이션에 적용된 연 이율(%)", "example": 4.5 },
+          "interestRatePercent": { "type": "number", "format": "double", "description": "대출 시뮬레이션에 적용된 연 이율(%). market_interest_rates 테이블(한국은행 매월 발표 가중평균금리를 사람이 확인해 반영)에서 조회한 값이다.", "example": 4.48 },
           "interestRateSource": {
             "type": "string",
-            "description": "적용 이율의 출처와 한계. 우리은행 공식 고시금리 페이지 자동조회 불가로 뉴스 보도 기반 대체값을 사용했음을 명시한다.",
-            "example": "우리은행 우리아파트론 변동금리 신규취급 하단 연 4.37%(2026.6.11 확인)와 한국은행 신규취급액 기준 전체은행 가중평균금리 연 4.34%(2026.3월)를 교차검증한 대표값. 우리은행 공식 고시금리 페이지 자동조회 불가로 뉴스 보도 기반 대체값을 사용했으며 실제 고시금리와 다를 수 있음."
+            "description": "적용 이율의 출처·기준월·마지막 확인일. 30일 이상 재확인되지 않으면(isStale) 안내 문구가 추가된다. 응답 최상위 `interestRateMeta`에 구조화된 값(ratePercent/referencePeriod/checkedAt/daysSinceChecked/isStale)이 함께 제공된다.",
+            "example": "한국은행 금융기관 가중평균금리(예금은행 신규취급액 기준 주택담보대출)(2026-07 기준, 2026-09-08 확인)."
           },
           "graduatedRepayment10y": { "$ref": "#/components/schemas/GraduatedRepayment" },
           "graduatedRepayment20y": { "$ref": "#/components/schemas/GraduatedRepayment" },
@@ -1224,7 +1424,8 @@
           "profileIncomplete": { "type": "boolean", "example": false },
           "scenarios": { "type": "array", "items": { "$ref": "#/components/schemas/LoanScenarioResult" }, "nullable": true },
           "recommendedScenario": { "type": "string", "enum": ["단독", "부부합산"], "nullable": true, "description": "도메인 §5.4 판단 절차(자금조달가능→대출가능금액 최댓값→DSR실사용률 최솟값→동률 시 부부합산 우선)로 선정된 유리한 시나리오", "example": "부부합산" },
-          "policyMortgageNotice": { "type": "string", "example": "디딤돌대출·보금자리론 등 정책모기지는 계산 범위에서 제외되며, 필요 시 한국주택금융공사·주택도시기금 채널에서 별도 확인이 필요합니다." }
+          "policyMortgageNotice": { "type": "string", "example": "디딤돌대출·보금자리론 등 정책모기지는 계산 범위에서 제외되며, 필요 시 한국주택금융공사·주택도시기금 채널에서 별도 확인이 필요합니다." },
+          "interestRateMeta": { "$ref": "#/components/schemas/InterestRateMeta" }
         }
       },
       "PriceHistoryEntry": {

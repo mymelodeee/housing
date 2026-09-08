@@ -92,7 +92,7 @@ CREATE TABLE apartment_complexes (
     nearest_shuttle_stop_name varchar(255),
     nearest_shuttle_stop_distance integer CHECK (nearest_shuttle_stop_distance IS NULL OR nearest_shuttle_stop_distance >= 0), -- m
     shuttle_commute_minutes integer CHECK (shuttle_commute_minutes IS NULL OR shuttle_commute_minutes >= 0), -- 분
-    locality_attributes jsonb, -- 입지 속성(교통/상권/학군/강남접근성/유흥·공원/개발호재/주변일자리), 필수 아님(도메인 §4.1)
+    locality_attributes jsonb, -- 입지 속성(교통/상권/강남접근성/유흥·공원/주변일자리), 필수 아님(학군/개발호재는 전용 API)
 
     -- 법정동코드 앞5자리(target-regions.js 기준). 국토부 실거래가 API 실시간 조회를 위한
     -- 매핑 컬럼이자, 서비스 대상 지역(TARGET_REGIONS)을 판단하는 canonical 식별자다.
@@ -221,7 +221,7 @@ CREATE INDEX idx_price_history_complex_id ON price_history (complex_id);
 CREATE TABLE elementary_schools (
     id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     school_name varchar(255) NOT NULL,
-    school_level varchar(20) NOT NULL DEFAULT '초등학교', -- '초등학교' | '중학교'
+    school_level varchar(20) NOT NULL DEFAULT '초등학교', -- '초등학교' | '중학교' | '고등학교'
     latitude numeric(9, 6) NOT NULL,
     longitude numeric(9, 6) NOT NULL,
     address varchar(255) NOT NULL
@@ -362,11 +362,9 @@ CREATE TABLE remodeling_project_history (
 CREATE INDEX idx_remodeling_project_history_project_id ON remodeling_project_history (project_id);
 
 -- -----------------------------------------------------------------------------
--- 15. development_projects / development_project_sources (개발호재, Phase 4 스캐폴드)
--- remodeling_projects/remodeling_sources와 동일한 "출처+checked_at 추적" 패턴을 따르되,
--- 아직 실제 데이터가 없어(2026-09-08) 값의 시점별 이력(remodeling_facts/project_history에
--- 해당하는 버전 관리 테이블)은 만들지 않았다. 실제 개발호재 데이터를 확보해 다건·시간 경과에
--- 따른 값 충돌 관리가 필요해지면 그때 remodeling과 동일하게 확장한다.
+-- 15. development_projects / development_project_sources / development_project_history
+-- 공식 또는 신뢰 가능한 출처 기반 curated dataset이다. checked_at 30일 초과 항목만
+-- 재검증하며, 값 변경 전 project와 출처 snapshot을 history에 보존한다.
 -- -----------------------------------------------------------------------------
 CREATE TABLE development_projects (
     id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -379,12 +377,16 @@ CREATE TABLE development_projects (
         CHECK (status IN ('계획', '확정', '착공', '공사중', '완료', '취소')),
     effective_date date, -- 이 상태의 기준일(as_of)
     checked_at date NOT NULL, -- 마지막 검증일
+    confidence varchar(20) NOT NULL DEFAULT 'medium'
+        CHECK (confidence IN ('high', 'medium', 'low')),
+    is_conflicted boolean NOT NULL DEFAULT false,
     note text,
     created_at timestamp NOT NULL DEFAULT now(),
     updated_at timestamp NOT NULL DEFAULT now()
 );
 
 CREATE INDEX idx_development_projects_complex_id ON development_projects (complex_id);
+CREATE INDEX idx_development_projects_checked_at ON development_projects (checked_at);
 
 CREATE TABLE development_project_sources (
     id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -401,6 +403,28 @@ CREATE TABLE development_project_sources (
 );
 
 CREATE INDEX idx_development_project_sources_project_id ON development_project_sources (project_id);
+CREATE UNIQUE INDEX idx_development_project_sources_project_url
+    ON development_project_sources (project_id, source_url)
+    WHERE source_url IS NOT NULL;
+
+CREATE TABLE development_project_history (
+    id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    project_id integer NOT NULL REFERENCES development_projects(id) ON DELETE CASCADE,
+    region_name varchar(50),
+    category varchar(30) NOT NULL,
+    status varchar(20) NOT NULL,
+    effective_date date,
+    checked_at date NOT NULL,
+    confidence varchar(20) NOT NULL CHECK (confidence IN ('high', 'medium', 'low')),
+    is_conflicted boolean NOT NULL,
+    note text,
+    sources_snapshot jsonb NOT NULL DEFAULT '[]'::jsonb,
+    change_reason varchar(50) NOT NULL,
+    superseded_at timestamp NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_development_project_history_project_id
+    ON development_project_history (project_id, superseded_at DESC);
 
 -- -----------------------------------------------------------------------------
 -- 시드 데이터: user_profiles 단일 레코드

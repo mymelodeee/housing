@@ -502,3 +502,11 @@ Phase 4는 사용자 지시로 **스키마/API/탭까지만** 범위를 한정�
 - 학원가 밀집도 실제 구현(상가정보 API 24개 소분류코드로 반경 내 카운트, UI/지도 레이어).
 - 개발호재 실제 데이터 수동 조사·입력(remodeling-seed.json 수준), 지도 좌표 연결, 지도 레이어 토글 UI(원 계획 Phase 5).
 - `LocalityAxisList` 중복 필드(`schoolDistrict`/`developmentProspects`) 정리.
+
+## 19. 학교·학원가·개발호재 실데이터 및 중복 축 정리 완료 (2026-09-08)
+
+- **학교 API**: 변경된 `DATA_SCHOOL_API_KEY`로 전국초중등학교위치표준데이터 1페이지 1,000건과 좌표 포함 응답을 실제 확인했다. 시드 결과는 초등학교 485건, 중학교 267건, 고등학교 190건(총 942건)이다.
+- **학원가**: 상가정보 API 학원 소분류 8종을 단지 좌표 반경 1km로 순차 조회해 합산하고 `ComplexAssignedSchoolsResponse.academyCount`와 학군 탭에 표시한다. 외부 API 실패 시 학교 응답 전체를 실패시키지 않고 `null`로 처리한다. 단지 `id=37` 실조회 결과는 92개였다.
+- **개발호재**: 화성 동탄·수원 영통·하남·용인 수지·서울 강동/송파·성남 수정의 주요 개발사업 7건을 공식·신뢰 가능한 출처 11건을 기반으로 curated dataset으로 적재했다. 자동 수집 가능한 항목은 공공 API 연계를 우선하고, API로 안정적으로 확보하기 어려운 항목은 `source_url`, `source_name`, `source_date`, `checked_at`, `status`, `confidence`를 유지하여 주기적으로 재검증한다. 상세 정책은 `docs/development-projects-maintenance.md`를 따른다.
+- **중복 정리**: `LocalityAxisList`와 백엔드 `localityAttributes`에서 전용 학군/개발호재 탭과 중복된 `schoolDistrict`/`developmentProspects`를 제거하고 관련 타입·비교 화면·테스트·Swagger를 동기화했다.
+- **ERD**: `docs/6-erd.md` v0.12에 초·중·고 참조 데이터, 비영속 학원가 집계, 개발호재 current/source/history, 현재 캐시·단지 컬럼 구조를 반영했다.
