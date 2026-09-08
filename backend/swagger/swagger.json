@@ -900,6 +900,12 @@
               "distanceMeters": { "type": "integer", "example": 780 }
             }
           },
+          "academyCount": {
+            "type": "integer",
+            "nullable": true,
+            "description": "단지 좌표 반경 1km 이내 학원 수(소상공인시장진흥공단 상가정보 API, 입시·교과/미술/외국어/음악/전문자격·고시/컴퓨터/태권도·무술/요가·필라테스 학원 8종 합산). 외부 API 조회 실패 시 null.",
+            "example": 24
+          },
           "assignmentNote": { "type": "string", "example": "최근접 학교 기준 근사치이며, 실제 배정은 교육청 학구도에 따라 달라질 수 있습니다" }
         }
       },

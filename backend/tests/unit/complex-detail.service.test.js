@@ -7,6 +7,7 @@ jest.mock('../../src/services/loan-limit.service');
 jest.mock('../../src/services/loan-scenario.service');
 jest.mock('../../src/repositories/remodeling.repository');
 jest.mock('../../src/services/development-projects.service');
+jest.mock('../../src/services/academy.service');
 
 const apartmentComplexesRepository = require('../../src/repositories/apartment-complexes.repository');
 const molitPriceHistoryService = require('../../src/services/molit-price-history.service');
@@ -17,6 +18,7 @@ const loanLimitService = require('../../src/services/loan-limit.service');
 const loanScenarioService = require('../../src/services/loan-scenario.service');
 const remodelingRepository = require('../../src/repositories/remodeling.repository');
 const developmentProjectsService = require('../../src/services/development-projects.service');
+const academyService = require('../../src/services/academy.service');
 const {
   getPriceHistory,
   getJeonseHistory,
@@ -149,24 +151,38 @@ describe('services/complex-detail.service', () => {
         elementarySchool: null,
         middleSchool: null,
         highSchool: null,
+        academyCount: null,
         assignmentNote: expect.any(String),
       });
     });
 
-    it('좌표가 있으면 초/중/고 최근접 학교를 조회한다', async () => {
+    it('좌표가 있으면 초/중/고 최근접 학교와 학원가 밀집도를 조회한다', async () => {
       apartmentComplexesRepository.findById.mockResolvedValue(baseComplexRow);
       elementarySchoolService.findNearestSchoolByLevel.mockResolvedValueOnce({ schoolName: 'A초', distanceMeters: 300 });
       elementarySchoolService.findNearestSchoolByLevel.mockResolvedValueOnce({ schoolName: 'B중', distanceMeters: 500 });
       elementarySchoolService.findNearestSchoolByLevel.mockResolvedValueOnce({ schoolName: 'C고', distanceMeters: 800 });
+      academyService.countAcademiesWithin1km.mockResolvedValue(12);
 
       const result = await getAssignedSchools(10);
 
       expect(elementarySchoolService.findNearestSchoolByLevel).toHaveBeenCalledWith(37.2, 127.09, '초등학교');
       expect(elementarySchoolService.findNearestSchoolByLevel).toHaveBeenCalledWith(37.2, 127.09, '중학교');
       expect(elementarySchoolService.findNearestSchoolByLevel).toHaveBeenCalledWith(37.2, 127.09, '고등학교');
+      expect(academyService.countAcademiesWithin1km).toHaveBeenCalledWith(37.2, 127.09);
       expect(result.elementarySchool).toEqual({ schoolName: 'A초', distanceMeters: 300 });
       expect(result.middleSchool).toEqual({ schoolName: 'B중', distanceMeters: 500 });
       expect(result.highSchool).toEqual({ schoolName: 'C고', distanceMeters: 800 });
+      expect(result.academyCount).toBe(12);
+    });
+
+    it('학원가 조회가 실패해도 나머지 결과는 정상 반환한다', async () => {
+      apartmentComplexesRepository.findById.mockResolvedValue(baseComplexRow);
+      elementarySchoolService.findNearestSchoolByLevel.mockResolvedValue(null);
+      academyService.countAcademiesWithin1km.mockRejectedValue(new Error('network'));
+
+      const result = await getAssignedSchools(10);
+
+      expect(result.academyCount).toBeNull();
     });
   });
 

@@ -29,6 +29,12 @@ export function ComplexSchoolsTab({ complexId }: ComplexSchoolsTabProps) {
         <SchoolRow label="초등학교" school={data.elementarySchool} />
         <SchoolRow label="중학교" school={data.middleSchool} />
         <SchoolRow label="고등학교" school={data.highSchool} />
+        <div className="schools-tab__row">
+          <dt className="schools-tab__label">학원가 밀집도</dt>
+          <dd className="schools-tab__value">
+            {data.academyCount === null ? '정보 없음' : `반경 1km 이내 ${data.academyCount.toLocaleString()}개`}
+          </dd>
+        </div>
       </dl>
       <p className="schools-tab__note">{data.assignmentNote}</p>
     </div>

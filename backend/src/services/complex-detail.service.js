@@ -10,6 +10,7 @@ const loanScenarioService = require('./loan-scenario.service');
 const remodelingService = require('./remodeling.service');
 const remodelingRepository = require('../repositories/remodeling.repository');
 const developmentProjectsService = require('./development-projects.service');
+const academyService = require('./academy.service');
 
 const POLICY_MORTGAGE_NOTICE = '디딤돌대출·보금자리론 등 정책모기지는 계산 범위에서 제외되며, 필요 시 한국주택금융공사·주택도시기금 채널에서 별도 확인이 필요합니다.';
 const LOOKUP_WINDOW_NOTE = '실시간 연동 특성상 최근 3년(36개월) 범위만 조회합니다';
@@ -98,16 +99,24 @@ async function getAssignedSchools(complexId) {
   if (!complexRow) return null;
 
   if (complexRow.latitude === null || complexRow.longitude === null) {
-    return { complexId, elementarySchool: null, middleSchool: null, highSchool: null, assignmentNote: ASSIGNMENT_NOTE };
+    return {
+      complexId,
+      elementarySchool: null,
+      middleSchool: null,
+      highSchool: null,
+      academyCount: null,
+      assignmentNote: ASSIGNMENT_NOTE
+    };
   }
 
-  const [elementarySchool, middleSchool, highSchool] = await Promise.all([
+  const [elementarySchool, middleSchool, highSchool, academyCount] = await Promise.all([
     elementarySchoolService.findNearestSchoolByLevel(complexRow.latitude, complexRow.longitude, '초등학교'),
     elementarySchoolService.findNearestSchoolByLevel(complexRow.latitude, complexRow.longitude, '중학교'),
-    elementarySchoolService.findNearestSchoolByLevel(complexRow.latitude, complexRow.longitude, '고등학교')
+    elementarySchoolService.findNearestSchoolByLevel(complexRow.latitude, complexRow.longitude, '고등학교'),
+    academyService.countAcademiesWithin1km(complexRow.latitude, complexRow.longitude).catch(() => null)
   ]);
 
-  return { complexId, elementarySchool, middleSchool, highSchool, assignmentNote: ASSIGNMENT_NOTE };
+  return { complexId, elementarySchool, middleSchool, highSchool, academyCount, assignmentNote: ASSIGNMENT_NOTE };
 }
 
 async function getRemodeling(complexId) {

@@ -35,6 +35,7 @@ export interface ComplexAssignedSchoolsResponse {
   elementarySchool: AssignedSchool | null
   middleSchool: AssignedSchool | null
   highSchool: AssignedSchool | null
+  academyCount: number | null
   assignmentNote: string
 }
 

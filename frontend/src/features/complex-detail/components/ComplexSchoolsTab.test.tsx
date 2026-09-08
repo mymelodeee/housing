@@ -8,13 +8,14 @@ vi.mock('../hooks/useComplexAssignedSchools', () => ({ useComplexAssignedSchools
 const mockedUseComplexAssignedSchools = vi.mocked(useComplexAssignedSchools)
 
 describe('ComplexSchoolsTab', () => {
-  it('초/중/고 배정학교를 모두 표시한다', () => {
+  it('초/중/고 배정학교와 학원가 밀집도를 모두 표시한다', () => {
     mockedUseComplexAssignedSchools.mockReturnValue({
       data: {
         complexId: 1,
         elementarySchool: { schoolName: 'A초등학교', distanceMeters: 300 },
         middleSchool: { schoolName: 'B중학교', distanceMeters: 500 },
         highSchool: { schoolName: 'C고등학교', distanceMeters: 800 },
+        academyCount: 24,
         assignmentNote: '근사치입니다',
       },
       isLoading: false,
@@ -25,15 +26,18 @@ describe('ComplexSchoolsTab', () => {
 
     expect(screen.getByText('고등학교')).toBeInTheDocument()
     expect(screen.getByText('C고등학교 (800m)')).toBeInTheDocument()
+    expect(screen.getByText('학원가 밀집도')).toBeInTheDocument()
+    expect(screen.getByText('반경 1km 이내 24개')).toBeInTheDocument()
   })
 
-  it('고등학교 정보가 없으면 정보 없음을 표시한다', () => {
+  it('학교/학원가 정보가 없으면 정보 없음을 표시한다', () => {
     mockedUseComplexAssignedSchools.mockReturnValue({
       data: {
         complexId: 1,
         elementarySchool: null,
         middleSchool: null,
         highSchool: null,
+        academyCount: null,
         assignmentNote: '근사치입니다',
       },
       isLoading: false,
@@ -42,6 +46,6 @@ describe('ComplexSchoolsTab', () => {
 
     render(<ComplexSchoolsTab complexId="1" />)
 
-    expect(screen.getAllByText('정보 없음')).toHaveLength(3)
+    expect(screen.getAllByText('정보 없음')).toHaveLength(4)
   })
 })
