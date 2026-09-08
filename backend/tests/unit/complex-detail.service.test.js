@@ -212,7 +212,7 @@ describe('services/complex-detail.service', () => {
 
       const result = await getDevelopmentProjects(10);
 
-      expect(developmentProjectsService.getDevelopmentProjects).toHaveBeenCalledWith(10);
+      expect(developmentProjectsService.getDevelopmentProjects).toHaveBeenCalledWith(10, '41597');
       expect(result).toEqual({ complexId: 10, projects: [] });
     });
   });

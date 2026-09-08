@@ -36,8 +36,8 @@ function mapProject(row, sources) {
   };
 }
 
-async function getDevelopmentProjects(complexId) {
-  const projectRows = await developmentProjectsRepository.findProjectsByComplexId(complexId);
+async function getDevelopmentProjects(complexId, lawdCd) {
+  const projectRows = await developmentProjectsRepository.findProjectsForComplex({ complexId, lawdCd });
 
   const projects = await Promise.all(
     projectRows.map(async (row) => {

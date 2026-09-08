@@ -144,7 +144,7 @@ async function getDevelopmentProjects(complexId) {
   const complexRow = await apartmentComplexesRepository.findById(complexId);
   if (!complexRow) return null;
 
-  return developmentProjectsService.getDevelopmentProjects(complexId);
+  return developmentProjectsService.getDevelopmentProjects(complexId, complexRow.lawd_cd);
 }
 
 // 사용자가 매매가를 직접 입력하지 않으면 해당 단지의 최신 유효 매매 실거래가를 자동 기준가격으로 사용한다.

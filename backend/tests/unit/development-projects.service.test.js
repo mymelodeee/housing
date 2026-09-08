@@ -9,16 +9,16 @@ describe('services/development-projects.service', () => {
   });
 
   it('등록된 개발호재가 없으면 빈 배열을 반환한다', async () => {
-    developmentProjectsRepository.findProjectsByComplexId.mockResolvedValue([]);
+    developmentProjectsRepository.findProjectsForComplex.mockResolvedValue([]);
 
-    const result = await getDevelopmentProjects(1);
+    const result = await getDevelopmentProjects(1, '41590');
 
     expect(result).toEqual({ complexId: 1, projects: [] });
     expect(developmentProjectsRepository.findSourcesByProjectId).not.toHaveBeenCalled();
   });
 
   it('프로젝트와 출처를 함께 매핑해 반환한다', async () => {
-    developmentProjectsRepository.findProjectsByComplexId.mockResolvedValue([
+    developmentProjectsRepository.findProjectsForComplex.mockResolvedValue([
       {
         id: 1,
         project_name: 'GTX-A 동탄역',
@@ -41,8 +41,9 @@ describe('services/development-projects.service', () => {
       },
     ]);
 
-    const result = await getDevelopmentProjects(1);
+    const result = await getDevelopmentProjects(1, '41590');
 
+    expect(developmentProjectsRepository.findProjectsForComplex).toHaveBeenCalledWith({ complexId: 1, lawdCd: '41590' });
     expect(developmentProjectsRepository.findSourcesByProjectId).toHaveBeenCalledWith(1);
     expect(result).toEqual({
       complexId: 1,
