@@ -1,10 +1,9 @@
 import { LOCALITY_ATTRIBUTE_LABELS, LOCALITY_ATTRIBUTE_ORDER } from '../../../shared/components/LocalityAxisList'
 import { formatPriceKorean } from '../../../shared/utils/formatPrice'
+import { calcHousingAge } from '../../../shared/utils/housingAge'
 import type { ComparisonComplexItem, ComparisonListingItem, PriceRangeValue } from '../types'
 
-export function calcHousingAge(completionYear: number, now: Date = new Date()): number {
-  return now.getFullYear() - completionYear + 1
-}
+export { calcHousingAge }
 
 export function formatPriceRange(priceRange: PriceRangeValue): string {
   if (priceRange === '매물 없음') return '매물 없음'

@@ -45,6 +45,7 @@ async function findByIdWithComplex(id) {
        l.id, l.complex_id, l.sale_price, l.exclusive_area,
        c.id AS c_id, c.complex_name, c.address, c.completion_year,
        c.remodeling_status, c.reconstruction_status, c.is_regulated_area,
+       c.is_adjustment_target_area, c.is_speculative_overheated_area,
        c.is_land_transaction_permission_zone,
        c.nearest_shuttle_stop_name, c.nearest_shuttle_stop_distance, c.shuttle_commute_minutes,
       c.latitude, c.longitude, c.lawd_cd, c.molit_apt_name

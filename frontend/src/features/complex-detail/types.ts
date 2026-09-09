@@ -98,6 +98,8 @@ export type SalePriceSource = 'user' | 'transaction' | null
 export interface ComplexRegulationInfo {
   complexId: number
   isRegulatedArea: boolean
+  isAdjustmentTargetArea: boolean
+  isSpeculativeOverheatedArea: boolean
   isLandTransactionPermissionZone: LandTransactionPermissionZoneStatus
   regulationConfirmationNeeded: boolean
   ltvPercent: number | null

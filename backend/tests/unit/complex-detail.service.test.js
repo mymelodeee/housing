@@ -42,6 +42,8 @@ const baseComplexRow = {
   latitude: 37.2,
   longitude: 127.09,
   is_regulated_area: true,
+  is_adjustment_target_area: true,
+  is_speculative_overheated_area: false,
   is_land_transaction_permission_zone: true,
 };
 
@@ -246,6 +248,17 @@ describe('services/complex-detail.service', () => {
 
       expect(result.profileMessage).toBe('내 정보 입력 필요');
       expect(result.ltvPercent).toBeNull();
+    });
+
+    it('조정대상지역/투기과열지구 여부를 각각 독립적으로 반환한다(단일 규제 boolean으로 합치지 않음)', async () => {
+      apartmentComplexesRepository.findById.mockResolvedValue(baseComplexRow);
+      userProfileService.getProfile.mockResolvedValue({ housingOwnershipTier: null });
+
+      const result = await getRegulation(10, {});
+
+      expect(result.isAdjustmentTargetArea).toBe(true);
+      expect(result.isSpeculativeOverheatedArea).toBe(false);
+      expect(result.isRegulatedArea).toBe(true);
     });
 
     it('프로필은 있지만 salePrice가 없고 유효한 실거래도 없으면 매매가 입력 필요 메시지를 반환한다', async () => {

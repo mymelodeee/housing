@@ -1186,7 +1186,9 @@
         "properties": {
           "listingId": { "type": "integer", "example": 10 },
           "complexId": { "type": "integer", "example": 1 },
-          "isRegulatedArea": { "type": "boolean", "example": true },
+          "isRegulatedArea": { "type": "boolean", "description": "조정대상지역 OR 투기과열지구(LTV 계산 입력값, DB CHECK 제약으로 아래 두 값과 항상 일치)", "example": true },
+          "isAdjustmentTargetArea": { "type": "boolean", "description": "조정대상지역 여부(투기과열지구와 별개 개념, 2026-09-10 분리)", "example": true },
+          "isSpeculativeOverheatedArea": { "type": "boolean", "description": "투기과열지구 여부(조정대상지역과 별개 개념, 2026-09-10 분리)", "example": true },
           "isLandTransactionPermissionZone": { "$ref": "#/components/schemas/LandTransactionPermissionZoneStatus" },
           "regulationConfirmationNeeded": { "type": "boolean", "description": "소속 단지의 규제지역 여부가 미확정(예: 평택)인 경우 true. 이 경우 비규제지역 LTV(하한값)를 임시 적용한 값임을 의미한다(PRD F4 인수조건)", "example": false },
           "ltvPercent": { "type": "integer", "description": "적용된 LTV(%). 세대 주택 보유 구분×규제지역 여부 조합(도메인 §5.1.3, 2025.6.28/9.7 가계부채 관리 대책 기준): 무주택-생애최초 70/80, 무주택-미해당 40/70, 1주택(처분조건부 가정) 40/70, 다주택 0/60(규제/비규제 순)", "example": 40 },
@@ -1214,7 +1216,9 @@
         "description": "단지 기준 규제/대출 분석 결과(complex-anchor, §14). salePrice 미지정 시 최신 유효 매매 실거래가를 기준가격으로 자동 사용한다 — 이는 국토부에 신고된 과거 확정 거래이며 현재 판매중인 매물 호가가 아니다.",
         "properties": {
           "complexId": { "type": "integer", "example": 1 },
-          "isRegulatedArea": { "type": "boolean", "example": true },
+          "isRegulatedArea": { "type": "boolean", "description": "조정대상지역 OR 투기과열지구(LTV 계산 입력값, DB CHECK 제약으로 아래 두 값과 항상 일치)", "example": true },
+          "isAdjustmentTargetArea": { "type": "boolean", "description": "조정대상지역 여부(투기과열지구와 별개 개념, 2026-09-10 분리)", "example": true },
+          "isSpeculativeOverheatedArea": { "type": "boolean", "description": "투기과열지구 여부(조정대상지역과 별개 개념, 2026-09-10 분리)", "example": true },
           "isLandTransactionPermissionZone": { "$ref": "#/components/schemas/LandTransactionPermissionZoneStatus" },
           "regulationConfirmationNeeded": { "type": "boolean", "example": false },
           "ltvPercent": { "type": "integer", "nullable": true, "example": 40 },

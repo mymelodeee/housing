@@ -30,6 +30,8 @@ function regulationResult(overrides = {}) {
     data: {
       complexId: 1,
       isRegulatedArea: true,
+      isAdjustmentTargetArea: true,
+      isSpeculativeOverheatedArea: true,
       isLandTransactionPermissionZone: true,
       regulationConfirmationNeeded: false,
       ltvPercent: null,
@@ -224,5 +226,25 @@ describe('ComplexLoanTab', () => {
     )
 
     expect(screen.getByText(/기준가격 10억 · 직접 입력한 매매가/)).toBeInTheDocument()
+  })
+
+  it('조정대상지역/투기과열지구/토지거래허가구역을 각각 독립적으로 표시한다', () => {
+    mockedRegulation.mockReturnValue(
+      regulationResult({
+        isAdjustmentTargetArea: true,
+        isSpeculativeOverheatedArea: false,
+        isLandTransactionPermissionZone: '확인필요',
+      }),
+    )
+
+    render(
+      <MemoryRouter>
+        <ComplexLoanTab complexId="1" />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('조정대상지역 해당')).toBeInTheDocument()
+    expect(screen.getByText('투기과열지구 비해당')).toBeInTheDocument()
+    expect(screen.getByText('확인필요')).toBeInTheDocument()
   })
 })

@@ -79,7 +79,15 @@ CREATE TABLE apartment_complexes (
     nearby_redevelopment_info text,
 
     -- 규제지역 여부: 기본값 false를 컬럼 DEFAULT로 강제(미고시=비규제로 간주해도 무방, 도메인 §4.1).
+    -- LTV/대출한도 계산의 기존 입력값으로 그대로 쓰이며, 아래 두 세부 플래그의 논리합과
+    -- 항상 일치하도록 CHECK 제약으로 강제한다(2026-09-10, 규제 종류 혼용 방지).
     is_regulated_area boolean NOT NULL DEFAULT false,
+
+    -- 조정대상지역/투기과열지구는 지정 근거와 효력(다주택 중과 등)이 서로 달라 하나의
+    -- boolean으로 합치지 않는다(2026-09-10 감사 결과 반영). 화면에는 개별 표시하고,
+    -- LTV 계산은 위 is_regulated_area(두 값의 논리합)를 그대로 입력값으로 쓴다.
+    is_adjustment_target_area boolean NOT NULL DEFAULT false,
+    is_speculative_overheated_area boolean NOT NULL DEFAULT false,
 
     -- 토지거래허가구역 여부: 도메인 §4.1이 "미고시 지역은 null 허용 후 확인필요 배지 표시"를
     -- 명시하므로 nullable로 둔다. DEFAULT false는 컬럼에 걸지 않고(신규 단지 등록 시 값이
@@ -104,7 +112,10 @@ CREATE TABLE apartment_complexes (
     -- 단지 물리 스펙: 공동주택 기본 정보제공 서비스(AptBasisInfoServiceV5)에서 kaptCode로
     -- 조회 가능한 경우만 값 존재(2026-09-08 실측: 용적률/건폐율은 이 API 응답에 없어 컬럼 추가 보류).
     household_count integer CHECK (household_count IS NULL OR household_count > 0),
-    building_count integer CHECK (building_count IS NULL OR building_count > 0)
+    building_count integer CHECK (building_count IS NULL OR building_count > 0),
+
+    CONSTRAINT apartment_complexes_regulated_area_consistency
+        CHECK (is_regulated_area = (is_adjustment_target_area OR is_speculative_overheated_area))
 );
 
 CREATE INDEX idx_apartment_complexes_is_regulated_area ON apartment_complexes (is_regulated_area);

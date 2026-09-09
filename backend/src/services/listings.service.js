@@ -255,6 +255,8 @@ async function getListingRegulation(id) {
     listingId: listingRow.id,
     complexId: listingRow.complex_id,
     isRegulatedArea,
+    isAdjustmentTargetArea: listingRow.is_adjustment_target_area,
+    isSpeculativeOverheatedArea: listingRow.is_speculative_overheated_area,
     isLandTransactionPermissionZone,
     regulationConfirmationNeeded,
     ltvPercent,

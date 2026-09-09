@@ -62,11 +62,17 @@ export function ComplexLoanTab({ complexId }: ComplexLoanTabProps) {
       {regulation.data && (
         <div className="regulation-tab">
           <div className="regulation-tab__status">
-            <span>{regulation.data.isRegulatedArea ? '규제지역' : '비규제지역'}</span>
+            <span className="regulation-tab__label">규제지역</span>
+            <span>조정대상지역 {regulation.data.isAdjustmentTargetArea ? '해당' : '비해당'}</span>
+            <span>투기과열지구 {regulation.data.isSpeculativeOverheatedArea ? '해당' : '비해당'}</span>
+          </div>
+          <div className="regulation-tab__status">
+            <span className="regulation-tab__label">거래규제</span>
+            <span>토지거래허가구역</span>
             {regulation.data.isLandTransactionPermissionZone === '확인필요' ? (
               <Badge variant="needs-confirmation">확인필요</Badge>
             ) : (
-              <span>{regulation.data.isLandTransactionPermissionZone ? '토지거래허가구역' : '토지거래허가구역 아님'}</span>
+              <span>{regulation.data.isLandTransactionPermissionZone ? '해당' : '비해당'}</span>
             )}
           </div>
 

@@ -1,4 +1,5 @@
 import type { LocalityDisplayData } from '../types/locality'
+import { calcHousingAge } from '../utils/housingAge'
 import './LocalityAxisList.css'
 
 // 학군/개발호재는 각각 전용 탭(단지 상세 "학군"/"개발호재")으로 대체돼 완전 중복이라
@@ -26,7 +27,7 @@ export function LocalityAxisList({ data, remodelingDisplay }: LocalityAxisListPr
     <dl className="locality-axis-list">
       <div className="locality-axis-list__item">
         <dt>연식</dt>
-        <dd>{data.completionYear === null ? '정보 없음' : `${data.completionYear}년`}</dd>
+        <dd>{data.completionYear === null ? '확인 필요' : `${data.completionYear}년 (${calcHousingAge(data.completionYear)}년차)`}</dd>
       </div>
       <div className="locality-axis-list__item">
         <dt>{remodelingDisplay ? '리모델링 추진 여부' : '리모델링 이력'}</dt>
@@ -51,7 +52,7 @@ export function LocalityAxisList({ data, remodelingDisplay }: LocalityAxisListPr
       </div>
       <div className="locality-axis-list__item">
         <dt>주변 재개발 정보</dt>
-        <dd>{data.nearbyRedevelopmentInfo ?? '정보 없음'}</dd>
+        <dd>{data.nearbyRedevelopmentInfo ?? '확인 필요'}</dd>
       </div>
       {LOCALITY_ATTRIBUTE_ORDER.map((key) => (
         <div className="locality-axis-list__item" key={key}>

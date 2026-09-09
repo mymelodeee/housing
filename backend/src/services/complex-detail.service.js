@@ -229,6 +229,8 @@ async function getRegulation(complexId, { salePrice } = {}) {
   return {
     complexId,
     isRegulatedArea,
+    isAdjustmentTargetArea: complexRow.is_adjustment_target_area,
+    isSpeculativeOverheatedArea: complexRow.is_speculative_overheated_area,
     isLandTransactionPermissionZone,
     regulationConfirmationNeeded,
     ltvPercent,
