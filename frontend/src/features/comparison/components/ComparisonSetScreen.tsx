@@ -3,10 +3,11 @@ import { useState } from 'react'
 import { useComparisonSet } from '../hooks/useComparisonSet'
 import { useAddComplexToComparisonSet } from '../hooks/useAddComplexToComparisonSet'
 import { useAddListingToComparisonSet } from '../hooks/useAddListingToComparisonSet'
+import { useAllComplexes } from '../hooks/useAllComplexes'
+import { groupComplexesByLocation } from '../utils/groupComplexesByLocation'
 import { ComparisonComplexTable, ComparisonListingTable } from './ComparisonTable'
 import { Modal } from '../../../shared/components/Modal'
 import { ApiError } from '../../../shared/api/client'
-import { useFavoriteComplexes } from '../../favorites/hooks/useFavoriteComplexes'
 import { useFavoriteListings } from '../../favorites/hooks/useFavoriteListings'
 import './ComparisonSetScreen.css'
 
@@ -14,11 +15,13 @@ export function ComparisonSetScreen() {
   const { id } = useParams<{ id: string }>()
   const { data, isLoading, isError } = useComparisonSet(id ?? '')
   const [errorModal, setErrorModal] = useState<string | null>(null)
+  const [selectedCityDistrict, setSelectedCityDistrict] = useState('')
+  const [selectedNeighborhood, setSelectedNeighborhood] = useState('')
   const [selectedComplexId, setSelectedComplexId] = useState('')
   const [selectedListingId, setSelectedListingId] = useState('')
   const addComplex = useAddComplexToComparisonSet(id ?? '')
   const addListing = useAddListingToComparisonSet(id ?? '')
-  const favoriteComplexes = useFavoriteComplexes()
+  const allComplexes = useAllComplexes()
   const favoriteListings = useFavoriteListings()
 
   if (!id) return <p role="alert">잘못된 접근입니다.</p>
@@ -31,10 +34,25 @@ export function ComparisonSetScreen() {
     }
   }
 
+  function handleCityDistrictChange(value: string) {
+    setSelectedCityDistrict(value)
+    setSelectedNeighborhood('')
+    setSelectedComplexId('')
+  }
+
+  function handleNeighborhoodChange(value: string) {
+    setSelectedNeighborhood(value)
+    setSelectedComplexId('')
+  }
+
   function handleAddComplex() {
     if (!selectedComplexId) return
     addComplex.mutate(Number(selectedComplexId), {
-      onSuccess: () => setSelectedComplexId(''),
+      onSuccess: () => {
+        setSelectedCityDistrict('')
+        setSelectedNeighborhood('')
+        setSelectedComplexId('')
+      },
       onError: handleAddError,
     })
   }
@@ -49,12 +67,20 @@ export function ComparisonSetScreen() {
 
   const existingComplexIds = new Set((data.complexes ?? []).map((c) => c.complexId))
   const existingListingIds = new Set((data.listings ?? []).map((l) => l.listingId))
-  const addableComplexes = (favoriteComplexes.data ?? []).filter(
-    (favorite) => !existingComplexIds.has(favorite.complexId),
-  )
   const addableListings = (favoriteListings.data ?? []).filter(
     (favorite) => !existingListingIds.has(favorite.listingId),
   )
+
+  const addableComplexes = (allComplexes.data ?? []).filter((complex) => !existingComplexIds.has(complex.id))
+  const complexLocationTree = groupComplexesByLocation(addableComplexes)
+  const cityDistrictOptions = [...complexLocationTree.keys()]
+  const neighborhoodOptions = selectedCityDistrict
+    ? [...(complexLocationTree.get(selectedCityDistrict)?.keys() ?? [])]
+    : []
+  const complexOptions =
+    selectedCityDistrict && selectedNeighborhood
+      ? (complexLocationTree.get(selectedCityDistrict)?.get(selectedNeighborhood) ?? [])
+      : []
 
   return (
     <div className="comparison-set-screen">
@@ -67,14 +93,40 @@ export function ComparisonSetScreen() {
           {addableComplexes.length > 0 && (
             <div className="comparison-set-screen__add-row">
               <select
+                value={selectedCityDistrict}
+                onChange={(e) => handleCityDistrictChange(e.target.value)}
+                aria-label="시/군/구 선택"
+              >
+                <option value="">시/군/구 선택</option>
+                {cityDistrictOptions.map((cityDistrict) => (
+                  <option key={cityDistrict} value={cityDistrict}>
+                    {cityDistrict}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={selectedNeighborhood}
+                onChange={(e) => handleNeighborhoodChange(e.target.value)}
+                aria-label="동 선택"
+                disabled={!selectedCityDistrict}
+              >
+                <option value="">동 선택</option>
+                {neighborhoodOptions.map((neighborhood) => (
+                  <option key={neighborhood} value={neighborhood}>
+                    {neighborhood}
+                  </option>
+                ))}
+              </select>
+              <select
                 value={selectedComplexId}
                 onChange={(e) => setSelectedComplexId(e.target.value)}
-                aria-label="추가할 단지 선택"
+                aria-label="단지 선택"
+                disabled={!selectedNeighborhood}
               >
                 <option value="">단지 선택</option>
-                {addableComplexes.map((favorite) => (
-                  <option key={favorite.complexId} value={favorite.complexId}>
-                    {favorite.complex.complexName}
+                {complexOptions.map((complex) => (
+                  <option key={complex.id} value={complex.id}>
+                    {complex.complexName}
                   </option>
                 ))}
               </select>

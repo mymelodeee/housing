@@ -6,23 +6,23 @@ import { ComparisonSetScreen } from './ComparisonSetScreen'
 import { useComparisonSet } from '../hooks/useComparisonSet'
 import { useAddComplexToComparisonSet } from '../hooks/useAddComplexToComparisonSet'
 import { useAddListingToComparisonSet } from '../hooks/useAddListingToComparisonSet'
-import { useFavoriteComplexes } from '../../favorites/hooks/useFavoriteComplexes'
+import { useAllComplexes } from '../hooks/useAllComplexes'
 import { useFavoriteListings } from '../../favorites/hooks/useFavoriteListings'
 import { ApiError } from '../../../shared/api/client'
 import type { ComparisonComplexItem, ComparisonSetDetail } from '../types'
 import type { LocalityAttributes } from '../../../shared/types/locality'
-import type { FavoriteComplex } from '../../favorites/types'
+import type { ApartmentComplexSummary } from '../../../shared/types/listing'
 
 vi.mock('../hooks/useComparisonSet')
 vi.mock('../hooks/useAddComplexToComparisonSet')
 vi.mock('../hooks/useAddListingToComparisonSet')
-vi.mock('../../favorites/hooks/useFavoriteComplexes')
+vi.mock('../hooks/useAllComplexes')
 vi.mock('../../favorites/hooks/useFavoriteListings')
 
 const mockedUseComparisonSet = vi.mocked(useComparisonSet)
 const mockedUseAddComplexToComparisonSet = vi.mocked(useAddComplexToComparisonSet)
 const mockedUseAddListingToComparisonSet = vi.mocked(useAddListingToComparisonSet)
-const mockedUseFavoriteComplexes = vi.mocked(useFavoriteComplexes)
+const mockedUseAllComplexes = vi.mocked(useAllComplexes)
 const mockedUseFavoriteListings = vi.mocked(useFavoriteListings)
 
 const localityAttributes: LocalityAttributes = {
@@ -48,27 +48,21 @@ function makeComplexItem(overrides: Partial<ComparisonComplexItem> = {}): Compar
   }
 }
 
-function makeFavoriteComplex(overrides: Partial<FavoriteComplex> = {}): FavoriteComplex {
+function makeComplexSummary(overrides: Partial<ApartmentComplexSummary> = {}): ApartmentComplexSummary {
   return {
-    id: 1,
-    userProfileId: 1,
-    complexId: 99,
-    registeredAt: '2026-01-01T00:00:00.000Z',
-    complex: {
-      id: 99,
-      complexName: '추가가능단지',
-      address: '서울시 테스트구',
-      completionYear: 2019,
-      remodelingStatus: '해당없음',
-      reconstructionStatus: '해당없음',
-      isRegulatedArea: false,
-      isLandTransactionPermissionZone: false,
-      nearestShuttleStopName: '정류장1',
-      nearestShuttleStopDistance: 100,
-      shuttleCommuteMinutes: 30,
-      householdCount: null,
-      buildingCount: null,
-    },
+    id: 99,
+    complexName: '추가가능단지',
+    address: '서울 강동구 길동 483',
+    completionYear: 2019,
+    remodelingStatus: '해당없음',
+    reconstructionStatus: '해당없음',
+    isRegulatedArea: false,
+    isLandTransactionPermissionZone: false,
+    nearestShuttleStopName: '정류장1',
+    nearestShuttleStopDistance: 100,
+    shuttleCommuteMinutes: 30,
+    householdCount: null,
+    buildingCount: null,
     ...overrides,
   }
 }
@@ -95,7 +89,7 @@ describe('ComparisonSetScreen', () => {
     mockedUseAddListingToComparisonSet.mockReturnValue({ mutate: addListingMutate } as unknown as ReturnType<
       typeof useAddListingToComparisonSet
     >)
-    mockedUseFavoriteComplexes.mockReturnValue({ data: [] } as unknown as ReturnType<typeof useFavoriteComplexes>)
+    mockedUseAllComplexes.mockReturnValue({ data: [] } as unknown as ReturnType<typeof useAllComplexes>)
     mockedUseFavoriteListings.mockReturnValue({ data: [] } as unknown as ReturnType<typeof useFavoriteListings>)
   })
 
@@ -195,16 +189,18 @@ describe('ComparisonSetScreen', () => {
       isLoading: false,
       isError: false,
     } as unknown as ReturnType<typeof useComparisonSet>)
-    mockedUseFavoriteComplexes.mockReturnValue({
-      data: [makeFavoriteComplex({ complexId: 99 })],
-    } as unknown as ReturnType<typeof useFavoriteComplexes>)
+    mockedUseAllComplexes.mockReturnValue({
+      data: [makeComplexSummary({ id: 99, complexName: '추가가능단지', address: '서울 강동구 길동 483' })],
+    } as unknown as ReturnType<typeof useAllComplexes>)
     addComplexMutate.mockImplementation((_id, options) => {
       options?.onError?.(new ApiError(409, '중복입니다'))
     })
 
     const { container } = renderScreen()
 
-    await user.selectOptions(screen.getByLabelText('추가할 단지 선택'), '99')
+    await user.selectOptions(screen.getByLabelText('시/군/구 선택'), '서울 강동구')
+    await user.selectOptions(screen.getByLabelText('동 선택'), '길동')
+    await user.selectOptions(screen.getByLabelText('단지 선택'), '99')
     await user.click(screen.getByRole('button', { name: '추가' }))
 
     expect(screen.getByRole('dialog')).toHaveTextContent('중복입니다')
@@ -212,5 +208,49 @@ describe('ComparisonSetScreen', () => {
     // 첫 번째는 빈 헤더, 두 번째부터 단지 컬럼 (테이블에는 여전히 단지A 1개만 존재해야 함)
     expect(columnHeaders).toHaveLength(2)
     expect(columnHeaders[1]).toHaveTextContent('단지A')
+  })
+
+  it('시/군/구 > 동 > 단지명 순으로 단계적으로 선택해야 추가 버튼이 활성화된다(즐겨찾기 목록이 아닌 전체 단지 목록을 사용)', async () => {
+    const user = userEvent.setup()
+    const data: ComparisonSetDetail = {
+      id: 1,
+      userProfileId: 1,
+      targetType: 'complex',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      complexes: [makeComplexItem({ complexId: 1, complexName: '단지A' })],
+      listings: null,
+    }
+    mockedUseComparisonSet.mockReturnValue({
+      data,
+      isLoading: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useComparisonSet>)
+    mockedUseAllComplexes.mockReturnValue({
+      data: [
+        makeComplexSummary({ id: 12, complexName: '강동헤리티지자이', address: '서울 강동구 길동 483' }),
+        makeComplexSummary({ id: 42, complexName: '동분당더퍼스트', address: '성남시 중원구 도촌동 704' }),
+      ],
+    } as unknown as ReturnType<typeof useAllComplexes>)
+
+    renderScreen()
+
+    const addButton = screen.getByRole('button', { name: '추가' })
+    expect(addButton).toBeDisabled()
+    expect(screen.getByLabelText('동 선택')).toBeDisabled()
+    expect(screen.getByLabelText('단지 선택')).toBeDisabled()
+
+    await user.selectOptions(screen.getByLabelText('시/군/구 선택'), '성남시 중원구')
+    expect(screen.getByLabelText('동 선택')).not.toBeDisabled()
+    expect(screen.queryByRole('option', { name: '강동헤리티지자이' })).not.toBeInTheDocument()
+
+    await user.selectOptions(screen.getByLabelText('동 선택'), '도촌동')
+    expect(screen.getByLabelText('단지 선택')).not.toBeDisabled()
+    expect(screen.getByRole('option', { name: '동분당더퍼스트' })).toBeInTheDocument()
+
+    await user.selectOptions(screen.getByLabelText('단지 선택'), '42')
+    expect(addButton).not.toBeDisabled()
+
+    await user.click(addButton)
+    expect(addComplexMutate).toHaveBeenCalledWith(42, expect.anything())
   })
 })
